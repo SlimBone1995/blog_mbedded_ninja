@@ -1,0 +1,164 @@
+---
+authors: [gbmhunter]
+date: 2015-08-12
+lastUpdated: 2015-08-12
+tags: [C++, programming, smart pointers]
+title: 智能指针
+type: page
+sourcePath: programming/languages/c-plus-plus/smart-pointers/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:0f650d86e3fe51ff32db531b0d4abb1441f8fd44907d8d738a6ba3019f0722d4
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/smart-pointers/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+C++ 中的智能指针是相对于 _裸指针_ 概念增加了额外功能的指针对象：当不再有引用指向该内存时，这些高级指针对象可以自动释放内存，从而避免用户必须记住调用 delete/delete[]。它**可以看作某种形式的基础垃圾回收**，但仍然是确定性的（即你可以确切知道内存何时被释放）。
+
+<Aside type="caution">
+尽管智能指针看起来像是万能药，似乎你再也不应使用裸指针或引用，但请注意，智能指针**非常容易被滥用**。朴素的标准指针和引用仍有非常合理的用途。智能指针只应在处理对象所有权时使用（下文将详细说明）。
+</Aside>
+
+**裸指针的问题**
+
+在讨论什么是智能指针之前，最好先回顾裸指针的缺点：
+
+1. 它的声明不能表明它指向单个对象还是数组。这也意味着在删除时，你不知道该用 delete 还是 delete[]。
+2. 它没有说明使用完毕后是否应该删除所指向的对象（即没有说明该指针是否 _拥有_ 它所指向的对象）。
+3. 在代码的所有执行路径中，很难做到只删除一次指针。
+4. 无法判断指针是否悬空，而且在使用指针之前，检查并确认它非空通常是明智的（通常在指针未初始化，或已被删除后又设为 null 时）。
+
+**C++ 标准库来救场**
+
+幸运的是，C++ 标准库（std）提供了一系列智能指针来克服裸指针的这些问题。下面将详细介绍。
+
+## std::unique_ptr
+
+谈到智能指针，`std::unique_ptr` 是最常用的基础工具。unique_ptr 强制实现 _独占所有权_。同一时间只能有一个指针拥有该内存，其他指针不得指向该内存。因此，你不能**复制** unique_ptr（复制会导致两个 unique_ptr 指向同一内存），但可以**移动**它。
+
+移动 `unique_ptr` 会把内存所有权从源指针转移到目标指针。移动后，源指针会自动设为 null。
+
+`unique_ptr` 析构时（例如指针离开作用域），它也会销毁所指向的内存。默认情况下，unique_ptr 通过调用 delete 销毁内存，但在构造时可以为其指定**自定义删除器**。自定义删除器是用户定义的函数（如果使用 lambda 表达式，则为函数对象），当需要销毁内存时由 unique_ptr 自动调用。
+
+由于 `unique_ptr` 的能力有限，与裸指针相比，它不会增加太多开销或占用空间。它小巧轻量。
+
+## std::shared_ptr
+
+**当对象有多个所有者**时，可以使用 `std::shared_ptr`。与 `std::unique_ptr` 不同，**共享指针可以复制**，并且这些副本可以传递给其他所有者。只要还有共享指针指向该对象，底层对象就不会被删除；直到所有指向它的共享指针都被销毁。
+
+**工作原理**
+
+共享指针通过**引用计数**工作。指向某个对象的共享指针总数会保存在内存中，只有当计数降为 0 时对象才会被删除。为此，该计数必须存储在与所有共享指针完全独立的一块内存中，且该内存分配在堆上。
+
+**循环所有权**
+
+小心循环所有权！循环所有权的一个例子是类 A 和类 B 各自包含指向对方的 `std::shared_ptr`。如果发生这种情况，两个对象都永远不会被删除，因为每个类中的 `std::shared_ptr` 都在让另一个类保持“存活”。
+
+下面的代码示例展示了 `std::shared_ptr` 对象的循环所有权问题。
+
+```c++
+#include <iostream>
+#include <memory>
+
+class A;
+class B;
+
+class A {
+public:
+    A() {
+        std::cout << "A's constructor called." << std::endl;
+    }
+    ~A() {
+        std::cout << "A's destructor called." << std::endl;
+    }
+    std::shared_ptr<B> b_;
+};
+
+class B {
+public:
+    B() {
+        std::cout << "B's constructor called." << std::endl;
+    }
+    ~B() {
+        std::cout << "B's destructor called." << std::endl;
+    }
+    std::shared_ptr<A> a_;
+};
+
+int main() {
+    auto a = std::make_shared<A>();
+    auto b = std::make_shared<B>();
+    
+    a->b_ = b;
+    b->a_ = a;
+    
+    // There is a memory leak!
+    // Because of the cyclic shared pointer's, neither
+    // A nor B will be destroyed here
+    return 0;
+}
+```
+
+在 [https://wandbox.org/permlink/ilQJXkeFARS6JOQt](https://wandbox.org/permlink/ilQJXkeFARS6JOQt) 在线运行这段代码。
+
+
+如何避免循环所有权？唯一答案是仔细考虑谁“拥有”该内存，并确保两个对象不会互相“拥有”。如果两个对象确实需要互相持有引用，请确保至少其中一个是 `std::weak_ptr`（或普通指针）。
+
+**应该按引用还是按值传递 std::shared_ptr？**
+
+如果将 `std::shared_ptr` 传入一个需要对底层对象进行临时访问的函数，应该怎么做？按值传递：
+
+```c++    
+#include <iostream>
+#include <memory>
+
+void PrintString(std::shared_ptr<std::string> msg) {
+    std::cout << *msg;   
+}
+
+int main() {
+    auto msg = std::make_shared<std::string>("Hello, world!");
+    PrintString(msg);
+    return 0;
+}
+```
+
+在 [https://wandbox.org/permlink/QIWUgBRC4eKP5PKi](https://wandbox.org/permlink/QIWUgBRC4eKP5PKi) 在线运行这段代码。
+
+还是按引用传递？
+
+```c++    
+#include <iostream>
+#include <memory>
+
+void PrintString(const std::shared_ptr<std::string>& msg) {
+    std::cout << *msg;   
+}
+
+int main() {
+    auto msg = std::make_shared<std::string>("Hello, world!");
+    PrintString(msg);
+    return 0;
+}
+```
+
+在 [https://wandbox.org/permlink/lWvdqx6rGPsSlkcH](https://wandbox.org/permlink/lWvdqx6rGPsSlkcH) 在线运行这段代码。
+
+答案取决于具体情况。根据函数要对对象做什么，甚至改为传递裸指针或裸引用可能更明智。
+
+以下是 [Herb Sutter 对这个问题的看法](https://herbsutter.com/2013/06/05/gotw-91-solution-smart-pointer-parameters/)：
+
+> 准则：除非你想使用或操作智能指针本身（例如共享或转移所有权），否则不要把智能指针作为函数参数传递。
+
+> 准则：如果函数将存储并共享堆对象的所有权，请使用按值 shared_ptr 参数来表达。
+
+> 准则：仅在需要修改 shared_ptr 时使用非 const 的 shared_ptr& 参数。只有在不确定是否会复制并共享所有权时，才使用 const shared_ptr& 作为参数；否则改用 widget*（如果不可为空，则用 widget&）。
+ 
+他还说道：
+
+> “对于任何引用计数的智能指针类型，一条重要的最佳实践是：除非确实想新增一个引用，否则避免复制它。”
+
+<Aside type="note">
+按值传递时，会创建一个新的共享指针，引用计数会递增（并在函数返回时再次递减）。按引用传递时则不必执行这一过程。
+</Aside>

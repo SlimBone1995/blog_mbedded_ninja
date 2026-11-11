@@ -1,0 +1,1066 @@
+---
+authors: [gbmhunter]
+date: 2011-09-05
+description: 运算放大器的原理图符号、示例电路、方程、应用及更多信息。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-13
+tags: [op-amps, schematic symbols, analogue, analog, operational amplifiers, inverting, buffers, non-inverting, components, gain, voltage followers, offset nulling, input offset voltages, instrumentation amplifiers, capacitive loading, current sources, quiescent currents, GBW, slew rates, negative impedance converters, NICs, summing amplifiers, level shifting]
+title: 运算放大器（Op-Amp）
+type: page
+sourcePath: electronics/components/op-amps/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:5cbc3f1a11a8399a6b8c78006cae35658fe53d3d35431647ab7ff434678b8192
+sourceUrl: https://blog.mbedded.ninja/electronics/components/op-amps/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+import OpAmpCalculator from 'src/components/tools/op-amp-calculator/OpAmpCalculator.jsx';
+
+在最基本的层面上，_运算放大器_（op-amp）是一种**具有非常高增益、用作电压放大器的模拟集成电路**。
+
+运算放大器的增益可以通过适当的外部电路调整（运算放大器内部增益不变，但整个电路的增益会改变）。对于任何用作放大器的运算放大器，几乎总是这样做。外部电路还可以使运算放大器充当电流放大器，或对信号执行“数学”运算。
+
+<Aside type="tip">
+本页对随时间变化的信号（如 $v_{in}$ 和 $v_{out}$）使用小写变量（及小写下标）。大写变量用于直流值、偏置点、RMS 或相量幅值。
+</Aside>
+
+## 原理图符号
+
+运算放大器在原理图中通常画为：
+
+<Image src={import('./_assets/op-amp-basic-schematic-symbol.webp')} width="500px">运算放大器的基本原理图符号。</Image>
+
+你可能会看到带有或不带有电压电源引脚 $ +V_{S} $ 和 $ -V_{S} $ 的该符号。如果没有画出，则假定它们已连接到电源，这从设计意图中应该很明显。
+
+<Aside type="caution">
+始终注意反相（-）和非反相（+）输入端子的位置。**有时它们会相对于上图所示符号画反。**
+</Aside>
+
+## 用途
+
+- 缓冲器（又称电压跟随器）
+- 线性放大器、非线性放大器
+- 前置放大器（输入电压为 $10\unit{mV}$ 或更小的放大器）
+- 模拟数学运算（微分器、积分器、加法器、减法器等）
+- 电压到电流（跨导）和电流到电压（跨阻）转换
+
+## 运算放大器拓扑
+
+### 电压跟随器（又称缓冲器）
+
+_电压跟随器_（又称_缓冲器_）是用运算放大器能构建的最基本电路之一。原理图如下：
+
+<Image src={import('./_assets/voltage-follower-schematic.svg')} width="500px">配置为电压跟随器（即缓冲器）的运算放大器。</Image>
+
+电压跟随器的输出电压就是：
+
+$$
+v_{out} = v_{in}
+$$
+
+如上所示，输出电压与输入电压相同。那这岂不是毫无意义？不，电压跟随器/缓冲器的关键在于它可以将**高阻抗输入转换为低阻抗输出**。实际而言，这意味着你现在可以从输出汲取/提供更多电流而电压不变。缓冲器非常适合增强需要长距离传输的信号，或需要分路送往许多器件的信号（这称为**扇出**，在数字时钟信号中很常见）。
+
+<Aside type="example">
+
+下面展示了电压跟随器运算放大器的仿真原理图。
+
+<Image src={import('./_assets/simulation-schematic-for-op-amp-voltage-follower-buffer.png')} width="400px">配置为电压跟随器（缓冲器）的运算放大器仿真原理图。</Image>
+
+仿真结果：
+
+<Image src={import('./_assets/output-voltage-vs-input-voltage-op-amp-voltage-follower.png')} width="600px">配置为电压跟随器（缓冲器）的运算放大器的仿真结果。注意输出电压完全镜像输入电压。</Image>
+
+</Aside>
+
+### 同相放大器
+
+下面展示了配置为同相放大器的运算放大器。
+
+<Image src={import('./_assets/non-inverting-amplifier-schematic.svg')} width="500px">配置为同相放大器的运算放大器。</Image>
+
+同相放大器的输出电压方程为：
+
+$$
+\begin{align*}
+v_{out} = \left(1 + \frac{R_f}{R_i}\right) v_{in}
+\end{align*}
+$$
+
+注意到增益方程中的 $1$ 了吗？这意味着无论将电阻 $R_f$ 和 $R_i$ 设为多少，你**永远无法得到小于 1 的增益**。这是同相放大器的一个缺点（使用反相放大器可以获得小于 1 的增益）。
+
+<Aside type="caution">
+这些反馈电阻的标号没有统一惯例。有时称为 $R_i$ 和 $R_f$，有时称为 $R_1$ 和 $R_2$（任一电阻都可能是 $R_1$）。
+</Aside>
+
+<Aside type="example">
+
+**同相放大器的仿真示例。**
+
+下面是一个由单端电源供电的同相运算放大器仿真原理图（电路）。由于 R1（$R_f$）和 R2（$R_i$）均为 $1\unit{k\Omega}$，该运算放大器的电压增益 $A_V$ 为：
+
+$$
+\begin{align*}
+A_V &= 1 + \frac{R_f}{R_i} \\
+    &= 1 + \frac{1\unit{k\Omega}}{1\unit{k\Omega}} \\
+    &= 2
+\end{align*}
+$$
+
+<Image src={import('./_assets/non-inverting-op-amp-amplifier-simulation-schematic.png')} width="450px">同相运算放大器的仿真原理图。</Image>
+
+仿真结果如下所示。可以看到，输出电压 $v_{out}$ 恰好是输入电压 $v_{in}$ 的两倍。
+
+<Image src={import('./_assets/vout-vs-vin-non-inverting-op-amp-amplifier-gain-of-2.png')} width="700px">同相运算放大器电路的 $v_{out}$ 与 $v_{in}$ 关系曲线。</Image>
+
+</Aside>
+
+### 反相放大器
+
+下面展示了配置为反相放大器的运算放大器。
+
+<Image src={import('./_assets/inverting-amplifier-schematic.svg')} width="500px">配置为反相放大器的运算放大器。</Image>
+
+反相放大器的输出电压方程为：
+
+$$
+\begin{align*}
+v_{out} = - \frac{R_f}{R_i} v_{in}
+\end{align*}
+$$
+
+负号表示输出与输入极性相反。注意，与同相放大器不同，**反相放大器允许获得小于 1 的增益**。
+
+<Aside type="example">
+
+**反相放大器的仿真示例。**
+
+下面是用于仿真反相运算放大器行为的原理图。注意它需要负电压电源。
+
+<Image src={import('./_assets/inverting-op-amp-simulation-schematic.png')} width="600px">用于仿真反相运算放大器行为的原理图。</Image>
+
+上述原理图的仿真结果如下：
+
+<Image src={import('./_assets/vout-vs-vin-inverting-op-amp-gain-neg-1.png')} width="700px">增益为 -1 的反相运算放大器的 $v_{out}$ 与 $v_{in}$ 关系曲线。</Image>
+
+</Aside>
+
+### 差分放大器
+
+差分（又称_差动_或_减法_）放大器是一种放大两个电信号之间电压差的运算放大器电路。它相当于带一定额外增益的数学减法。原理图如下：
+
+<Image src={import('./_assets/difference-amplifier-schematic.svg')} width="700px">配置为差分放大器的运算放大器。</Image>
+
+输出电压由下式给出：[^electronics-tutorials-ws-the-differential-amplifier]
+
+$$
+\begin{align*}
+v_{out} = \left(\frac{R_2}{R_1 + R_2}\right)\left(\frac{R_3 + R_4}{R_3}\right)v_1 - \frac{R_4}{R_3}v_2
+\end{align*}
+$$
+
+<Aside type="caution">
+很容易将差分放大器（这里讨论的对象）与_微分放大器_混淆，后者执行数学微分功能（与积分相反）。
+</Aside>
+
+要构成标准差分放大器，选取 $R_1$ 等于 $R_3$、$R_2$ 等于 $R_4$。此时上述方程可轻松简化为：
+
+$$
+\begin{align*}
+v_{out} = \left(\frac{R_2}{R_1}\right)(v_1 - v_2)
+\end{align*}
+$$
+
+现在可以清楚看出它如何先作为减法器（$v_1 - v_2$），再乘以一定增益（$\frac{R_2}{R_1}$）。
+
+<Aside type="example">
+
+**差分放大器的仿真示例。**
+
+下面是用于仿真差分运算放大器行为的原理图：
+
+<Image src={import('./_assets/differential-op-amp-simulation-schematic.png')} width="800px">用于仿真差分运算放大器行为的原理图。</Image>
+
+该原理图产生以下结果：
+
+<Image src={import('./_assets/differential-op-amp-simulation-graph-vin1-vin2-vout.png')} width="700px">配置为差分放大器的运算放大器的 Vout 与 Vin1、Vin2 关系曲线。</Image>
+
+</Aside>
+
+### 积分放大器
+
+_积分放大器_ 对输入信号执行数学积分——其输出电压与输入电压对时间的积分成正比。下图展示了基于运算放大器的**理想**积分器。
+
+<Image src={import('./_assets/integration-amplifier-schematic-ideal.svg')} width="500px">配置为理想积分器的运算放大器。</Image>
+
+下面的方程给出了输入电压与输出电压之间的关系：
+
+$$
+v_{out} = -\frac{1}{R_i C} \int_0^t v_{in}\ dt
+$$
+
+**然而，该电路在现实情况下通常不实用**。任何误差，例如输出失调电压和输入偏置电流（所有运算放大器都不可避免地存在），以及带有少量直流偏置的非理想输入信号，都会导致输出漂移，直到达到饱和。
+
+解决此问题的一种方法是插入高阻值反馈电阻 $R_f$ 以限制直流增益，并在同相输入端添加电阻 $R_{bias}$ 以补偿输入偏置电流。
+
+<Image src={import('./_assets/integration-amplifier-schematic-non-ideal.svg')} width="600px">配置为非理想（现实）积分器的运算放大器，反馈电阻 $R_f$ 用于缓慢消除直流失调，$R_{bias}$ 用于补偿输入偏置电流。</Image>
+
+$$
+\begin{align*}
+v_{out} &= -\frac{1}{R_i C} \int_0^t v_{in}\ dt \\
+R_{bias} &= R_i\ ||\ R_f ||\ R_L \\
+V_E &= \left(\frac{R_f}{R_i} + 1\right) V_{OS}
+\end{align*}
+$$
+
+### 微分放大器
+
+_微分放大器_ 对输入信号执行数学微分运算——其输出电压与输入电压的变化率成正比。下图展示了基于运算放大器的**理想**微分器。
+
+<Image src={import('./_assets/differentiator-amplifier-basic-schematic.svg')} width="500px">配置为微分放大器的运算放大器原理图。</Image>
+
+<Aside type="tip">
+不要将_微分放大器_与_差分放大器_混淆。微分放大器执行数学微分运算，而差分放大器放大两个输入信号之间的差值。
+</Aside>
+
+该电路与基本[积分放大器](#integration-amplifiers)相似，只是[电容](/electronics/components/capacitors/)和电阻互换了位置。下面的方程给出了输入电压与输出电压之间的关系：
+
+$$
+v_{out} = - R_f C \frac{dv_{in}}{dt}
+$$
+
+与基本积分放大器一样，基本微分放大器电路在现实情况下也不实用。微分放大器在高频时增益非常高，可能导致运算放大器不稳定。你还希望加入低通截止来抑制高频噪声。为此，添加电阻 $R_i$ 和电容 $C_f$。如下图所示：
+
+<Image src={import('./_assets/differentiator-amplifier-advanced-schematic.svg')} width="600px">配置为微分放大器的运算放大器原理图，带有用于限制高频增益的附加电路。</Image>
+
+在高频时，电容 $C_i$ 相当于短路（但 $C_f$ 不是，假设 $R_f C_f$ 的截止频率高于 $R_i C_i$），输入电阻 $R_i$ 将放大器增益限制为 $-R_f/R_i$（就像[反相放大器](#inverting-amplifiers)一样）。在更高频率下，$C_f$ 开始占主导，使增益以 $-20\unit{dB/decade}$ 滚降，从而抑制高频噪声。
+
+响应由两个转折频率决定，一个由输入网络 $R_i C_i$ 设定，另一个由反馈网络 $R_f C_f$ 设定：
+
+$$
+\begin{align*}
+f_1 &= \frac{1}{2\pi R_i C_i} \\
+f_2 &= \frac{1}{2\pi R_f C_f}
+\end{align*}
+$$
+
+元件选取使 $f_1 < f_2$（等价于 $R_i C_i > R_f C_f$），从而将响应分为三个区域：
+
+- **低于 $f_1$：** 电路作为微分器工作。增益以 $+20\unit{dB/decade}$ 上升，遵循理想关系 $|A| = 2\pi f R_f C_i$。
+- **$f_1$ 与 $f_2$ 之间：** 增益平坦，为 $-R_f / R_i$，表现得像反相放大器。正是这一区域抑制了高频增益并保持运算放大器稳定。
+- **高于 $f_2$：** $C_f$ 在反馈路径中占主导，增益以 $-20\unit{dB/decade}$ 滚降。
+
+你应将关注的信号放在远低于 $f_1$ 的位置，使其处于微分区域。下面的波特图展示了实际微分器的这三个区域：
+
+<Image src={import('./_assets/differentiator-amplifier-bode-plot-general.png')} width="700px">实际运算放大器微分器的频率响应（波特幅值图）。低于 $f_1$ 时电路进行微分（增益以 $+20\unit{dB/decade}$ 上升），$f_1$ 与 $f_2$ 之间增益平坦为 $-R_f/R_i$，高于 $f_2$ 时以 $-20\unit{dB/decade}$ 滚降。</Image>
+
+在设计之前，先看看微分器对信号的实际作用会有帮助。下图展示了三种常见输入波形下的理想（反相）输出：
+
+- **正弦波**微分为相移四分之一周期的另一正弦波（余弦），并被微分器的负号反相。
+- **三角波**由斜率恒定、每半周期符号交替的斜坡组成，因此微分为**方波**。
+- **方波**除边沿外是平坦的，在边沿处几乎瞬时变化——因此其导数是尖峰序列（理想情况下为冲激），每个跳变处一个，且符号交替。
+
+<Image src={import('./_assets/differentiator-input-output-waveforms.png')} width="600px">理想反相微分器对常见输入波形的响应。输出经过归一化，因为真实输出幅度取决于 $R_f C$ 和信号频率。</Image>
+
+<Aside type="example">
+
+**设计示例：用于最高 10 kHz 信号的微分器。**
+
+设计一个满足以下要求的微分器：
+
+- 对最高 $10\unit{kHz}$ 的信号进行微分（即 $f_1 = 10\unit{kHz}$）。
+- 在 $120\unit{kHz}$ 之后滚降（即 $f_2 = 120\unit{kHz}$），以保持运算放大器稳定并抑制高频噪声。
+- 接受最高 $\pm 1\unit{V}$ 的输入信号。
+- 利用运算放大器完整的 $\pm 10\unit{V}$ 输出摆幅。
+
+首先，用输入网络设定微分上限 $f_1$。选取方便的电容值 $C_i = 10\unit{nF}$，求解 $R_i$：
+
+$$
+\begin{align*}
+R_i = \frac{1}{2\pi f_1 C_i} = \frac{1}{2\pi \cdot 10\unit{kHz} \cdot 10\unit{nF}} = 1.59\unit{k\Omega}
+\end{align*}
+$$
+
+接下来选择中频带增益。该平坦区增益会缩放微分后的输出，因此我们选取它来充分利用运算放大器的输出摆幅：预期需要微分的最快信号——频带顶端（$10\unit{kHz}$）附近满量程 $\pm 1\unit{V}$ 输入——应驱动输出达到完整 $\pm 10\unit{V}$ 而不削波。增益 $10$ 恰好实现这一点（$\pm 1\unit{V} \to \pm 10\unit{V}$），从而确定 $R_f$：
+
+$$
+\begin{align*}
+R_f = 10 R_i = 15.9\unit{k\Omega}
+\end{align*}
+$$
+
+最后，用反馈电容 $C_f$ 设定滚降转折点 $f_2$：
+
+$$
+\begin{align*}
+C_f = \frac{1}{2\pi f_2 R_f} = \frac{1}{2\pi \cdot 120\unit{kHz} \cdot 15.9\unit{k\Omega}} = 83\unit{pF}
+\end{align*}
+$$
+
+由于 $f_1 < f_2$，该设计有效。它在 $10\unit{kHz}$ 以下微分，在中间以 $-10$（$20\unit{dB}$）增益保持平坦，在 $120\unit{kHz}$ 以上滚降。所得频率响应如下所示。
+
+<Image src={import('./_assets/differentiator-amplifier-bode-plot-example.png')} width="700px">示例微分器的频率响应（$R_i = 1.59\unit{k\Omega}$，$C_i = 10\unit{nF}$，$R_f = 15.9\unit{k\Omega}$，$C_f = 83\unit{pF}$）：在 $f_1 = 10\unit{kHz}$ 以下微分，中频带平坦为 $20\unit{dB}$，在 $f_2 \approx 120\unit{kHz}$ 以上滚降。</Image>
+
+</Aside>
+
+**实际用途**
+
+微分器用于以下应用：
+
+- 边沿检测
+- 测量被传感量的变化率：
+  - 由位置求速度（或由速度求加速度）
+  - 变化率报警
+- 在模拟电子中实现 [PID 控制器](/programming/general/pid-control/)（PID 中的“D”即微分）
+- 波形生成/整形（例如三角波转方波、方波转冲激）
+
+### 跨导放大器
+
+_跨导放大器_ 是一种用于**将电压转换为电流**的运算放大器拓扑。巧合的是，它也称为_电压-电流转换器_。
+
+<Aside type="note">
+为什么叫“跨导”？该放大器的增益是输出电流与输入电压之比，$g_m = i_L / v_{in}$。电流除以电压是_电导_（电阻的倒数），单位为西门子（$\mathrm{S}$）。“trans-”前缀（拉丁语“跨越”）表示输出在不同于输入的端口测量——同样的命名惯例给出了_跨阻_放大器（电流输入、电压输出）以及晶体管的跨导 $g_m$。
+</Aside>
+
+基本跨导放大器可以用同相配置的运算放大器构建。
+
+<Image iref="fig-transconductance-amplifier-schematic" src={import('./_assets/transconductance-amplifier-schematic.svg')} width="600px">基本跨导放大器（电压-电流转换器）。负载 $R_L$ 与检测电阻 $R_{sense}$ 串联后位于反馈路径中，迫使负载电流为 $i_L = v_{in} / R_{sense}$，与负载电阻无关。</Image>
+
+跨导放大器可用于产生工业标准的 $4-20\unit{mA}$（或 $0-20\unit{mA}$）电流环信号。输入电压可以来自电位器或微控制器等（配合使用 VDAC 外设或 PWM/RC 滤波技术产生可变电压）。
+
+该设计的一个缺点是电流输出不是以地为参考的，即地不作为电流的回流路径。这使布线复杂化。
+
+### 跨阻放大器
+
+有关如何设计跨阻放大器以将光电二极管的输出电流信号转换为电压的信息，参见[光电二极管页面](/electronics/components/diodes/photodiodes/)。
+
+### 电流源
+
+**运算放大器可以很容易地与 MOSFET 和检测电阻连接，构成_压控电流源_**。有关如何构建运算放大器电流源的信息（包括原理图、方程和计算示例），参见[电流源和电流沉：运算放大器电流沉](/electronics/components/current-sources-and-sinks/voltage-to-current-converters/#op-amp-current-sink)。
+
+<Image src={import('./_assets/op-amp-current-sink-schematic.png')} width="500px">基于运算放大器的电流沉原理图。更多信息参见[电流源和电流沉：运算放大器电流沉](/electronics/components/current-sources-and-sinks/voltage-to-current-converters/#op-amp-current-sink)。</Image>
+
+### 求和放大器
+
+运算放大器可用于将电压相加。这称为_求和放大器_。
+
+求和放大器用于以下用途：
+
+- **混合音频信号**：音频混音器可由求和放大器构成，将多条音轨混合在一起（例如人声与吉他、钢琴和鼓）。
+- **构建 DAC**：使用许多电阻值遵循 $2^n$ 模式的输入。不过如今你大概应该直接买一颗专用 DAC IC！
+- **电平转换**：例如将 $\pm5\unit{V}$ 信号转换为 $0-3.3\unit{V}$ 以便输入 DAC。两输入求和放大器可以做到：一个输入是要进行电平转换的交流信号，另一个是固定直流偏置。结合运算放大器的增益，你可以同时偏移和缩放信号。
+
+#### 反相求和放大器
+
+下面的原理图展示了三输入反相求和放大器。
+
+<Image src={import('./_assets/summing-amplifier-inverting.webp')} width="500px">三输入求和放大器。</Image>
+
+**_反相求和放大器如何工作？_**
+
+流过电阻 $R_f$ 的电流 $i_f$ 就是流过各电阻 $R_i$ 的电流之和。
+
+$$
+\begin{align*}
+i_f &= - (i_1 + i_2 + i_3)
+\end{align*}
+$$
+
+放大器的反相输入端处于“虚地”。
+
+$$
+\begin{align*}
+i_f  &= - \left(\frac{v_1}{R_i} + \frac{v_2}{R_i} + \frac{v_3}{R_i}\right)
+\end{align*}
+$$
+
+同样，由于反相输入端为 $0\unit{V}$，电压 $v_{out}$ 就是：
+
+$$
+\begin{align*}
+v_{out} &= i_f R_f 
+\end{align*}
+$$
+
+将 $i_f$ 的表达式代入 $v_{out} = i_f R_f$，稍作化简：
+
+$$
+\begin{align*}
+v_{out} &= - \left(\frac{v_1}{R_i} + \frac{v_2}{R_i} + \frac{v_3}{R_i}\right) R_f \\
+        &= - \frac{R_f}{R_i} (v_1 + v_2 + v_3)
+\end{align*}
+$$
+
+就是这样！上述方程表明该电路如何作为三输入电压 $v_1$、$v_2$ 和 $v_3$ 的反相求和放大器工作。注意，除了求和之外，反相求和放大器还施加负增益 $- \frac{R_f}{R_i}$，就像标准[反相放大器](#inverting-amplifiers)。如果不想要增益，可以令 $R_f$ 等于 $R_i$，但无法避免反相部分。如果不希望反相（也许你用的是单电源？），请参阅[同相求和放大器](#non-inverting-summing-amplifier)。
+
+虽然常见，但各电阻 $R_i$ 不必相等。如果它们**不相等，上述电路称为_比例求和放大器_**。每个输入电压在求和前会按其输入电阻决定的比例缩放。
+
+$$
+\begin{align*}
+v_{out} &= - R_f \left(\frac{v_1}{R_1} + \frac{v_2}{R_2} + \frac{v_3}{R_3}\right)
+\end{align*}
+$$
+
+#### 同相求和放大器
+
+_同相求和放大器_ 与_反相求和放大器_相似，只是不反相输入电压。下面列出同相与反相求和放大器的优缺点：
+
+**优点**
+
+- 不反相输入信号（取决于应用，这可能实际上是缺点！）
+- 可能只需要单端电压电源（取决于输入的电压范围）。
+- 输入阻抗更高
+
+**缺点**
+
+- 增益方程/电阻值更复杂（因为输入端没有虚地）。
+- 未使用的输入不能悬空，必须接地（详见下文）。
+
+下面的原理图展示了三输入同相求和放大器：
+
+<Image src={import('./_assets/summing-amplifier-non-inverting.webp')} width="500px">三输入同相求和放大器。</Image>
+
+如果所有输入电阻相等（$R_1 = R_2 = R_3 = R$），增益方程为：
+
+$$
+\begin{align*}
+v_{out} = \left(1 + \frac{R_f}{R_i}\right) \frac{v_1 + v_2 + v_3}{3}
+\end{align*}
+$$
+
+**_同相求和放大器如何工作？_**
+
+由于同相输入端没有方便的虚地，我们必须用与反相版本稍有不同的方式分析同相求和放大器。首先使用基尔霍夫电流定律：
+
+$$
+\begin{align*}
+i_1 + i_2 + i_3 = 0
+\end{align*}
+$$
+
+将同相引脚上的电压记为 $v_+$。然后可将上述电流替换为电压差除以电阻：
+
+$$
+\begin{align*}
+\frac{v_1 - v_+}{R_1} + \frac{v_2 - v_+}{R_2} + \frac{v_3 - v_+}{R_3} = 0
+\end{align*}
+$$
+
+假设输入电阻相等（$R_1 = R_2 = R_3 = R$），然后化简并求解 $v_+$：
+
+$$
+\begin{align*}
+\frac{1}{R} ( v_1 - v_+ + v_2 - v_+ + v_3 - v_+ ) &= 0 \\
+v_1 + v_2 + v_3 - 3v_+ &= 0 \\
+v_+ &= \frac{v_1 + v_2 + v_3}{3}
+\end{align*}
+$$
+
+现在得到了用输入电压表示 $v_+$ 的方程。如[同相放大器](#non-inverting-amplifiers)一节所述，同相放大器的方程为：
+
+$$
+\begin{align*}
+v_{out} = \left(1 + \frac{R_f}{R_i}\right) v_{+}
+\end{align*}
+$$
+
+代入 $v_+$，得到三输入同相求和放大器的最终方程：
+
+$$
+\begin{align*}
+v_{out} = \left(1 + \frac{R_f}{R_i}\right) \frac{v_1 + v_2 + v_3}{3}
+\end{align*}
+$$
+
+注意这个 $3$。该缩放因子等于同相求和放大器的输入数量，因此记住：增加/移除输入时缩放因子会改变！
+
+警告：反相求和放大器的未使用输入可以悬空。**同相求和放大器的未使用输入不能悬空**，必须接到地（0V）。
+
+### 电平转换器
+
+运算放大器可用于执行_电平转换_。电平转换的概念与[求和放大器](#summing-amplifiers)实现的效果非常相似。
+
+<Aside type="example">
+
+**基于运算放大器的电平转换器仿真示例。**
+
+下面的原理图展示了一个基于运算放大器的电平转换器，将 $\pm 5.0\unit{V}$ 信号转换为 $0-3.3\unit{V}$ 信号，适合送入微控制器的 DAC 进行数字转换和处理（微控制器通常由 $+3.3\unit{V}$ 供电，因此这也是 DAC 参考电压的常见选择）。如果使用轨到轨（rail-to-rail）运算放大器，也许可以将运算放大器的电源轨降低到 $\pm 5.0\unit{V}$。
+
+<Image src={import('./_assets/level-shifter-sim/schematic.png')} width="700px">将 $\pm 5.0\unit{V}$ 信号转换为 $0-3.3\unit{V}$ 信号的电平转换电路原理图。</Image>
+
+<Image src={import('./_assets/level-shifter-sim/out.png')} width="700px">上述原理图中电平转换电路的仿真结果。可以清楚看到 $\pm 5.0\unit{V}$ 信号已被电平转换为 $0-3.3\unit{V}$ 范围。由于输入连接到运算放大器的同相输入端，输出与输入信号同相（即未反相）。</Image>
+
+</Aside>
+
+### 理想二极管/整流器
+
+#### 基本理想二极管/整流器
+
+运算放大器可以与普通[二极管](/electronics/components/diodes/)组合，构成“理想二极管”（也称为_超级二极管_[^superdiode]、_精密整流器_或_半波/全波整流器_），它能整流且*没有压降*。理想二极管电路适用于：
+
+- 需要精确整流信号（二极管的正向压降不可接受）。
+- 需要整流小幅信号，其幅度小于二极管正向压降。
+
+下面的原理图展示了理想二极管（又称_半波整流器_）最基本的形式。由于反相引脚的反馈取自负载（$v_{out}$），运算放大器会将其输出驱动到使输出电压等于输入电压所需的任何值（当 $v_{in}$ 为正时），从而补偿二极管的正向压降。当 $v_{in}$ 为负时，运算放大器会尽其所能降低输出电压，但这会被二极管阻断而无法到达输出，从而实现整流作用。
+
+<Image src={import('./_assets/ideal-diode-basic.webp')} width="600px">基本理想二极管电路。</Image>
+
+下图展示了基本理想二极管电路的响应。
+
+<Image src={import('./_assets/ideal-diode-basic-response.png')} width="500px">基本理想二极管电路的响应。</Image>
+
+理想二极管只在某种程度上是理想的。它现在受运算放大器的带宽和最大压摆率（slew rate）限制，而后者通常远低于基本二极管！上述电路还存在压摆率问题。一旦 $v_{in}$ 变为负，运算放大器就会“饱和”，其输出摆到最大负电压。当输入再次变正时，这会在输出上造成一定延迟（受压摆率限制）。
+
+提示：理想二极管电路中的标准二极管可以换成[肖特基二极管](/electronics/components/diodes/schottky-diodes/)，以快速简便地提升速度（肖特基二极管开关速度更快）。
+
+#### 改进型半波整流器
+
+下面的原理图展示了改进型半波整流器，带有附加电路，可防止运算放大器在周期的阻断阶段饱和。[^microchip-op-amp-rectifiers] 注意，这也是反相半波整流器——它整流输入的负半周，并在输出端以正波形输出。
+
+<Image src={import('./_assets/ideal-diode-improved-inverting.webp')} width="700px">改进型理想二极管/半波整流器。</Image>
+
+上述半波整流器的增益为：
+
+$$
+\begin{align*}
+A = \begin{cases}
+-\frac{R_2}{R_1} & v_{in} < 0 \\
+0 & v_{in} \ge 0 \\
+\end{cases}
+\end{align*}
+$$
+
+### 采样保持电路
+
+基于运算放大器的基本_采样保持_电路是理想二极管电路的扩展，但在输出端增加了电容，以便在输入信号移除时保持电压。
+
+<Image src={import('./_assets/sample-and-hold.webp')} width="600px">基于运算放大器的基本采样保持电路。</Image>
+
+## 交互式运算放大器配置计算器
+
+上面已经介绍了各种独立的拓扑，下面的工具可计算最常见的运算放大器配置的增益和输出电压。选择一种配置，输入电阻值和输入电压，原理图和结果会实时更新。
+
+<OpAmpCalculator client:load />
+
+## 重要参数
+
+按功能排序。
+
+### 共模输入电压范围
+
+_共模输入电压范围_ 是运算放大器输入端可出现且仍能正常工作的电压范围。对于标准单电源运算放大器，典型范围约为 $0\unit{V}$ 到 $V_+ - 1.5\unit{V}$。注意它包含最负电源轨 $V_-$（对于单电源运算放大器为 $0\unit{V}$），但只能接近最正电源轨 $V_+$ 到 $1.5\unit{V}$ 以内。
+
+### 输入失调电压（Vos/Vio）
+
+**_输入失调电压_ $V_{OS}$（有时称为 $V_{IO}$）是使输出为 0 时两个输入引脚之间所需的电压差**。它是一个直流测量参数。在理想运算放大器中，运算放大器只放大输入之间的差值，因此差值为 0V 时输出为 0V，所以输入失调电压为 0V。然而，现实中的运算放大器内部元件（具体来说是内部电路的输入差分级）总存在一些不可避免的差异，因此输入并非完全一致。下面的电路展示了如何将输入失调电压建模为与理想运算放大器其中一个输入串联的电压源。
+
+<Image src={import('./_assets/input-offset-voltage-model.svg')} width="600px">输入失调电压建模为与理想运算放大器其中一个输入串联的电压源（哪个输入都无所谓，因为输入失调电压可正可负）。</Image>
+
+非零输入失调电压会导致运算放大器输入与输出之间产生增益误差。输入失调电压通常在以下范围：
+
+- 良好的通用运算放大器为 $1-5\unit{mV}$，非常差的为 $5-15\unit{mV}$。
+- 专用低输入失调电压运算放大器为 $200\unit{uV}-1\unit{mV}$
+- 最好的“超低”输入失调电压运算放大器为 $10\unit{uV}-200\unit{uV}$。
+- 斩波稳定（自动调零）运算放大器为 $< 1\unit{uV}$。
+
+例如，通用 LM324 在 $T_A = 25\,^{\circ}\mathrm{C}$ 时的典型输入失调电压为 $2\unit{mV}$，最大为 $3\unit{mV}$。[^ti-lm234-datasheet]“低”输入失调电压运算放大器的 $V_{OS}$ 在 $50-200\unit{uV}$ 范围内。例如，OPAx196 系列运算放大器的最大 $V_{IO}$ 为 $100\unit{uV}$。[^ti-opax196-datasheet]
+
+输入失调电压因运算放大器的晶体管技术而异。双极型运算放大器通常具有最低的输入失调电压，其次是 CMOS 和 BiFET 运算放大器。[^ti-app-report-input-offset-voltage]
+
+#### 输入失调电压漂移
+
+_输入失调电压_ 随温度和时间变化（漂移）。随温度的变化通常用 $T_C V_{OS}$ 表示（我也见过使用 $\Delta V_{IO}/\Delta T$[^onsemi-lm324]）。精密运算放大器的典型温度漂移在 $1-10\unit{uV/^{\circ}C}$ 范围内。[^analog-devices-input-offset-voltage] 久经考验的 LM324 的 $T_C V_{OS} = 7\unit{uV/^{\circ}C}$（最大）。[^onsemi-lm324]
+
+输入失调电压随时间的变化称为老化。老化通常以 $\mathrm{uV/1000\,hours}$ 为单位标定。但由于老化遵循“随机游走模式”（布朗运动）的物理过程，用与经过时间的平方根成正比来描述更准确。
+
+有些运算放大器在封装后由制造商进行微调。封装后微调可防止任何生产线效应影响输入失调电压。其中一个例子是 Analog Devices 的 AD8601、AD8602 和 AD8604 系列运算放大器（他们称之为 _DigiTrim_）。失调通过特殊的数字码进行微调，无需额外引脚（即复用现有运算放大器引脚）。编程后，熔断多晶硅保险丝以永久设定微调值。[^analog-devices-input-offset-voltage]
+
+#### 微调输入失调电压
+
+如果你的运算放大器没有专用微调引脚，可以按下图搭建自己的微调电路。这里针对反相配置的运算放大器。$VR1$ 是电位器，手动调节直至抵消运算放大器的输入失调电压。
+
+<Image src={import('./_assets/input-offset-voltage-trimming-inverting.svg')} width="700px">使用反相运算放大器进行外部输入失调电压微调的一种常见方法。</Image>
+
+该电路可补偿的最大输入失调电压由下式给出。[^analog-devices-input-offset-voltage]
+
+$$
+\begin{align*}
+V_{offset} =  \pm\left(1 + \frac{R2}{R1}\right) \left(\frac{R_P}{R_P + R3}\right) V_R
+\end{align*}
+$$
+
+### 输入偏置电流（Ib+ 和 Ib-）
+
+_输入偏置电流_ $I_{B+}$ 和 $I_{B-}$ 描述流入和流出运算放大器输入引脚的电流。在理想运算放大器中，没有电流流入/流出输入引脚（运算放大器具有无限输入阻抗）。现实中总会流过少量电流。典型输入偏置电流范围为 $1-10\unit{nA}$。特殊的“低输入偏置电流”运算放大器可以低得多。例如，[Texas Instruments OPA396](https://www.ti.com/lit/ds/symlink/opa396.pdf) 在 $25\,^{\circ}\mathrm{C}$ 时的典型 $I_B = \pm 10\unit{fA}$！在整个温度范围内（典型）约增至 $\pm 4\unit{pA}$。[^ti-opa396-datasheet]
+
+输入偏置电流的大小和行为取决于运算放大器的晶体管技术。基于 FET 的运算放大器输入偏置电流大约每升温 $10\,^{\circ}\mathrm{C}$ 翻倍。[^analog-devices-input-bias-current] [^analog-devices-precision-photodiode]
+
+**输入偏置电流之所以成为问题，是因为这些电流会流过连接到运算放大器输入的外部电路**。该电流流过电阻和其他阻抗时会产生不希望的电压，从而增加系统误差。对于高灵敏度跨阻放大器（例如连接到光电二极管的跨阻放大器），选择低输入偏置电流的运算放大器可能很重要。
+
+<Aside type="caution">
+不要将输入偏置电流与输入失调电流混淆（尽管二者相关）。_输入失调电流_ $I_{OS}$ 是 `+` 引脚与 `-` 引脚输入偏置电流之差。
+</Aside>
+
+### 输入阻抗
+
+输入阻抗是从两个输入引脚到地的内部电阻。在理想运算放大器中，该值为无穷大。对于大多数运算放大器，该值在 $1-10\unit{M\Omega}$ 之间。
+
+### 增益带宽积（GBW）
+
+增益带宽积（缩写为 _GBWP_、_GBW_、_GBP_ 或 _GB_）是一个重要参数，它限制了运算放大器可工作的最大增益和频率。**运算放大器的最大可能增益随信号频率升高而降低。** 增益与频率的乘积即为增益带宽积，对于特定运算放大器而言**相对恒定**。
+
+因此，如果某运算放大器的增益带宽为 $1\unit{MHz}$、增益为 10，则它可线性工作（仍提供 10 倍增益）的最高频率为 $100\unit{kHz}$。或者如果增益设为 100，则最高频率为 $10\unit{kHz}$。**这也意味着运算放大器充当低通滤波器，因为很高频率时增益会下降。** 同样，对于 $1\unit{MHz}$ 的 GBW，如果增益仅为 1（即作为缓冲器/跟随器），则应能工作到 $1\unit{MHz}$ 的频率。
+
+超高增益带宽的一个例子是 $1700\unit{MHz}$，见于“宽带 CFB”运算放大器，专为 RGB 线路驱动器等应用设计（例如 OPA695）。“正常”的 GBW 可在 $100\unit{kHz}$ 到 $10\unit{MHz}$ 之间。低增益带宽约为 $1\unit{kHz}$（让人想起不太先进的旧式运算放大器）。**记住增益是无单位的（V/V），因此增益带宽仅以频率表示。** 没意识到这一点可能会造成困惑！GBW 与[压摆率](#slew-rate)密切相关。
+
+### 高电平输出电压
+
+高电平输出电压（$V_{OH}$）定义运算放大器可将输出驱动到的最高电压（相对于电源 $V_+$）。
+
+### 低电平输出电压
+
+低电平输出电压（$V_{OL}$）定义运算放大器可将输出驱动到的最低电压。据传 LM324 只有在拉电流时才能将输出驱动到接近地，而在灌电流时最低只能到 $0.5\unit{V}$（参见这篇 EDA 论坛帖子：[LM324 Opamp Gain Instability](http://www.edaboard.com/thread209783.html)）。
+
+### 压摆率
+
+运算放大器的_压摆率_定义**输出电压随时间变化的最大速率**。在理想运算放大器中，该值为无穷大。其 SI 单位为 $\mathrm{V/s}$，常用 $\mathrm{V/us}$ 表示。可以将其理解为当其中一个输入经历阶跃电压变化时输出波形的斜率。
+
+由于内部补偿电容和有限的输出驱动电流，运算放大器的输出压摆率是有限的。用恒定电流（一个很好的近似）为容性输出充电会产生线性电压上升（回想电容的电压-电流关系式为 $i = C \frac{dV}{dt}$）。
+
+下图展示运算放大器非无限的压摆率如何使输入方波“脉冲”的波形失真。该图使用了常见通用型 LM324 运算放大器的 $0.4\unit{V/us}$ 压摆率（按任何标准都不算特别好）。[^ti-lm324-datasheet]
+
+<Image src={import('./_assets/slew-rate-distortion-diagram-square-wave.png')} width="500px">展示运算放大器压摆率对输入方波影响的曲线。所选压摆率等于 LM324 的 $0.4\unit{V/us}$。[^ti-lm324-datasheet]</Image>
+
+**运算放大器的最大压摆率限制了它在高频下无失真产生输出波形的幅度**。该参数通常随运算放大器 GBW 增大而增大。压摆率更高的运算放大器通常也具有更高的静态电流（quiescent current）。
+
+#### 压摆率方程
+
+运算放大器在因最大压摆率限制而失真之前可输出的信号最高频率由下式给出：
+
+$$
+\begin{align*}
+SR = 2\pi f_{max} V_P
+\end{align*}
+$$
+
+<p className="centered">其中：<br/>
+$SR$ 是压摆率，单位 $\mathrm{V/s}$<br/>
+$f_{max}$ 是失真前允许的最高频率（正弦波），单位 $\mathrm{Hz}$<br/>
+$V_P$ 是正弦波的峰值电压（即幅度，或峰峰值的一半），单位 $\mathrm{V}$<br/></p>
+
+**证明**
+
+频率为 $f$、峰值电压为 $V_P$ 的正弦波由以下方程描述：
+
+$$
+\begin{align*}
+f(t) = V_P \sin (2\pi f t)
+\end{align*}
+$$
+
+任意时刻 $t$ 的斜率通过求导得到。根据标准求导规则，$\sin$ 的导数是 $\cos$，并乘以 $\sin$ 内的系数：
+
+$$
+\begin{align*}
+\frac{df}{dt} = 2\pi f V_P \cos (2\pi f t)
+\end{align*}
+$$
+
+我们要找最大斜率 $max\left(\frac{df}{dt}\right)$。已知任何 $\cos$ 函数的最大值为 $1$，因此可简化为：
+
+$$
+\begin{align*}
+max\left(\frac{df}{dt}\right) = 2\pi f V_P 
+\end{align*}
+$$
+
+该最大斜率 $max\left(\frac{df}{dt}\right)$ 就是运算放大器的最大压摆率 $SR$。因此：
+
+$$
+\begin{align*}
+SR = 2\pi f_{max} V_P
+\end{align*}
+$$
+
+<Aside type="example">
+
+**求 LM324 因压摆率限制而产生的最高频率。**
+
+举例来说，压摆率为 $0.4\unit{V/us}$ 的常见通用型 LM324 在失真前可产生以下频率的 $10\unit{V}$ 峰值（$20\unit{V}$ 峰峰值）波形：
+
+$$
+\begin{align*}
+f_{max} &= \frac{SR}{2\pi V_P} \\
+        &= \frac{0.4\unit{V/us}}{2\pi \cdot 10\unit{V}} \\
+        &= 6.37\unit{kHz}
+\end{align*}
+$$
+
+</Aside>
+
+#### 压摆率对正弦波的影响
+
+下图展示了 $10\unit{V}$（峰值）$20\unit{kHz}$ 正弦波由不同压摆率的运算放大器生成时的不同失真程度。图中显示了常见通用型 LM324 的 $0.4\unit{V/us}$ 压摆率（输出三角波！）以及稍好的 $1.0\unit{V/us}$（刚好使正弦波削波）。防止正弦波任何失真所需的最低压摆率为 $1.26\unit{V/us}$。
+
+<Image src={import('./_assets/slew-rate-distortion-diagram-sine-wave.png')} width="600px">展示 $10\unit{V}$（峰值）$20\unit{kHz}$ 正弦波在不同运算放大器压摆率下失真的曲线。</Image>
+
+### 静态电流
+
+_静态电流_（无负载、器件处于稳态时的电流）在总额定电源电压范围内通常恒定。显然，如果运算放大器带有负载，流经电源引脚的电流（电源电流）将是静态电流与流过负载的电流之和。
+
+标准运算放大器的静态电流通常在 $1.5-4\unit{mA}$ 之间。“低功耗”运算放大器的典型静态电流在 $0.5-1.5\unit{mA}$ 之间（例如 `LM258N`）。还有仅消耗 $5-20\unit{pA}$ 的超低功耗运算放大器（例如 `LMC6464`）。通常要为了超低功耗而牺牲压摆率和增益带宽。同样，更高增益带宽和更高压摆率的运算放大器通常具有更大的静态电流。
+
+## 级联运算放大器
+
+级联运算放大器是指一个运算放大器的输出连接到另一个运算放大器的输入。级联中可以有任意数量的运算放大器，但通常限制为 3-4 个。
+
+对于固定增益，级联运算放大器还可用于**增加带宽**，因为每个单独的运算放大器现在可以在更低增益下工作，因而根据增益带宽积具有更大带宽。但要注意，为增加带宽而添加的每个额外运算放大器都会带来递减的回报。同样重要的是，运算放大器带宽定义为 -3 dB 增益点。因此，两个相同运算放大器级联时带宽并不会保持不变（总带宽会变小），因为现在对应的是 -6 dB 点。固定总增益、增加带宽的级联实际限制约为 3-4 个运算放大器。
+
+### 增益
+
+级联运算放大器时，总增益是所有单个运算放大器增益的乘积，即：
+
+$$
+\begin{align*}
+A_{total} = A_0 A_1 A_2 ... A_n
+\end{align*}
+$$
+
+### 带宽
+
+级联运算放大器的带宽计算不像增益那么简单。
+
+如果所有运算放大器都相同，则可以使用以下方程：
+
+$$
+\begin{align*}
+BW_{tot} = BW \cdot \sqrt{2^{\frac{1}{N}} - 1}
+\end{align*}
+$$
+
+<p className="centered">其中：<br/>
+$ BW_{tot} $ = 级联运算放大器系统的总带宽<br/>
+$ BW $ = 单个运算放大器的带宽（记住，它们必须相同）<br/>
+$ N $ = 级联系统中运算放大器的数量<br/></p>
+
+上述方程表明，每增加一个运算放大器，收益都会递减。
+
+## 反馈电阻值
+
+根据经验，应在运算放大器反馈路径中使用可接受的最低电阻值，以减少不稳定性。
+
+## 运算放大器的类型
+
+### 通用
+
+通用运算放大器的参数通常在以下范围：
+
+- 增益带宽积：$1\unit{MHz}$
+- 输入偏置电流：$15\unit{pA}$
+- 输入失调电压：$1\unit{mV}$
+- 输出电流：$20-50\unit{mA}$
+- Icc：$1\unit{mA}$
+
+### 轨到轨运算放大器
+
+_轨到轨_ 运算放大器是支持输入电压**接近**电源轨、并能将输出驱动到接近一条或多条电源轨的运算放大器。必须强调**接近**一词，因为由于输出级晶体管的有限压降，运算放大器的输出电压永远不会恰好到达电源轨。轨到轨运算放大器只是支持更宽范围的输入电压，并比通用运算放大器更接近电源轨。查看运算放大器数据手册中的**低电平输出电压**（$V_{OL}$）参数。对于“轨到轨”运算放大器，在正常负载电流下该值通常约为高于地 $100-200\unit{mV}$。
+
+<Aside type="caution">
+“_轨到轨_”运算放大器实际上不能输出任一电源轨电压，只是比通用运算放大器更接近而已。
+</Aside>
+
+这也意味着轨到轨单电源运算放大器无法输出 $0\unit{V}$。**要实现真正的接地输出，需要负电压电源。** 有专用 IC 设计用于为运算放大器提供小幅负电源，使其能够输出真正的地。一个例子是 [Texas Instruments LM7705](http://www.ti.com/product/LM7705)，一款“_低噪声负偏置发生器_”。该 IC 仅产生 $-230\unit{mV}$，使设计者可以使用通常最大电源电压为 $5.5\unit{V}$ 的 CMOS 运算放大器。
+
+<Image src={import('./_assets/lm7705-low-noise-negative-bias-voltage-generator-for-op-amp-application-schematic.png')} width="688px">Texas Instruments LM7705（用于运算放大器负电源的“低噪声负偏置发生器”）的典型应用原理图。这使运算放大器能够输出真正的 0V。图片来自 http://www.ti.com/。</Image>
+
+### 微功耗运算放大器
+
+_微功耗_ 是用于极低静态电流运算放大器的一个术语，这类运算放大器专为电池或能量收集电源设计。微功耗运算放大器的电源电流在 $2-10\unit{V}$ 电源电压下通常在 $50-100\unit{uA}$ 范围内。由于它们面向电池系统设计，通常也是单电源运算放大器。
+
+### 仪表放大器
+
+仪表放大器是模拟电压放大电路，虽然使用与运算放大器相同的符号绘制，但内部通常由三个运算放大器（以及无源元件）构成。你可以用分立运算放大器构建仪表放大器，也可以购买在同一芯片内包含所有运算放大器的仪表放大器 IC。
+
+## 制造商料号系列
+
+- **INA**
+  - **INAx126**：Texas Instruments 的精密仪表放大器。INA126 每个封装一个放大器，INA2126 有两个。
+  - **INA290**：精密电流检测放大器。
+- **LM741**：由 Texas Instruments、ON Semiconductor 和 Rochester Electronics 生产的非常流行且古老的“741”式运算放大器。
+- **LT**：Linear Technology（现 Analog Devices）用于其运算放大器系列的前缀。
+  - **LT1006**：精密单电源运算放大器。
+  - **LT1077**：微功耗单电源运算放大器。
+  - **LT1167**：仪表放大器。
+- **MAX**：Maxim 的运算放大器。
+  - **MAX4194**：仪表放大器。
+- **OP07**：Analog Devices/Texas Instruments 的低输入失调电压运算放大器系列。
+  - **OP07C**：$\pm3-18\unit{V}$ VCC，$-40$ 至 $+85\,^{\circ}\mathrm{C}$ 工业温度范围
+    - **OP07CP**：DIP-8 封装
+    - **OP07CS**：SOIC-8 封装
+  - **OP07D**：$\pm4-18\unit{V}$ VCC
+  - **OP07E**：$0$ 至 $70\,^{\circ}\mathrm{C}$ 商用温度范围
+- **OPA**：Texas Instruments（原 Burr-Brown）运算放大器系列。
+  - **OPAx187**：零漂移 $36\unit{V}$ 轨到轨运算放大器。包括 OPA187（1 个运算放大器）、OPA2187（2 个）和 OPA4187（4 个）。
+  - **OPA241**：单电源
+  - **OPA251**：双电源
+  - **OPA27**：Texas Instruments（原 Burr-Brown）的超低噪声精密运算放大器系列。内部补偿以实现单位增益稳定。
+  - **OPA37**：OPA27 的未补偿版本。
+- **TLE202**：Texas Instruments 的“高速低功耗”精密运算放大器系列。属于 TI 的 _Excalibur_ 运算放大器系列，使用“隔离垂直 PNP 晶体管”来改善单位增益带宽和压摆率。
+- **TLV**：Texas Instruments 的运算放大器系列。
+
+Vsupply 是从 Vdd/Vcc 到 Vss/Vee 的电压。
+
+## 各种增益的解释
+
+开环增益 $A_V$（有时写作 $A_{OL}$）是运算放大器无任何反馈时的增益。
+
+闭环增益 $G_V$ 是运算放大器带反馈时的总增益。
+
+<Image src={import('./_assets/open-loop-vs-closed-loop-op-amp-gain-bode-plot.svg')} width="500px">运算放大器的开环增益和闭环增益随频率增加的变化。</Image>
+
+我们可以将带负反馈的运算放大器电路概括为如下图所示的框图。
+
+<Image src={import('./_assets/generalized-negative-feedback-block-diagram.svg')} width="700px">展示带负反馈的广义运算放大器配置的框图。</Image>
+
+根据上述框图，可以写出 $v_{out}$ 的方程：
+
+$$
+\begin{align*}
+v_{out} &= A \cdot v_{sum} \\
+        &= A(v_{in} - Bv_{out})
+\end{align*}
+$$
+
+我们真正感兴趣的是闭环增益 $G_V$ 的方程，它等于 $\frac{v_{out}}{v_{in}}$……我们只需按如下方式重排方程：
+
+$$
+\begin{align*}
+v_{out} &= Av_{in} - ABv_{out}  & \text{Expanding} \\
+v_{out}(1 - AB) &= Av_{in}      & \text{Shift $v_{out}$ onto left side and factor.} \\
+\frac{v_{out}}{v_{in}} &= \frac{A}{1 - AB}  & \text{Jiggle things to get $\frac{v_{out}}{v_{in}}$}
+\end{align*}
+$$
+
+于是得到闭环增益 $G_V$ 的方程：
+
+$$
+\begin{align*}
+G_V &= \frac{A}{1 - AB}
+\end{align*}
+$$
+
+我们可以更进一步：通常运算放大器的开环增益 $A$ 非常大，在 $100,000$ 到 $1,000,000$ 范围内。因此可将闭环增益简化为：
+
+$$
+\begin{align*}
+G_V &\approx \frac{1}{B}
+\end{align*}
+$$
+
+总结：
+
+- 开环增益：$A$
+- 环路增益：$-AB$
+- 闭环增益：$\approx \frac{1}{B}$
+
+## 示例
+
+以下是一些因某种原因而脱颖而出的运算放大器示例，原因可能是流行度、服役年限或功能。
+
+### AD860x
+
+US\$3.50 (1)
+适合高精度应用！非常适合光电二极管放大（电流-电压和电压-电压配置均可）。
+
+### LM32x
+
+一个历史悠久的常见运算放大器系列，可单电源工作，输出可摆到地，但不能摆到电源轨电压。LM321 有一个运算放大器，LM328 有两个（双路），LM324 有 4 个（四路）。
+
+### LM833
+
+市面上最便宜的“音频”运算放大器之一（截至 2011 年约 US\$0.20）。在其价位上具有较高的 GBW。
+
+### OPA695
+
+US\$3.50 (1)
+这是一款超宽带电流反馈运算放大器。如果你需要一款增益带宽积高得离谱的运算放大器，这就是你想要的类型。其 GBW 为 $1700\unit{MHz}$，最大压摆率为 $4300\unit{V/us}$。
+
+### OP07
+
+一款具有“超低”输入失调电压的运算放大器（生产时通过微调电阻实现），保证不超过 $75\unit{uV}$。该运算放大器还具有失调调零引脚，可在安装到电路后通过微调进一步降低输入失调电压。
+
+## 负电压轨
+
+有采用电荷泵拓扑的专用电源 IC，可向运算放大器的 `V-` 引脚提供小幅负电压。
+
+## 隔离放大器
+
+隔离放大器在输入（传感器）与输出（测量电路）之间提供电气隔离。它们用于保护传感器测量和记录电路（例如带板载 ADC 的微控制器）免受传感器处危险高压的影响，也反过来保护传感器环境免受系统其余部分潜在危险电压的影响。
+
+<Image src={import('./_assets/fully-differential-isolation-amplfier-ti-amc1200-simplified-schematic.pdf.png')} width="700px">Texas Instruments AMC1200（全差分隔离放大器）的简化原理图。图片来自 http://www.ti.com/。</Image>
+
+常见应用是隔离并放大大功率电机上电流检测电阻两端的电压，或保护连接医疗传感器的人员免受测量系统的影响。
+
+基本隔离放大器需要两个电源（隔离两侧各一个），而其他型号内置变压器，因此只需提供一个电源。
+
+## 输入电阻
+
+学习运算放大器时最先了解的事情之一是输入引脚的输入阻抗非常大（理想情况下为无穷大）。因此你自然会开始质疑，为什么还要像下图这样在运算放大器的输入引脚上连接电阻。
+
+<Image src={import('./_assets/op-amp-input-pin-resistors.png')} width="500px">展示运算放大器正输入端上电阻的原理图。</Image>
+
+这些输入电阻用于在输入引脚电压高于 $V_{CC}$ 时限制输入电流。大多数运算放大器都有从输入引脚到 $V_{CC}$ 的保护/钳位二极管（通常如果数据手册中输入引脚最大电压额定为 $V_{CC} + 0.3\unit{V}$，即一个二极管压降，就可以判断存在这种二极管）。如果那里没有电阻，内置二极管会导通并从输入引脚向 $V_{CC}$ 灌入大电流，可能损坏运算放大器。电阻将该电流限制在安全值。
+
+## 失调调零电路
+
+一些设计为具有极低输入失调电压的运算放大器还带有_失调调零引脚_，可在运算放大器安装到电路后进一步微调输入失调电压。OP07 就是带有这些引脚的运算放大器之一。通常在这两个引脚之间连接一个 $10-50\unit{k\Omega}$ 电位器，滑动端接 $V_{CC}$，如下所示。
+
+<Image src={import('./_assets/op07-op-amp-offset-nulling-circuit.png')} width="500px">图片来自 https://www.analog.com/media/en/technical-documentation/data-sheets/OP07.pdf。</Image>
+
+<Aside type="caution">
+如果不使用微调引脚，请保持不连接（开路）。不要将它们接地。
+</Aside>
+
+## 负阻抗变换器（NIC）
+
+### 什么是 NIC？
+
+_负阻抗变换器_（NIC）是一种巧妙的运算放大器电路，可产生负阻抗（你可能想知道负阻抗到底是什么，稍后会详细说明）。NIC 可以用一个运算放大器和少量无源元件构成，如下图所示：
+
+<Image src={import('./_assets/negative-impedance-converter-nic.svg')} width="500px">由运算放大器和少量无源元件构成的负阻抗变换器（NIC）原理图。</Image>
+
+通常两个电阻相同（$R1 = R2$），此时输入阻抗 $Z_{IN}$ 为：
+
+$$
+\begin{align*}
+Z_{IN} = -Z
+\end{align*}
+$$
+
+<p className="centered">其中：<br/>
+$Z_{IN}$ 是输入阻抗，单位欧姆（$\Omega$）<br/>
+$-Z$ 是连接在反相端子与地之间元件的阻抗（如图所示），单位欧姆（$\Omega$）<br/></p>
+
+### 负阻抗到底意味着什么？
+
+负阻抗到底意味着什么？如果 $Z$ 只是一个阻值为 $R$ 的简单电阻（最基本的一种 NIC），则阻抗为 $Z_{IN} = -R$。这意味着该电路表现得就像连接到地的简单电阻，**只不过电流从电阻流出，而不是流入**。
+
+当把这个电阻换成电容时，情况会变得更有趣。
+
+TODO：补充添加电容后发生情况的说明。
+
+### NIC 输入阻抗证明
+
+<Aside type="note">
+如果你对数学不感兴趣，可以跳过本节。
+</Aside>
+
+要证明 $Z_{IN} = -Z$，需要求出反相端子处的输入电流，然后使用 $Z_{IN} = \frac{V}{I_{IN}}$。输入电流可通过应用欧姆定律和运算放大器的黄金法则求出。利用两个输入端子电压相同的法则，可知阻抗 $Z$ 两端的电压为：
+
+$$
+\begin{align*}
+V_Z = V
+\end{align*}
+$$
+
+因此，根据欧姆定律，流过阻抗 $Z$ 的电流为：
+
+$$
+\begin{align*}
+I_Z = \frac{V}{Z}
+\end{align*}
+$$
+
+由于没有电流流入运算放大器的反相端子，该电流 $I_Z$ 必然也流过 $R2$：
+
+$$
+\begin{align*}
+I_{R2} = \frac{V}{Z}
+\end{align*}
+$$
+
+现在已知反相端子的电压和流过 $R2$ 的电流，可以写出运算放大器输出电压的方程：
+
+$$
+\begin{align*}
+V_{OUT} &= V_Z + V_{R2} \\
+        &= V_Z + I_{R2} \cdot R \\
+        &= V + \frac{V}{Z} \cdot R &  &\text{Subs. in $V_Z = V$ and $I_{R2} = \frac{V}{Z}$}
+\end{align*}
+$$
+
+现在已知 $R1$ 两端的电压，可求出其上的电压：
+
+$$
+\begin{align*}
+V_{R1} &= V_{OUT} - V                   &\\
+       &= V + \frac{V}{Z} \cdot R - V   & &\text{Subs. in $V_{OUT}$} \\
+       &= \frac{V}{Z} \cdot R           & &\text{Simplifying}
+\end{align*}
+$$
+
+现在已知 $R1$ 上的电压，可用欧姆定律求出流过它的电流：
+
+$$
+\begin{align*}
+I_{R1} &= \frac{V_{R1}}{R}                &\\
+       &= \frac{\frac{V}{Z} \cdot R}{R}   & &\text{Subs. in $V_{R1}$} \\
+       &= \frac{V}{Z}                     & &\text{Simplifying}
+\end{align*}
+$$
+
+由于 $R1$ 右侧电压更高，该电流从右向左流动。由于没有电流流入运算放大器的反相端子，这必然也是从输入端子“流出”的电流。因此：
+
+$$
+\begin{align*}
+I_{IN} = -\frac{V}{Z}
+\end{align*}
+$$
+
+已知输入电流和电压，最终可写出 $Z_{IN}$ 的方程：
+
+$$
+\begin{align*}
+Z_{IN} &= \frac{V_{IN}}{I_{IN}}       & &\text{Ohms law} \\
+       &= \frac{V}{-\frac{V}{Z}}      & &\text{Subs. in $I_{IN}$} \\
+       &= -Z                          & &\text{Simplifying}
+\end{align*}
+$$
+
+证明完毕！
+
+## 斩波稳定运算放大器
+
+TODO：补充信息。
+
+## 容性负载
+
+TODO：补充信息。
+
+## 运算放大器的工业标准封装引脚
+
+运算放大器通常采用工业标准的通孔和表面贴装（surface-mount）封装。其中许多封装都有工业标准引脚分布，这意味着你可以轻松找到任何给定运算放大器的引脚兼容替代品。本节旨在说明其中一些工业标准引脚分布。
+
+对于 8 引脚封装：
+
+<Image src={import('./_assets/standard-8-pin-dual-op-amp-pinout.webp')} width="400px">8 引脚封装中两个运算放大器的标准引脚分布。这包括 DIP-8、TSSOP-8、SOIC-8 和 MSOP-8 元件封装。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^ti-lm234-datasheet]: Texas Instruments（2015）。_LMx24-N, LM2902-N Low-Power, Quad-Operational Amplifiers_。检索于 2020-10-20，来自 https://www.ti.com/lit/ds/snosc16d/snosc16d.pdf。
+[^ti-app-report-input-offset-voltage]: Palmer, Richard（2001）。_DC Parameters: Input Offset Voltage (Vio)_。Texas Instruments。检索于 2020-10-20，来自 https://www.ti.com/lit/an/sloa059/sloa059.pdf。
+[^analog-devices-input-bias-current]: Analog Devices（2008 年 10 月）。_Op Amp Input Bias Current_。检索于 2020-10-20，来自 https://www.analog.com/media/en/training-seminars/tutorials/MT-038.pdf。
+[^ti-opax196-datasheet]: Texas Instruments（2017 年 7 月）。_OPAx196 36-V, Low-Power, Low Offset Voltage, Rail-to-Rail Operational Amplifier_。检索于 2021-09-03，来自 https://www.ti.com/lit/ds/symlink/opa196.pdf。
+[^analog-devices-input-offset-voltage]: Analog Devices（2008 年 10 月）。_MT-037: Op Amp Input Offset Voltage_。检索于 2021-09-03，来自 https://www.analog.com/media/en/training-seminars/tutorials/MT-037.pdf。
+[^onsemi-lm324]: OnSemiconductor（2021 年 8 月）。_Single Supply Quad Operational Amplifiers_ [数据手册]。检索于 2021-09-03，来自 https://www.onsemi.com/pdf/datasheet/lm324-d.pdf。
+[^superdiode]: Keim, Robert（2018 年 2 月 8 日）。_When a Diode Simply Isn’t Good Enough: The Superdiode_。AllAboutCircuits。检索于 2021-09-27，来自 https://www.allaboutcircuits.com/technical-articles/when-a-diode-simply-isnt-good-enough-the-superdiode/。
+[^microchip-op-amp-rectifiers]: Ducu, Dragos.（2011）。_AN1353: Op Amp Rectifiers, Peak Detectors and Clamps_。Microchip。检索于 2021-10-01，来自 http://ww1.microchip.com/downloads/en/AppNotes/01353A.pdf。
+[^ti-lm324-datasheet]: Texas Instruments（2014）。_LM321 Low Power Single Operational Amplifier_。检索于 2021-10-02，来自 https://www.ti.com/lit/ds/symlink/lm321.pdf。
+[^analog-devices-precision-photodiode]: Luis Orozco（2014）。_MS-2624: Optimizing Precision Photodiode Sensor Circuit Design_。Analog Devices。检索于 2022-02-24，来自 https://www.analog.com/en/technical-articles/optimizing-precision-photodiode-sensor-circuit-design.html。
+[^ti-opa396-datasheet]: Texas Instruments（原 Burr-Brown）（2021 年 7 月）。_OPA396 Precision, Low IQ, Low Input Bias Current Op Amp_ [数据手册]。检索于 2022-10-10，来自 https://www.ti.com/lit/ds/symlink/opa396.pdf。
+[^electronics-tutorials-ws-the-differential-amplifier]: Electronics Tutorials。_Operational Amplifiers - The Differential Amplifier_。检索于 2023-08-29，来自 https://www.electronics-tutorials.ws/opamp/opamp_5.html。
+
+

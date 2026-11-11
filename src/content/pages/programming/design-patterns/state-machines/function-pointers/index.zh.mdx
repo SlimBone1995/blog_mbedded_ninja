@@ -1,0 +1,199 @@
+---
+aliases: [/programming/general/control-methodology/a-function-pointer-based-state-machine/]
+authors: [gbmhunter]
+date: 2011-09-22
+description: 逐步讲解如何构建基于函数指针的状态机。
+lastUpdated: 2025-07-09
+tags: [function pointer, state machine, C, C++, enumeration, enum, states, events, embedded, logic]
+title: 基于函数指针的状态机
+type: page
+sourcePath: programming/design-patterns/state-machines/function-pointers/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:4339a78ab7e04d261c994cb423eed6eec9754e04961ec892d00c7a4faeee3595
+sourceUrl: https://blog.mbedded.ninja/programming/design-patterns/state-machines/function-pointers/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+这种状态机包括：
+
+* 所有可能状态的枚举
+* 所有可能事件的枚举
+* 状态转移矩阵（数组），每一行包含一个状态、一个事件以及要转移到的下一个状态
+* 另一个数组，把每个状态映射到被调用的状态函数指针
+* 一个无需编辑的简单主循环（所有控制逻辑都通过修改状态转移矩阵来改变）
+
+<Aside type="note">
+我最喜欢的设计方法是事件驱动分层状态机，它为每个状态的事件处理逻辑使用完整函数。更多信息请参阅 [事件驱动分层状态机](/programming/design-patterns/state-machines/event-driven-hierarchical/) 页面。
+</Aside>
+
+## 优缺点
+
+**优点：**
+
+* 程序的“流程”非常容易理解
+* “流程”非常容易修改
+* 函数调用速度快，因为不需要用 switch/if 语句决定调用哪个函数（而是使用函数指针）
+
+**缺点：**
+
+* 单个事件与待调用函数一一对应，即无法仅在两个或更多事件同时发生时才调用某个函数。在我看来，这是该方法最大的缺点，也是我更倾向于为每个状态的事件处理逻辑编写函数的原因。
+* 待调用函数的作用不一定清晰（即它会改变状态还是保持状态不变？）
+* 使用 'if' 语句时，事件判断可能较慢。
+* 在可能需要多个状态机和线程的大型程序中，可能难以扩展。
+
+## 示例
+
+下面用一个简单的闪灯电路来讲解和演示这种状态机，该电路通过按键开启和关闭。按下按键后，灯开始每 2 秒闪烁一次。再次按键会在闪烁模式和关闭状态之间切换。
+
+完整可运行的示例见 [https://github.com/gbmhunter/FunctionPointerStateMachineExample](https://github.com/gbmhunter/FunctionPointerStateMachineExample)。
+
+## 状态和事件枚举
+
+这些枚举保存程序所需的所有可能状态和所有可能事件的值。为提高可读性，我给所有状态加了 `ST_` 前缀，给所有事件加了 `EV_` 前缀。有时，你也可以为每个状态使用 `#define` 命令，并手动为它们关联一个数字。但既然数字本身并不重要，为什么不使用枚举呢？枚举还允许你在列表中的任意位置插入新的状态/事件，从而直观地看出状态/事件之间的流转顺序；如果使用 `#define` 命令，这种顺序会变得混乱。
+
+```c
+typedef enum {
+    ST_INIT,
+    ST_IDLE,
+    ST_LED_ON,
+    ST_LED_OFF
+} state_t;
+```
+
+事件定义在另一个枚举中：
+
+```c    
+/// @brief      All the possible events that can occur for this state machine.
+/// @details    Unlike states_t, these do not need to be kept in a special order.
+typedef enum {
+    EV_ANY,
+    EV_NONE,
+    EV_BUTTON_PUSHED,
+    EV_TIME_OUT,
+} event_t;
+```
+
+## 状态转移矩阵
+
+下面的代码定义了状态转移矩阵中的一行（状态转移矩阵就是这种结构的数组）。该结构包含当前状态、一个事件以及要转移到的状态。
+
+```c
+typedef struct {
+    state_t currState;
+    event_t event;
+    state_t nextState;
+} stateTransMatrixRow_t;
+```
+
+状态转移矩阵是这种方法的核心。它根据当前状态和刚发生的事件，指定下一个状态应该是什么。它以上面定义的当前状态/事件/下一状态结构数组的形式构建。
+
+```c    
+static stateTransMatrixRow_t stateTransMatrix[] = {
+    // CURR STATE  // EVENT           // NEXT STATE
+    { ST_INIT,     EV_ANY,               ST_IDLE    },
+    { ST_IDLE,     EV_BUTTON_PUSHED,     ST_LED_ON  },
+    { ST_LED_ON,   EV_TIME_OUT,          ST_LED_OFF },
+    { ST_LED_ON,   EV_BUTTON_PUSHED,     ST_IDLE    },
+    { ST_LED_OFF,  EV_TIME_OUT,          ST_LED_ON  },
+    { ST_LED_OFF,  EV_BUTTON_PUSHED,     ST_IDLE    }
+};
+```
+
+## 状态函数数组
+
+状态函数数组为每个状态保存指向被调用函数的函数指针。在此示例中，我们还保存了可打印的状态名称，以便调试。状态函数数组的每一行由一个 `struct` 定义：
+
+```c    
+typedef struct {
+    const char * name;
+    void (*func)(void);
+} stateFunctionRow_t;
+```
+
+然后按如下方式初始化实际数组：
+
+```c    
+/// @brief  Maps a state to it's state transition function, which should be called
+///         when the state transitions into this state.
+/// @warning    This has to stay in sync with the state_t enum!
+static stateFunctionRow_t stateFunctionA[] = {
+        // NAME         // FUNC
+    { "ST_INIT",      &Led_Init },      // ST_INIT
+    { "ST_IDLE",      &Led_Idle },      // ST_IDLE
+    { "ST_LED_ON",    &Led_On },        // ST_LED_ON
+    { "ST_LED_OFF",   &Led_Off },       // ST_LED_OFF
+};
+```
+
+<Aside type="caution">
+该数组必须与 `state_t` 枚举保持同步。也就是说，`stateFunctionA` 中的行数必须与 `state_t` 中的状态数相同，且顺序一致。
+</Aside>
+
+可以通过在数组中也保存状态枚举，并逐个遍历元素直到找到目标状态来缓解这个问题。不过这会产生性能损失（可能微不足道）。
+
+## 状态函数
+
+状态函数是当前状态和事件与状态转移矩阵中的某一对匹配时所调用的函数。状态机的其余部分控制高层流程，而状态函数是状态机的核心，是实际执行操作的地方。
+
+下面的状态函数实际上只是桩函数，作用不大。真实的状态函数可能会翻转 GPIO 引脚、通过 UART 发送数据字节等。
+
+```c    
+void Led_Init() {
+    printf("Led_Init() called.\r\n");
+}
+
+void Led_On() {
+    printf("LED turned on.\r\n");
+}
+
+void Led_Off() {
+    printf("LED turned off.\r\n");
+}
+
+void Led_Idle() {
+    printf("LED in idle state.\r\n");
+}
+```
+
+## 状态机内部变量
+
+这个简单的状态机只需要记住一件事：当前状态。由于我以“带类的 C”风格编写这段代码，状态机的所有变量都声明在 `stateMachine_t` 结构体中，如下所示：
+
+```c    
+typedef struct {
+    state_t currState;
+} stateMachine_t;
+```
+
+指向该结构体的指针作为第一个参数传给所有状态机函数，就像面向对象世界中的 `this` 对象一样。
+
+## 状态机 RunIteration() 函数
+
+该状态机的 `RunIteration()` 函数相当通用且简单，通常无需修改。所有逻辑都由上面的状态转移矩阵控制。本质上，该函数接收一个事件（我们称之为当前事件），然后逐行遍历状态转移矩阵，寻找与当前状态和事件匹配的预定义状态-事件对。如果找到，就转移到指定的下一个状态，然后调用函数指针所指向的状态函数。
+
+`event` 通常来自输入监测，例如连接到按键的 GPIO 引脚（经过适当消抖）或其他固件触发的事件。如果没有事件发生，可以传入 `EV_NONE`（如果你希望每个循环周期都调用 `RunIteration()`，但事件到达频率较低，这会很有用）。
+
+```c    
+void StateMachine_RunIteration(stateMachine_t *stateMachine, event_t event) {
+
+    // Iterate through the state transition matrix, checking if there is both a match with the current state
+    // and the event
+    for(int i = 0; i < sizeof(stateTransMatrix)/sizeof(stateTransMatrix[0]); i++) {
+        if(stateTransMatrix[i].currState == stateMachine->currState) {
+            if((stateTransMatrix[i].event == event) || (stateTransMatrix[i].event == EV_ANY)) {
+
+                // Transition to the next state
+                stateMachine->currState =  stateTransMatrix[i].nextState;
+
+                // Call the function associated with transition
+                (stateFunctionA[stateMachine->currState].func)();
+                break;
+            }
+        }
+    }
+}
+```
+
+如前所述，完整可运行的示例见 [https://github.com/gbmhunter/FunctionPointerStateMachineExample](https://github.com/gbmhunter/FunctionPointerStateMachineExample)。

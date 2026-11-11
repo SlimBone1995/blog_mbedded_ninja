@@ -1,0 +1,89 @@
+---
+authors: [gbmhunter]
+date: 2016-02-12
+lastUpdated: 2016-02-12
+title: 位域与位操作/掩码
+type: page
+sourcePath: programming/languages/c/bit-fields-and-bit-manipulation-masking/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a900770220b3720c6a93e67594efd8757c01b3e34a590bb9d676f9762d4cf09c
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/bit-fields-and-bit-manipulation-masking/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+_位域_ 是一种软件/固件变量，它在**连续的内存**结构中存储多个位。
+
+_位掩码_ 是在位域（一种多位的软件/固件变量，例如 32 位整数或 `uint32_t`）中选择特定位进行操作，同时不改变未选中位值的过程。
+
+位掩码被视为一种底层操作，通常只出现在 C 和 C++ 等语言中（更高级的语言也可能使用位掩码，但相关代码通常对用户进行了抽象）。C 和 C++ 的位掩码通常大量使用预处理器宏。
+
+## 置位
+
+按位或运算（`|`）可用于**将变量中的某些位置 1**。希望置 1 的位与 1 进行或运算，希望保持不变的位与 0 进行或运算。
+
+```c    
+uint8_t bitField1 = 0b10110011;
+// Using the bitwise OR operator to set bits 4-7 to 1
+bitField |= 0b11110000;
+// bitField = 0b11110011;
+```
+
+## 清零位
+
+按位与运算（`&`）可用于**将变量中的某些位清 0**。希望清零的位与 0 进行与运算，希望保持不变的位与 1 进行与运算。
+
+```c    
+uint8_t bitField1 = 0b10110011;
+// Using the bitwise AND operator to keep only bits 4-7 (bits 0-3 will
+// be cleared)
+bitField &= 0b11110000;
+// bitField = 0b10110000;
+```
+
+## 创建多位位掩码
+
+下面的示例使用宏来执行位掩码和置位。也可以使用函数，但宏通常更高效，因为不需要函数调用。
+
+```c    
+//! @brief		The maximum width (in bits) that the following bit field manipulation macros can work with.
+#define MAX_BIT_FIELD_WIDTH_BITS	32
+
+//! @brief		Creates a "MAX_BIT_FIELD_WIDTH_BITS"-wide bit mask for the specified bit range a to b (inclusive).
+//! @details	Example:
+//!					BIT_MASK(5, 12) returns the value (if MAX_BIT_FIELD_WIDTH_BITS = 32).
+//!						0b 0000 0000 0000 0000 0011 1111 1110 0000
+//! @warning	ONLY WORKS WITH UP TO "MAX_BIT_FIELD_WIDTH_BITS" WIDE BIT FIELDS
+#define BIT_MASK(a, b) (((unsigned) -1 >> ((MAX_BIT_FIELD_WIDTH_BITS - 1) - (b))) & ~((1U << (a)) - 1))
+
+//! @brief		Use this macro to set a number of bits within a bit field.
+//! @details	Example:
+//!					SET_BITS(myUint16, 12, 3, 0b101)
+//!					will set bits 12 through to 14 with 1, 0 and 1 respectively.
+//! @warning	ONLY WORKS WITH UP TO "MAX_BIT_FIELD_WIDTH_BITS" WIDE BIT FIELDS
+#define SET_BITS(var, startBit, numBits, val) \
+    var = var & ~BIT_MASK(startBit, startBit + numBits - 1); \
+    var = var | (val << startBit);
+```
+
+然后可以像下面这样使用：
+
+```c    
+uint8_t aRegister = 0x00;
+SET_BITS(aRegister, 2, 4, 0b1011);
+
+// aRegister = 0b00101100;
+
+SET_BITS(aRegister, 0, 3, 0b011);
+
+// aRegister = 0b00101011;
+```
+
+<Aside type="note">
+上面的 `BIT_MASK` 和 `SET_BITS` 宏仅适用于宽度不超过 `MAX_BIT_FIELD_WIDTH_BITS` 的变量！
+</Aside>
+
+## 行业中的应用
+
+许多微控制器厂商（例如 [Atmel](/programming/microcontrollers/atmel)）提供的固件库和示例代码大量使用位域操作来修改控制硬件外设的寄存器（例如用于配置 UART 波特率、校验位和停止位数量的寄存器）。

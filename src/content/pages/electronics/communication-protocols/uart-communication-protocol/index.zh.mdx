@@ -1,0 +1,295 @@
+---
+authors: [gbmhunter]
+date: 2011-09-12
+description: UART（Universal Asynchronous Receiver/Transmitter，通用异步收发器）是一种低电压、仅正电源轨、对微控制器友好的 RS-232 协议版本，适用于 IC 间通信和短距离有线通信。
+lastUpdated: 2026-06-02
+tags: [UART, communication protocol, USART, microcontroller, serial, 8n1, universal asynchronous, receiver, transmitter, RX, TX, backfeeding, IOFF, synchronization, parity, stop bits, start bit, frame]
+title: UART 通信协议
+type: page
+sourcePath: electronics/communication-protocols/uart-communication-protocol/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:2ba10e35963fed0aaa50669c382c54b6ae9b20448d65ec002bd985c90957703f
+sourceUrl: https://blog.mbedded.ninja/electronics/communication-protocols/uart-communication-protocol/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+UART（*Universal Asynchronous Receiver/Transmitter*，通用异步收发器）是 RS-232 数字数据传输协议的低电压、对微控制器友好的等价物，其起源可追溯到 20 世纪 60 年代。它之所以“通用”，是因为时序、电压、流控制和错误校验均可配置。
+
+| 参数              | 值
+|------------------------|-----------------------
+| 驱动方式             | 单端
+| 线数（不含 GND） | 通常仅 2 根（TX/RX）或 4 根（TX/RX 和 RTS/CTS）
+| 双工方式              | 全双工
+| 连接拓扑    | 点对点
+| OSI 层             | 第 1 层（物理层）和第 2 层（数据链路层）
+
+
+**如今它常被用作电路板上器件之间简单、双向的节点到节点串行通信协议**，也可能通过线缆通信。由于其低电压和单端特性，抗噪能力不强；当通信需要经过较长线缆或在噪声环境中进行时，通常会被更健壮的协议取代，例如 [RS-232](/electronics/communication-protocols/rs-232-protocol)（更高电压）或 [RS-485](/electronics/communication-protocols/rs-485-protocol)（差分信号）。
+
+## 术语
+
+### 位周期
+
+_位周期_ 是 UART 传输或帧中单个位的时间（或宽度）。位周期就是波特率的倒数：
+
+$$
+\begin{align}
+t_{bit} = \frac{1}{BR}
+\end{align}
+$$
+
+例如，一些常见波特率及其对应的位周期为：
+
+| 波特率 | 位周期
+|-----------|-------------
+| 9600      | 104us
+| 57600     | 17.4us
+| 115200    | 8.68us
+
+### 起始位
+
+UART 帧中的第一位。宽度始终为一个位周期。接收器利用起始位的下降（第一个）边沿来同步其采样时钟，第一个数据位将在此跳变后 1.5 个位周期处被采样。
+
+### 停止位
+
+UART 帧中的最后一位（或多位）。停止位可以是 1、1.5 或 2 位，其中 1 位最常见。
+
+## UART 帧结构
+
+UART 每次以 5、6、7 或 8 位为一组在总线上发送数据（通常为 8 位，即一个字节），这称为 _UART 帧_。没有数据传输时，总线空闲为“高”电平。为指示帧开始，发送器将线路拉低一个位周期，这称为_起始位_。接收器用起始位的下降沿同步其接收位采样时钟。起始位持续一个位周期，随后发送器通过将线路驱动为高或低来发送数据位。之后是可选的_奇偶校验位_（通常不使用），再之后是 1、1.5 或 2 个_停止位_。
+
+下图展示了流行的“8n1”配置（8 个数据位、无奇偶校验、1 个停止位）下 UART 帧的样子：
+
+<Image src={import('./_assets/uart-example-byte-waveform-8n1.png')} width="800px">展示 UART 总线上以流行的“8n1”配置（8 位、无奇偶校验、1 个停止位）发送一个字节的基本帧结构示意图。</Image>
+
+UART 不规定数据的含义，数据的意义以及如何将其组合成更大的数据结构，由应用代码负责。
+
+你可能会问：为什么要有不止 1 个停止位？答案是，如果接收器需要更多时间处理当前帧，多个停止位可用于延迟下一帧。
+
+有关空闲到起始位跳变以及接收器如何“锁定”所传数据的更多细节，参见下文[同步](#synchronization)一节。
+
+## 协议
+
+RS-232 类串行通信的悠久历史意味着，UART 与许多物理层和协议层变体同义/兼容，例如：
+
+- CMOS UART
+- RS-232
+- RS-422（差分）
+- RS-485（差分）
+- DMX512（常用于控制舞台灯光和效果）
+- MIDI
+- LIN 总线
+- IrDa
+
+一般来说，如果有人在没有额外上下文的情况下使用 UART 一词，他们指的是电压电平介于 VCC 和 GND 之间的 RS-232 协议，通常由微控制器或 FPGA 中的 UART 外设产生。
+
+## 连接器
+
+UART 是一种没有单一公认连接器的协议。由于它常与 RS-232 或 RS-485 协议配合使用，D-subminiature 连接器常与 UART 协议联系在一起。然而，UART 是非常常见的微控制器外设，可用于微控制器与第三方器件之间短距离、永久性的板载通信，因此也常常完全不使用连接器（在 PCB 上引脚对引脚直连），或者从微控制器直接引到 0.1" 排针，用于调试等用途（调试 UART 在嵌入式设备上非常常见）。
+
+<Aside type="caution">
+当终端设备（DTE）不是连接到调制解调器设备（DCE）时，如何将两个 RS-232（或 UART！）设备连接在一起就容易产生混淆。在嵌入式领域，微控制器和其他支持 RS-232/UART 的器件既可以充当 DTE，也可以充当 DCE。**在嵌入式设备上连接 RS-232/UART 端口时要特别小心！**
+</Aside>
+
+## 传输速度
+
+按今天的标准，UART 是一种慢速传输协议。不过，它对大量应用来说仍然足够快。常见支持的波特率有：
+
+- 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400, 56000, 57600, 115200, 128000, 256000, 460800, 921600
+
+在嵌入式系统中使用高达 460800 波特的速度时，我基本没有遇到问题（无论是与另一个嵌入式系统通信，还是通过虚拟 COM 端口与计算机通信）。不过，921600 波特在某些情况下对我来说无法正常工作。
+
+在上文列出的波特率中，有三种比其他更常用：
+
+1. `9600`：Arduino 等微控制器开发板非常常见的默认波特率。
+1. `57600`：另一种常见波特率。
+1. `115200`：另一种常见默认波特率，数据吞吐量比 `9600` 提高 10 倍。如果你要为新的设计选择默认波特率，我推荐使用这个速度！
+
+有些器件还支持自定义波特率。
+
+## 错误校验/抗噪性
+
+按规范，UART 唯一的错误校验是奇偶校验（可能还存在额外的错误检测特性）。
+
+通过 UART 发送大量字符时，你可能会注意到某些字符看起来损坏了。如果你用 UART 传输大量数据（例如数据记录应用），这会很麻烦。提高抗噪性的最佳方法有：
+
+- 将传输速率降到可接受的最低速度。9600 波特下出现的错误远少于 57600 波特。
+- 启用奇偶校验（不能完全解决问题！）
+- 如果发送器或接收器支持，启用表决算法。
+- 同样，如果发送器或接收器支持，启用过采样（与表决非常相似）。
+- 尽量缩短 UART 传输线，并尽量减小电容。
+- 屏蔽 UART 线缆（不太重要）
+- 在接收器和发送器中实现校验和算法，例如 CRC。UART 协议本身不支持，你需要使用第三方库或自己编写代码。即使使用异或（XOR）这样简单的校验和算法，这也可能是最可靠的错误校验方法之一。
+
+## 同步
+
+如果 UART 发送器连续发送数据（即数据块之间没有空闲时间），而接收器在传输中途启动（或因其他原因复位、丢失了它认为所处的位置），就可能出现同步问题。此时接收器可能无法正确区分起始位和其他位，因为起始位和停止位与数据位的位宽相同。接收器可能产生错误数据或报告帧错误，直到有足够的空闲时间“重置”其内部状态并正确等待下一个起始位。
+
+<Aside type="caution">
+由于存在这些同步问题，如果数据块之间没有自然出现的停顿，建议在数据块之间偶尔加入暂停（空闲时间）。
+</Aside>
+
+## Break 信号
+
+_Break 信号_ 不是字符，而是一种**可从发送器发往接收器以指示某个事件的特殊信号**。
+
+发送器通过**将 TX 线拉低超过一帧的时间**来发送 break 信号。Break 分为短 break 和长 break 两种。短 break 是 TX 线被拉低 1 到 2 帧长度的时间，长 break 是拉低超过 2 帧长度的时间。
+
+## 上层协议
+
+你需要一种可在 UART 连接上工作的上层通信协议吗？参见 GitHub 上的 [SerialFiller](https://github.com/gbmhunter/SerialFiller) 库（用 C++ 编写）。SerialFiller 使用发布/订阅机制，适用于 UART 等点对点串行连接。
+
+## 通过 UART 反灌
+
+在微控制器上使用 UART 时，要小心通过 `TX` 线对器件_反灌_（又称_反向供电_）！如果微控制器在正常工作期间失去电源轨，连接到其 `RX` 的 `TX` 线会通过内部 ESD 二极管导通，使微控制器的 `VCC` 维持在一定电压（记住，空闲状态下 TX 线被驱动为高电平）。
+
+<Aside type="caution">
+常见场景是调试 UART：FTDI 线缆或类似器件连接到微控制器的 UART 端口用于调试。调试期间你断开微控制器电源以试图复位它，结果却发现它被 FTDI 的 TX 引脚反灌维持着供电。
+</Aside>
+
+[电压电平转换 IC](/electronics/components/voltage-level-translation/) 是解决此问题的一种方法。你必须确保所选型号在一个或多个 $V_{CC}$ 引脚为 $0V$ 时，其 I/O 引脚 $A$ 和 $B$ 呈高阻态。下图展示了如何使用电压转换 IC 防止调试 UART 对 MCU 反灌：
+
+<Image src={import('./_assets/voltage-translator-to-prevent-uart-backfeeding.png')} width="800px">使用电压转换 IC 在电源（VCC）断开时防止 FTDI 线缆（或类似器件）对微控制器反灌的电路原理图。</Image>
+
+除了电压电平转换 IC，具有 $I_{OFF}$ 功能的缓冲 IC 也可以（这是 Texas Instruments 对一种逻辑 IC 的称呼：当 VCC 引脚为 $0V$ 时，不会从 I/O 引脚向 $V_{CC}$ 引脚反灌电流）——例如 SN74LVC1G125（“Single Bus Buffer Gate With 3-State Output”，带三态输出的单总线缓冲门）。
+
+## TX 线上的上拉电阻（pull-up resistor）
+
+微控制器复位时，其 UART TX 线上可能会发出杂散的无意义数据。微控制器复位时，其所有 GPIO 引脚通常默认回到高阻输入。这会导致通常空闲为高电平的 TX 线电压下降并呈现 `LOW` 信号。总线另一端的 UART 接收器可能将其解释为数据，产生无意义的乱码。如下图所示，解决方案是在 TX 线上添加一个上拉电阻到 $V_{CC}$，使微控制器复位时 TX 线保持高电平。
+
+<Image src={import('./_assets/pull-up-on-uart-tx-line.png')} width="500px">在从 MCU 引出的 UART TX 线（相对于 MCU 的 TX）上添加一个 10kΩ 上拉电阻，以防止 MCU 复位或通过固件禁用 UART 外设时发送杂散数据。</Image>
+
+<Aside type="tip">
+当然，你可能也需要对 RX 线做同样处理，因为从总线另一端驱动器的角度看，它也是一根 TX 线。这完全取决于驱动器是否会在正常工作中复位，以及你是否能容忍偶尔出现的坏字节！
+</Aside>
+
+## 终端程序
+
+### RealTerm（3.5/5）
+
+网站：[http://realterm.sourceforge.net/](http://realterm.sourceforge.net/)
+
+一款易于使用且功能强大的 Windows 终端程序。以下描述摘自其网站：
+
+> 一种专为捕获、控制和调试二进制及其他难以处理的数据流而设计的终端程序。调试通信时它比 Hyperterminal 好得多。它不支持拨号调制解调器、BBS 等——那是 Hyperterminal 的功能。
+
+它可以查看和发送二进制、十六进制、ASCII、ANSI、整数（有符号和无符号，8 位或 16 位）、浮点数等。支持半双工通信以及 I2C！完全不会卡顿/挂起（包括在其仍在运行时禁用 COM 端口）。你可以同时运行多个 RealTerm 实例，从多个 UART 端口同时获取数据。它可以为接收到的 UART 消息添加时间戳，这对数据记录很有用。
+
+<Image src={import('./_assets/realterm-window.jpg')} width="620px">RealTerm 使用中的截图。</Image>
+
+我注意到 RealTerm 有一些 bug，尤其是在更改行列数和回滚查看已接收数据时（回滚缓冲变量也有问题）。
+
+**2021-05-17 更新**：SourceForge 网站上的开发似乎早已停止。有一个 Realterm“开发版”可在 https://realterm.i2cchip.com/ 找到，其更新最近到 2018 年。
+
+### Terminal by Br@y（3.5/5）
+
+网站：[https://sites.google.com/site/terminalbpp/](https://sites.google.com/site/terminalbpp/)
+
+一款简单整洁的 Windows 终端程序。就我个人而言，它因为过于简单且略有 bug，没有得到与 RealTerm 同等的认可。在按十六进制解码时，如果收到大量数据，程序可能会挂起。在仍连接时禁用 COM 端口也可能导致挂起。
+
+<Image src={import('./_assets/terminal-v1-9b-by-bray-window.jpg')} width="800px">“Terminal by Br@y”使用中的截图。</Image>
+
+### PuTTy（4/5）
+
+网站：[http://www.chiark.greenend.org.uk/~sgtatham/putty/](http://www.chiark.greenend.org.uk/~sgtatham/putty/)
+
+> PuTTY 是面向 Windows 和 Unix 平台的 Telnet 和 SSH 免费实现，并附带 xterm 终端模拟器。
+
+如果你运行 Windows，想模拟类 UNIX 系统的命令行风格界面，PuTTY 是一款非常方便的应用。虽然它的调试和捕获功能不如 RealTerm，但它支持逐字符输入，并能正确响应回车等“特殊”按键（RealTerm 不允许这样，你必须先输入字符串再按发送）。这听起来差别很小，但这个功能确实很有用！我在使用实时操作系统（real-time operating system）和 CLI（命令行界面）扩展时发现它非常方便，可以让你从 PC 以命令行风格界面与嵌入式系统通信（如右图所示）。
+
+<Image src={import('./_assets/putty-terminal-screenshot-with-settings-window.png')} width="800px">PuTTy 应用使用中的截图，以及设置窗口。</Image>
+
+我在 PuTTY 中发现了一个 bug……如果它一次性收到大量字符（从嵌入式系统打印调试消息时很常见，尤其是字符串没有以空字符结尾，开始从随机内存位置打印乱码时），PuTTY 可能会冻结，需要重启。在这种情况下，它还可能在正在调试的 COM 端口上反复打印“PuTTyPuTTyPuTTy”消息。真奇怪。
+
+<Image src={import('./_assets/putty-bug-when-receiving-large-num-of-chars.png')} width="700px">当通过 COM 端口向 PuTTY 打印大量随机字符时，它可能会冻结。</Image>
+
+## 9 位寻址
+
+9 位寻址用于多分支（multi-drop）配置，以避免从设备浪费时间解码总线上的每个字节来判断是否发给自己。每发送一个字节后都会发送第 9 位，用来指示前 8 位是地址（从设备必须监听）还是普通数据（可以忽略）。
+
+## 抗辐射加固
+
+某些 UART 协议有耐辐射器件，例如 Aeroflex 制造的 DRS4485 双路 RS-485 接口收发器。[^aeroflex-drs4485-dual-rs485-interface-transceiver]
+
+## RS-232
+
+RS-232 是与 UART 非常相似的协议，UART 转 RS-232 转换器是你在嵌入式系统中最常见的通信协议转换器之一。
+
+更多信息参见 [RS-232 页面](/electronics/communication-protocols/rs-232-protocol)。
+
+## RS-485
+
+RS-485 是另一种 UART 常转换到的常见协议。当需要更长距离和/或更强抗噪性时，通常选择它而不是 RS-232。更多信息参见 [RS-485 页面](/electronics/communication-protocols/rs-485-protocol)。
+
+## 线缆
+
+你可以买到 null-modem（零调制解调器）USB 转 USB 串口模拟线缆。它们非常适合在两台计算机（或任意两个 USB 主机设备）之间传输数据，而无需改用真正的 USB-A 转 USB-A 线缆（那需要使用更复杂的协议）。
+
+FTDI 生产这样一款线缆，称为 [USB 转 USB 线缆](http://www.ftdichip.com/Products/Cables/USBtoUSB.htm)。
+
+如果你希望在**同一台计算机上**的两个 COM 端口之间路由数据，可以使用这类线缆；不过，通常用软件串口桥接要容易得多。
+
+也有用于将计算机连接到 UART 总线的 USB 转 UART 线缆。FTDI 是这类产品最流行的制造商之一，其线缆既可使用虚拟 COM 端口，也可使用 D2XX 驱动。在内部，这些线缆使用 FTDI 的 FT232RQ IC。[^ftdi-usb-to-rs232-range-of-cables-ds] 内部 EEPROM 可以重新编程以更改设备的 VID 和 PID（默认分别为 `0x0403` 和 `0x6001`）。[^ftdi-usb-to-rs232-range-of-cables-ds] 但要注意，如果在 Windows（可能还有其他操作系统）上这样做，FTDI 虚拟 COM 端口驱动不会自动识别它，你必须手动配置。此外，EEPROM 编程工具 FT_PROG 也将无法再识别该设备！
+
+## IC
+
+### FTDI FT232RNQ
+
+FTDI FT232RNQ 是一款采用 [QFN-32](/pcb-design/component-packages/qfn-component-package/) 或 SSOP-28 封装的 USB 转 UART IC。它支持 USB 2.0 全速（12 Mbps），数据速率最高 3 Mbaud。它还有 4 个通用输入输出（GPIO）引脚，可由 USB 主机控制用于辅助功能。它支持 1.8 至 5.5 V 的 I/O 电压。[^ftdi-ft232rnq-product-page]
+
+<Image iref="fig-3d-render-of-ftdi-ft232rnq-ic" src={import('./_assets/3d-render-of-ftdi-ft232rnq-ic.webp')} width="200px">FTDI FT232RNQ IC 的 3D 渲染图。[^ftdi-ft232rnq-product-page]</Image>
+
+有关如何从 Python 和 `pyftdi` 库等软件控制这些器件的更多信息，参见 [控制 FTDI 器件](/programming/ftdi/)页面。
+
+### WCH CH340
+
+WCH（又称南京沁恒微电子）CH340 是一个流行的 USB 转 UART IC 系列。它支持 USB 2.0，串口波特率从 50 bps 到 2 Mbps。[^wch-usb-to-serial-port-chip-ch340-ds]
+
+CH340 系列有多个变体，通过料号后附加的字母后缀区分：[^wch-usb-to-serial-port-chip-ch340-ds]
+
+- CH340B：SOP-16。内置时钟。内置 EEPROM，用于配置序列号和其他设置。
+- CH340C：SOP-16。内置时钟。
+- CH340E：MSOP-10。内置时钟。
+- CH340G：SOP-16。无内置时钟。
+- CH340K：ESSOP-10。内置时钟。内置 3 个二极管，用于在存在独立电源时防止电流倒灌。
+- CH340N：SOP-8。内置时钟。
+- CH340R：SSOP-20。无内置时钟。TXD 和调制解调信号的极性反转。已停产。
+- CH340T：SSOP-20。无内置时钟。
+- CH340X：MSOP-10。内置时钟。与 CH340E 类似，但具有改进的 5V 耐受 IO（+3.3V 供电）。
+
+### WCH CH9344
+
+WCH CH9344 是一款采用 [LQFP-48 封装](/pcb-design/component-packages/qfp-component-package/) 的 USB 转四路 UART IC。其 [USB 接口](/electronics/communication-protocols/usb-protocol/) 支持 USB 2.0。它还提供 12 个通用输入输出引脚，可用于辅助功能。UART0 至 UART2 具有独立电压轨，可配置为 1.8V、2.5V 或 3.3V（UART3 固定为 3.3V）。[^wch-usb-to-quad-uarts-chip-ch9344-ds]
+
+<IRef iref="fig-ch9344-usb-to-quad-uart-ic-pinout"/> 显示了 LQFP-48 IC 的引脚分布。
+
+<Image iref="fig-ch9344-usb-to-quad-uart-ic-pinout" src={import('./_assets/ch9344-usb-to-quad-uart-ic-pinout.webp')} width="400px">WCH CH9344 USB 转四路 UART IC 的引脚分布。[^wch-usb-to-quad-uarts-chip-ch9344-ds]</Image>
+
+[https://github.com/WCHSoftGroup/ch9344ser_linux](https://github.com/WCHSoftGroup/ch9344ser_linux) 是支持该 IC 的 Linux 驱动。该驱动会在你的 `/dev` 目录中创建名为 `ttyCH9344USBx` 的 tty 设备。
+
+### WCH CH348
+
+WCH CH348 是一款 USB 转 8 路 UART IC，类似 WCH CH9344 USB 转 4 路 UART IC。与 CH9344 一样，各 UART 具有可设置为 1.8V、2.5V 或 3.3V 的独立电压轨。如 <IRef iref="fig-ch348-usb-to-8-uart-ic-pinout" /> 所示，该 IC 有两种不同封装。较大的 LQFP-100 封装为每一路 UART 都提供流控制引脚。
+
+<Image iref="fig-ch348-usb-to-8-uart-ic-pinout" src={import('./_assets/ch348-usb-to-8-uart-ic-pinout.webp')} width="900px">WCH CH348 USB 转 8 路 UART IC 在两种不同封装选项下的引脚分布。CH348Q 是 QFN-48 48 引脚 7x7mm 封装，CH348L 是 LQFP-100 100 引脚 14x14 mm 封装。[^cnx-software-wch-ch348-8-port-usb-to-serial-chip]</Image>
+
+## 创建串口桥
+
+有时你希望或需要在计算机上的两个软件之间，或在都连接到计算机的两个硬件设备之间发送串行数据。例如，为了对你在 PC 上编写的串行通信协议做单元测试，而不必在微控制器上编写单元测试代码。有些软件程序可以模拟串口桥，但以我的经验，它们要么 bug 很多，要么收费。
+
+你可以把两个 USB 转 UART（或 USB 转 RS-232）转换器连接起来，并将 RX 和 TX 线交叉，从而搭建一个简易的串口桥，把两个软件连接起来。虽然这不是很持久的方案，但适合简单测试。<IRef iref="fig-testing-a-physical-serial-port-bridge" /> 展示了一个两端各有一个终端的硬件串口桥。
+
+<Image iref="fig-testing-a-physical-serial-port-bridge" src={import('./_assets/testing-a-physical-serial-port-bridge.jpg')} width="900px">测试一个物理串口桥，由两根 FTDI 线缆连接而成。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^ftdi-usb-to-rs232-range-of-cables-ds]: FTDI。_USB to RS232 Serial Converter Range of Cables_ [数据手册]。检索于 2025-02-10，来自 https://ftdichip.com/wp-content/uploads/2023/07/DS_USB_RS232_CABLES.pdf。
+[^wch-usb-to-quad-uarts-chip-ch9344-ds]: WCH。_USB to Quad UARTs Chip CH9344_ [数据手册]。检索于 2025-08-04，来自 https://www.wch-ic.com/downloads/CH9344DS1_PDF.html。
+[^cnx-software-wch-ch348-8-port-usb-to-serial-chip]: Jean-Luc Aufranc（2022 年 3 月 4 日）。_WCH CH348 is an 8-port USB to serial chip with up to 48 GPIOs_。CNX Software。检索于 2025-08-04，来自 https://www.cnx-software.com/2022/03/04/wch-ch348-8-port-usb-to-serial-chip-with-up-to-48-gpios/。
+[^wch-usb-to-serial-port-chip-ch340-ds]: WCH。_USB to Serial Port Chip CH340. Version 3D._ [数据手册]。检索于 2025-10-09，来自 https://www.wch-ic.com/downloads/CH340DS1_PDF.html。
+[^ftdi-ft232rnq-product-page]: FTDI Devices。_Products >  FT232RNQ_ [产品页面]。检索于 2025-12-02，来自 https://ftdichip.com/products/ft232rnq/。
+[^aeroflex-drs4485-dual-rs485-interface-transceiver]: Aeroflex（2010 年 5 月 27 日）。_DRS4485 Dual RS485 Interface Transceiver_ [数据手册]。检索于 2026-06-02，来自 https://pdf.datasheet.live/datasheets-1/aeroflex_%5Bcolorado_springs%5D/DRS4485-S.pdf。

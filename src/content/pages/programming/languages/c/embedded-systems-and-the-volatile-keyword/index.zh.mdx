@@ -1,0 +1,120 @@
+---
+authors: [gbmhunter]
+date: 2022-07-29
+description: volatile 是什么，以及为嵌入式系统编写固件时如何使用它。
+lastUpdated: 2022-08-05
+tags: [programming, C, volatile, buffers, C++, interrupts, embedded, ISR]
+title: 嵌入式系统与 volatile 关键字
+type: page
+sourcePath: programming/languages/c/embedded-systems-and-the-volatile-keyword/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a89c78d6431a55d038585602772efc808c80111511ad953525cab7e50fcb8fd7
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/embedded-systems-and-the-volatile-keyword/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+许多 C/C++ 软件工程师可能一辈子都不需要用到 `volatile` 关键字。然而在嵌入式系统中，了解 `volatile` 关键字如何工作以及如何使用它，是一项至关重要的技能。
+
+`volatile` 关键字是应用于变量的限定符，例如 `volatile uint8_t my_var;`。它告诉编译器，存储在该地址的值可能随时变化，即使编译器看不到任何会导致它变化的代码路径。这迫使编译器每次在代码中使用该变量时都从内存中读取/写入，而不是把变量保存在寄存器中，或者干脆把读/写优化掉！
+
+声明变量时，关键字 `volatile` 可以放在类型之前或之后（`const` 的行为相同）。定义 `volatile` 变量的基本语法是：
+
+```c
+volatile uint8_t my_var;
+uint8_t volatile my_var; // Alternative method, exactly the same as the line above
+```
+
+在嵌入式领域，经常需要使用指向 volatile 内存的指针，即指向用于控制 UART 的 8 位内存映射寄存器的指针。指向 volatile 数据的指针定义如下：
+
+```c
+volatile uint8_t * ptr_to_register;
+```
+
+`volatile` 用于：
+
+* 在中断中读写、同时也在中断外访问的变量。如果忘记 `volatile`，编译器看不到调用中断的代码路径（因为中断是异步调用的），因而可能假定没有其他东西会修改该变量，并把值缓存到寄存器中（或完全优化掉读/写）。
+* 指向微控制器中硬件寄存器（内存映射寄存器）的内存地址。这些硬件寄存器可能随时被硬件改变（例如 UART 外设寄存器中的某一位，用于指示何时有已接收字节可供读取），因此编译器不能假定它们只在代码写入时才会改变。
+
+<Aside type="tip">
+只要变量的值可能在访问它的代码的控制流之外发生变化，就应将该变量声明为 `volatile`。
+</Aside>
+
+`volatile` **不应**用于：
+
+* 保证两个线程之间对共享变量的线程安全访问。`volatile` 只提供线程安全访问所需保证的一部分，而不是全部。还需要内存屏障、互斥锁等其他线程同步对象，而这些对象同时也提供了 `volatile` 所提供的保证，因此这种场景下不需要 `volatile`。
+
+## 在缓冲区中使用 volatile
+
+嵌入式固件中还经常在中断中把传入数据写入缓冲区（例如环形缓冲区），然后在主应用程序例程中断之外再把数据从缓冲区读出（或者对传出数据交换读写方向）。`volatile` 可用于声明缓冲区中的字节数组。
+
+例如，声明一个包含 volatile 数据的 100 字节缓冲区：
+
+```c
+volatile char buffer[100];
+```
+
+这会迫使编译器在主应用程序例程中生成真正去读取缓冲区中值的代码。如果没有使用 `volatile`，编译器可能推断：写入缓冲区的中断函数永远不会被调用（记住：编译器看不到中断被调用），因此缓冲区中的值始终是初始化值，永远不需要重新读取。这可能导致你从缓冲区中读到垃圾数据！
+
+下面是一个 C++ 示例，其中的 volatile 缓冲区由中断服务程序（interrupt service routine）写入，并由主应用线程（中断之外）读取。由于这是基于 Web 的系统，我无法使用真正的中断，因此用单独的线程模拟了一个中断。如果去掉 `volatile` 关键字，应该会出现未定义行为。在我实际运行时，输出与声明为 `volatile` 时相同，我认为这是因为没能让编译器优化掉这次读取。
+
+（在 https://replit.com/@gbmhunter/volatile-buffer-experiment 运行这段代码）
+
+```c++
+// To build and run code:
+// g++ main.cpp -lpthread; ./a.out
+#include <iostream>
+#include <memory>
+#include <thread>
+
+// This buffer needs to be declared volatile as the ISR writes to
+// it (ISR faked with a separate thread)
+volatile char buffer[3];
+
+void isr_fn() {
+  char data[] = "abc";
+  // Copy the chars, ignore the null
+  for (int i = 0; i < 3; i++) {
+    buffer[i] = data[i];
+  }
+}
+
+int main() {
+  std::thread t1(isr_fn);
+  t1.join(); // Wait for ISR to finish writing to buffer
+
+  // Now read from buffer
+  for (int i = 0; i < 3; i++) {
+    std::cout << buffer[i];
+  }
+  std::cout << "\n";
+}
+```
+
+## memcpy() 与 volatile
+
+`memcpy()` 不能操作 `volatile` 数据。如果你要复制数据到声明为 `volatile` 的缓冲区（字节数组，即 `char *`），或者从这样的缓冲区复制数据，这会很麻烦。不过，你可以很容易地编写自己的 `memcpy()` 版本，使其适用于 `volatile`。下面是一个可与 `volatile` 目标缓冲区配合使用的 `memcpy()` 等价实现：
+
+```c
+// Version of memcpy that works with a volatile destination buffer
+void memcpy_to_volatile(volatile char * dest, char * src, uint32_t num_bytes) {
+    for (uint32_t i = 0; i < num_bytes; i++) {
+        dest[i] = src[i];
+    }
+}
+```
+
+## 去除 volatile
+
+<Aside type="caution">
+去除变量上的 `volatile` 可能导致未定义行为。
+</Aside>
+
+在 C++ 中，可以使用 `const_cast` 去除 `volatile`（容易混淆的是，它叫 `const_cast`，但实际上可以同时去除 `const` 和 `volatile`）。
+
+## 声明为 volatile 的 C++ 成员函数
+
+TODO：在此处补充信息。

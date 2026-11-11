@@ -1,0 +1,231 @@
+---
+authors: [gbmhunter]
+date: 2014-12-04
+description: QFN 是一类 SMD 封装，四边均有焊盘，中心可选配散热焊盘。它与 QFP 一样，常用于中等引脚数的 IC。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-07
+tags: [component packages, PCB design, QFN, LFCSP, MLF, solder paste, soldermask, singulation, voiding, lead styles, JEDEC, package stress]
+title: QFN 元件封装
+type: page
+sourcePath: pcb-design/component-packages/qfn-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:640826b6f3807c4ec589b7e5909e01ea8bc57084e006c7a594b999ef67c844f0
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/qfn-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`QFN` 是一类 SMD 元件封装，通常有 12–108 个引脚。如今 QFN 封装常用于引脚数较多的 IC，例如微控制器。它是一种**接近芯片级尺寸的封装**，所有引脚都位于四周，中心还有一个可选的散热焊盘。它是不使用 [BGA](/pcb-design/component-packages/bga-component-package/) 时引脚密度最高的 SMD 封装之一。注意，QFN 系列内部存在不同的引脚间距！而且 QFN 封装不一定是正方形（正方形最常见），也有一些矩形版本，两侧引脚数不同（相对的两边引脚数始终相同）。下图展示了一个典型的 QFN 封装，四边引脚数相同，并带有外露焊盘。
+
+<Image src={import('./_assets/qfn-16-with-ep-3d-model.png')} width="300px">一个典型 QFN-16 封装的三维渲染图，底部中心带有外露焊盘。[^digikey-renesas-isl84467irtz-t-ic-switch]</Image>
+
+在高速电路方面，QFN 封装相比其他封装具有优势，同时散热能力也很强。QFN 封装没有鸥翼引脚（例如 [QFP 封装](/pcb-design/component-packages/qfp-component-package/) 上的那种引脚），这种引脚会在高速应用中产生噪声。不过，由于封装直接贴在 PCB 表面（或非常靠近表面），它比其他具有更大离板高度的 SMD 封装（例如 QFP 封装）更容易受到机械/热应力影响。
+
+Texas Instruments 建议在 QFN 封装上使用圆角焊盘，以防止焊锡桥连。此外，建议在散热焊盘的锡膏上使用[钢网开窗](/pcb-design/soldermask-stencils/)，以限制添加的焊锡量。焊锡过多会导致 QFN 封装在焊接过程中“漂浮”移动。
+
+仅在四条边中的两条边上有引脚的类 QFN 封装是 [SON 封装（DFN）](/pcb-design/component-packages/son-component-package/)。
+
+容易混淆的是，NXP 将其 QFN 封装系列命名为 SOT...（例如 SOT-762-1），而这一名称通常留给晶体管封装，例如常用的 [SOT-23](/pcb-design/component-packages/sot-23-component-package/)。
+
+## 同义名称
+
+- `2077-02`：Freescale 对 QFN-16、5x3 引脚、3x3mm 本体封装的封装代码。
+- `CP-32-2`：Analog Devices 对 QFN-32、8x8 引脚、0.50mm 间距、5x5mm 本体封装的封装代码。
+- `HVQFN`：NXP 对带散热焊盘的超薄 QFN（即带外露散热焊盘的 QFN）的命名。部分 HVQFN 外形还提供可润湿侧翼（wettable flanks，在外形图编号后加 `(DD)` 后缀表示）。
+- `LFCSP`：Analog Devices。
+- `MLF`：Micro-leadframe（微型引线框架）。
+- `MLP`：Fairchild Semiconductor。[^fairchild-an-5067-mpl-packages]
+- `QFN-UT`：Samtech 对超薄 QFN 封装的命名。
+- `RSB`：Texas Instruments 对 QFN-40 封装的图纸代码。
+- `RSN`：Texas Instruments 对 QFN-32、8x8 引脚、4.15x4.15x0.80mm 本体、0.40mm 间距封装的图纸代码。[^ti-bq25703a-battery-buck-boost-charger-ds]
+- `RQZ`：Texas Instruments 对 QFN-48、7x7mm、0.50mm 间距封装的图纸代码。
+- `SOT-xxx`：NXP 对其 QFN 封装系列的命名；注意这不包括 SOT-23 等封装，它们不是 QFN 封装。
+- `SOT-762-1`：NXP 对 QFN-14、2.5x3.0mm、0.5mm 间距、带外露焊盘（EP）封装的命名。[^nxp-sot762-1]
+- `T3B`：Microchip 对 VQFN-48、7x7x0.9mm、0.5mm 间距、5.15x5.15mm EP 封装的代码。[^microchip-sam-d21-ds]
+- `TMB`：Microchip 对 VQFN-64、9x9x0.9mm、0.5mm 间距、4.70x4.70mm EP 封装的代码。[^microchip-sam-d21-ds]
+- `UFD`：Linear Technology（现 Analog Devices）对 QFN-28、5x4mm、0.5mm 间距、3.65x2.65mm EP 的代码。[^linear-tech-lt3922-1]
+- `ZLG`：Atmel 对 VQFN-48、7x7x0.9mm、0.5mm 间距、5.15x5.15mm EP 封装的代码。[^microchip-sam-d21-ds]
+- `ZST`：Atmel 对 VQFN-64、9x9x0.9mm、0.5mm 间距、4.70x4.70mm EP 封装的代码。[^microchip-sam-d21-ds]
+
+## 变体
+
+- 以下缩写用于描述封装高度不同的 QFN 封装：
+    - UQFN
+    - VQFN
+- QFN 封装有多种引脚间距（0.40、0.45、0.50、0.65mm）。
+- QFN 封装底部可能有也可能没有中央外露焊盘。
+
+## 尺寸
+
+常见间距：
+
+- 0.40mm
+- 0.45mm
+- 0.50mm
+- 0.65mm
+
+注意，几乎所有 QFN 封装的最大高度都是 1mm（包含离板高度）。有些封装高度更小（例如 UT/超薄 QFN 封装）。
+
+0.40mm 间距 QFN 封装的尺寸（长x宽x高），括号内为焊盘面积（LA）：
+
+- QFN-UT-20: 3x3x0.6mm (LA: 9mm²)
+- QFN-56: 7x7x1mm (LA: 49mm²)
+- QFN-64: 8x8x1mm (LA: 64mm²)
+- QFN-72: 9x9x1mm (LA: 81mm²)
+- QFN-88: 10x10x1mm (LA: 100mm²)
+- QFN-108: 12x12x1mm (LA: 144mm²)
+
+0.50mm 间距 QFN 封装的尺寸（长x宽x高）：
+
+- QFN-16: 3x3x1mm (LA: 9mm²)
+- QFN-20: 3x3x1mm (LA: 9mm²)
+- QFN-24: 4x4x1mm (LA: 16mm²)
+- QFN-32: 5x5x1mm (LA: 25mm²)
+- QFN-36: 6x6x1mm (LA: 36mm²)
+- QFN-48: 7x7x1mm (LA: 49mm²)
+- QFN-56: 8x8x1mm (LA: 64mm²)
+- QFN-64: 9x9x1mm (LA: 81mm²)
+- QFN-68: 10x10x1mm (LA: 100mm²)
+
+0.65mm 间距 QFN 封装的尺寸（长x宽x高）：
+
+- QFN-16: 4x4x1mm (LA: 16mm²)
+- QFN-20: 4x4x1mm (LA: 16mm²)
+- QFN-32: 7x7x1mm (LA: 49mm²)
+
+## 可焊性
+
+只要焊盘延伸到 IC 侧面，并且你在板上钻孔以便从背面焊接中心焊盘，[手工焊接](/pcb-design/soldering/)就出奇地容易。使用[红外返修台](/pcb-design/the-pcb-rework-guide/)或“平底锅”技巧也能轻松焊接 QFN 封装。
+
+## 阻焊层
+
+TI 建议使用非阻焊限定（non-solder mask defined，NSMD）的焊盘，而不是阻焊限定的焊盘（SMD），以获得一致且可靠的焊点。根据经验，阻焊开窗应比焊盘尺寸大 0.1–0.14mm。Altium 默认使用 NSMD 焊盘。
+
+有些 QFN 封装在底部有一个外露金属特征用于指示引脚 1。如果是这种情况，务必在该区域覆盖阻焊层，以防止与相邻走线短路。这是一个不常见的特征，就我个人而言，还没有用过带有该特征的 QFN 封装。
+
+## 中心焊盘与锡膏
+
+建议减少施加到中心焊盘（也称为*机械焊盘*或[*散热焊盘*](/pcb-design/thermal-design-for-pcbs/)）上的锡膏量，以防止 QFN 封装在回流焊过程中漂浮。根据经验，中心焊盘的锡膏覆盖率为 50–80%（显然不适用于没有中心焊盘的 QFN 封装）。
+
+<Image src={import('./_assets/qfn-68-component-package-with-no-solder-paste-aperture-reduction-on-center-pad.png')} width="359px">中心焊盘未做锡膏开窗缩减的 QFN-68 封装（不推荐）。</Image>
+
+<Image src={import('./_assets/qfn-68-component-package-with-solder-paste-aperture-reduction-on-center-pad.png')} width="340px">中心焊盘做了锡膏开窗缩减的 QFN-68 封装（推荐）。</Image>
+
+可能需要对中心焊盘中的[过孔](/pcb-design/pads-vias-holes/)进行阻焊覆盖或塞孔，以防止回流焊时锡膏沿着过孔流走、离开焊盘。小孔径过孔（例如孔径 0.3mm 或更小的过孔）通常不会造成大问题。
+
+<Image src={import('./_assets/qfn-footprint-with-solder-paste.jpg')} width="500px">电路板上已施加锡膏的 0.5mm 间距 QFN 封装照片（使用独立钢网手动印刷，因此对准并非完美，但已足够好）。你可以清楚地看到中心焊盘上的开窗（共 16 个窗口），用于减少锡膏量。</Image>
+
+中心焊盘不一定与任何电路电气连接。
+
+## 分离方式
+
+QFN 封装有两种分离方式（singulation）：
+
+- 冲压分离（punch singulation）：用于单独模塑的 QFN 封装。
+- 锯切分离（saw singulation）：用于*模塑阵列*（moulded array）QFN 封装。
+
+这两种分离方式的主要区别在于横截面轮廓。**冲压分离产生带锥度的横截面**（底部横截面大于顶部），而**锯切分离产生完全方正的横截面**。
+
+<Image src={import('./_assets/qfn-component-package-sawn-vs-punch-vs-col-singulation.png')} width="573px">锯切、冲压以及锯切芯片贴引线（chip-on-lead，CoL）分离 QFN 封装的横截面对比。[^freescale-an1902-qfn]</Image>
+
+冲压分离的 QFN 封装符合 JEDEC 标准。
+
+## 空洞
+
+**回流焊期间被困在焊盘下方的挥发物会在元件下方形成空洞**（即焊盘未与 PCB 焊接的区域）。产生空洞的另一个潜在原因是中心焊盘上施加了过多锡膏，导致封装在回流焊过程中漂浮在 PCB 上。
+
+## 应力
+
+由于 QFN 封装直接贴在 PCB 上，没有离板高度，**它比 QFP 等带引脚的封装更容易受机械应力影响**。必须考虑 PCB 的弯曲程度。过大的应力可能损坏 QFN 封装。
+
+## 引脚样式
+
+<Image src={import('./_assets/qfn-package-e-style-leads-fully-exposed-on-side-of-package.png')} width="205px">采用“e”型引脚的 QFN 封装，引脚在封装侧面完全外露（这是好事）。</Image>
+
+<Image src={import('./_assets/qfn-package-s-style-leads-not-exposed-on-side-of-package.png')} width="207px">采用“S”型引脚的 QFN 封装，引脚在封装侧面仅部分外露（这不好）。</Image>
+
+<Image src={import('./_assets/qfn-package-wf-style-dimpled-leads.png')} width="206px">采用“WF”型引脚的 QFN 封装。引脚上有凹点，可改善焊接效果。</Image>
+
+## 特殊角部引脚
+
+存在这样的 QFN 封装：出于**间距原因**，**角部引脚必须采用与其他引脚不同的形状**。我见过的唯一例子是 [InvenSense MPU-9250 IMU](https://www.invensense.com/products/motion-tracking/9-axis/mpu-9250/) 的封装。它是一个 QFN 封装，24 个引脚，尺寸 3x3x1.0mm，每条边有六个 0.40mm 间距的引脚。由于引脚密度高，每条边最外侧的引脚几乎相互接触，因此采用了不同的引脚形状。这也意味着该封装需要使用不同的焊盘形状。
+
+<Image src={import('./_assets/qfn-24-component-package-with-unique-corner-pads-mpu-9250-dimensions.png')} width="306px">InvenSense MPU-9250 所用 QFN 封装的角部引脚形状独特。</Image>
+
+<Image src={import('./_assets/qfn-24-component-package-with-unique-corner-pads-mpu-9250-land-pattern.png')} width="260px">InvenSense MPU-9250 IMU 的封装，其 QFN 封装采用独特的角部引脚形状（注意它们更小）。</Image>
+
+## 完全非标准的 QFN 封装
+
+除了 QFN 封装可能具有的特殊角部引脚（如上所述）之外，**有些 QFN 封装完全针对特定 IC，根本不遵循“标准”**。一个例子是 [MPM3620，它采用“QFN-20”元件封装](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3620GQV/document_id/2092)，其引脚间距变化、引脚尺寸各异、引脚之间存在桥接，并在封装底部中心附近还有内部引脚。[^mps-mpm3620-non-standard-qfn-20-component-package]
+
+<Image src={import('./_assets/mps-mpm3620-non-standard-qfn-20-component-package.png')} width="500px">MPS MPM3620 降压模块所用非标准 QFN-20 封装的尺寸与推荐焊盘图形（land pattern）。</Image>
+
+`MLP` 是用于“非标准”类 QFN 封装的常见封装名称，示例如下：
+
+<Image src={import('./_assets/powerpak-mlp55-27l-vishay-component-dimensions.png')} width="500px">“PowerPAK” MLP55-27L Vishay 元件封装的尺寸，这是另一个“非标准”且非常独特的类 QFN 封装。</Image>
+
+另一个很好的例子是 STMicroelectronics 的 PWD13F60 高压全桥，它集成了栅极驱动 IC。该器件采用 `VFQFPN 10x13x1.0mm` 封装，其中包含各种形状和尺寸的焊盘，如下图所示：
+
+<Image src={import('./_assets/st-micro-pwd13f60-vfqfpn-3d-render.png')} width="500px">STMicroelectronics PWD13F60 IC 所用 VFQFPN 10x13x1.0mm 封装的三维渲染图。[^st-pwd13f60-ds]</Image>
+
+想看看这个 IC 的推荐封装？见下图！
+
+<Image src={import('./_assets/st-micro-pwd13f60-vfqfpn-recommended-footprint.png')} width="700px">VFQFPN 10x13x1.0mm 封装中 PWD13F60 的推荐封装（焊盘图形）。[^st-pwd13f60-ds]</Image>
+
+## 逻辑功能的引脚标准化
+
+JEDEC 发布了关于逻辑功能 QFN 封装引脚定义的标准。
+
+[JESD75-5 - JEDEC 标准 - 逻辑功能 QFN 引脚定义](/misc/qfn-component-package/JESD75-5-JEDEC-Standard-QFN-Pinouts-For-Logic-Functions.pdf)
+
+## 可润湿侧翼
+
+具有*可润湿侧翼*（wettable flanks）的元件封装采用阶梯切割引线框架，并在封装侧壁镀锡。这样可以更可靠地形成侧面焊锡圆角，有助于自动光学检测（automatic optical inspection，AOI）（QFN 封装原本在封装侧面已有焊盘金属化，但没有阶梯切割，也没有镀层，因此侧面圆角的形成可靠性较低）。[^ti-wettable-flanks]
+
+<div style={{ display: 'flex' }}>
+
+<Image src={import('./_assets/wettable-flank-qfn-component-package-underside-allegro.png')} width="200px">可润湿侧翼 QFN 封装底面的模型。图片 ©2017，Allegro MicroSystems。[^allegro-wettable-flanks]</Image>
+
+<Image src={import('./_assets/wettable-flank-qfn-illustrated-cross-section-allegro.png')} width="200px">QFN 封装可润湿侧翼的剖面示意图。图片 ©2017，Allegro MicroSystems。[^allegro-wettable-flanks]</Image>
+</div>
+
+QFN 封装是厂商最常添加可润湿侧翼的封装之一。可润湿侧翼这一特性主要由汽车行业对 AOI 的需求推动，但现在人们发现它在多个行业中都有普遍用途。
+
+<Image src={import('./_assets/nxp-sot618-13dd-qfn-wettable-flanks-detail-drawing.png')} width="400px">NXP 的 SOT-618(DD)（QFN）元件封装上突出显示可润湿侧翼的局部细节图。图片 ©2018，NXP。[^nxp-sot618-13dd]</Image>
+
+侧翼的镀锡可防止传统上外露的铜（从“砖块”锯切分离出单个 QFN 封装时产生的副产物）氧化。[^allegro-wettable-flanks]
+
+## 热阻
+
+### LFCSP-16
+
+$$
+\begin{align*}
+\theta_{JA} &= 33.2\unit{^\circ C/W} \\
+\theta_{JB} &= 12.4\unit{^\circ C/W} \\
+\theta_{JC} &= 2.4\unit{^\circ C/W} \\
+\end{align*}
+$$
+
+## 相似封装
+
+- [QFP](/pcb-design/component-packages/qfp-component-package/)：与 QFN 相似，但 QFP 具有从本体伸出的鸥翼引脚。在相同引脚数下，QFP 比 QFN 更大。
+- [SON（DFN）](/pcb-design/component-packages/son-component-package/)
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^ti-wettable-flanks]: David Snook（2018 年 1 月 23 日）。_Make automatic optical inspection easy thanks to packages with wettable flanks_ [博客文章]。Texas Instruments。检索于 2021-10-27，来自 https://e2e.ti.com/blogs_/b/behind_the_wheel/posts/make-automatic-optical-inspection-easy-thanks-to-packages-with-wettable-flanks。
+[^allegro-wettable-flanks]: Bradley Smith（2017）。_Wettable Flank Plated PQFN_ [文章]。Allegro MicroSystems。检索于 2021-10-27，来自 https://www.allegromicro.com/en/insights-and-innovations/technical-documents/semiconductor-packaging-publications/wettable-flank-plated-pqfn。
+[^nxp-sot618-13dd]: NXP（2018）。_SOT618-13(DD) HVQFN40, plastic thermal enhanced very thin quad flat package; no leads, wettable flanks; 40 terminals; 0.5 mm pitch, 6 mm x 6 mm x 0.85 mm body_ [封装外形图]。检索于 2021-10-28，来自 https://www.nxp.com/docs/en/package-information/SOT618-13(DD).pdf。
+[^microchip-sam-d21-ds]: Microchip（2021）。_SAM D21/DA1 Family Low-Power, 32-bit Cortex-M0+ MCU with Advanced Analog and PWM_ [数据手册]。检索于 2022-03-02，来自 https://ww1.microchip.com/downloads/en/DeviceDoc/SAM-D21-DA1-Family-Data-Sheet-DS40001882H.pdf。
+[^fairchild-an-5067-mpl-packages]: Fairchild Semiconductor（2005 年 9 月）。_PCB Land Pattern Design and Surface Mount Guidelines for MLP Packages_ [应用笔记（application note）]。检索于 2022-03-09，来自 http://educypedia.karadimov.info/library/AN-5067.pdf。
+[^st-pwd13f60-ds]: STMicroelectronics（2017 年 12 月）。_PWD13F60: High-density power driver - high voltage full bridge with integrated gate driver_ [数据手册]。检索于 2022-04-19，来自 https://www.st.com/resource/en/datasheet/pwd13f60.pdf。
+[^linear-tech-lt3922-1]: Linear Technology（现 Analog Devices）。_LT3922-1 - 36V, 2.3A Synchronous Step-Up LED Driver with 25,000:1 PWM Dimming_ [数据手册]。检索于 2023-08-02，来自 https://nz.mouser.com/datasheet/2/609/lt3922_1-3123537.pdf。
+[^ti-bq25703a-battery-buck-boost-charger-ds]: Texas Instruments（2018 年 5 月）。_bq25703A - I2C Multi-Chemistry Battery Buck-Boost Charge Controller With System Power Monitor and Processor Hot Monitor_ [数据手册]。检索于 2023-08-02，来自 https://www.ti.com/lit/ds/symlink/bq25703a.pdf。
+[^digikey-renesas-isl84467irtz-t-ic-switch]: DigiKey。_ISL84467IRTZ-T - 4 Circuit IC Switch 2:1 400mOhm (Typ) 16-TQFN (3x3)_ [产品页面]。检索于 2023-08-02，来自 https://www.digikey.com/en/products/detail/renesas-electronics-america-inc/ISL84467IRTZ-T/1978117。
+[^nxp-sot762-1]: NXP（2019 年 8 月 2 日）。_SOT762-1 - plastic, dual in-line compatible thermal enhanced very thin quad flat package; no leads; 14 terminals; 0.5 mm pitch; 2.5mm x 3 mm x 0.85 mm body_ [封装外形图]。检索于 2024-04-29，来自 https://www.nxp.com/docs/en/package-information/SOT762-1.pdf。
+[^mps-mpm3620-non-standard-qfn-20-component-package]: Monolithic Power Systems。_MPM3620 - 24V Input, 2A Module Synchronous Step-down Converter with Integrated Inductor_ [数据手册]。检索于 2026-07-06，来自 https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MPM3620GQV/document_id/2092。
+[^freescale-an1902-qfn]: Freescale Semiconductor。_AN1902: Quad Flat Pack No-Lead (QFN)_ [应用笔记]。检索于 2026-07-06，来自 http://cache.freescale.com/files/analog/doc/app_note/AN1902.pdf。

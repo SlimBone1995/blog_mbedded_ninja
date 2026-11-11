@@ -1,0 +1,540 @@
+---
+authors: [gbmhunter]
+date: 2012-05-14
+description: 电阻器是当两端施加电压时限制电流流动的无源电子元件。它们将损耗的能量以热量形式耗散。由于其简单、实用且制造成本低，电阻器通常是任何电路设计中最常用的电子元件。本页涵盖原理图符号、电阻器串联与并联、电阻分压器、容差、E 系列、电阻器制造工艺、功率电阻器、电流检测电阻器、跳线、体积电阻、寄生元件等内容。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-05
+tags: [resistors, components, electronics, schematic symbols, tolerances, E series, packages, thick film, thin film, wirewound, potentiometers, rheostats, variable resistors, Ayrton-Perry winding, resistor optimizer, resistor divider, E96, E24, E12]
+title: 电阻器
+type: page
+sourcePath: electronics/components/resistors/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:9d655508b342b901eab594d2c2412b151c1acefba8f736328f772e60583ee823
+sourceUrl: https://blog.mbedded.ninja/electronics/components/resistors/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+import ESeriesFinder from 'src/components/tools/e-series-finder/ESeriesFinder.jsx';
+
+import OhmsLaw from 'src/components/tools/ohms-law/OhmsLaw.jsx';
+
+import ParallelResistance from 'src/components/tools/parallel-resistance/ParallelResistance.jsx';
+
+import SeriesResistance from 'src/components/tools/series-resistance/SeriesResistance.jsx';
+
+import ResistorDivider from 'src/components/tools/resistor-divider/ResistorDivider.jsx';
+
+_电阻器_ 是**在两端施加电压时限制电流流动**的无源电子元件。它们将损耗的能量以热量形式耗散。由于其简单、实用且制造成本低，电阻器通常是任何电路设计中最常用的电子元件。
+
+**电阻器的机械等效物是摩擦力。** 电阻越大，摩擦力越大。这里使用的是[力-电压](http://lpsa.swarthmore.edu/Analogs/ElectricalMechanicalAnalogs.html)类比。
+
+<Image src={import('./_assets/ti-it-looks-like-weve-encountered-some-resistance.png')} width="600px">人总该欣赏一下好双关。Texas Instruments 2020 年 10 月的 404 页面。</Image>
+
+电阻器的用途非常多，包括：
+
+- **电阻分压器**：产生一个为输入电压固定百分比的输出电压。
+- **电压/电流偏置**：例如晶体管放大器
+- **限流**：用固定电压轨为 [LED](/electronics/components/diodes/light-emitting-diodes-leds/) 供电。
+- **运算放大器（op-amp）增益/反馈配置**：电阻器（偶尔还有电容）用于设置运算放大器的增益/反馈。
+- **阻抗匹配**
+- **电流测量**：电阻器将电流转换为电压，便于运算放大器/ADC 等测量。
+- **通用输入输出（GPIO）/通信总线上拉/下拉**：将网络驱动到无源状态，例如使栅极保持连接到源极，从而在未被驱动导通时始终关断。也用于将通信总线线路驱动到无源状态，尤其是使用仲裁的总线（例如 [I2C](/electronics/communication-protocols/i2c-communication-protocol/)、CAN 总线）。
+
+## 子页面
+
+<ChildPages />
+
+## 原理图符号
+
+下面展示了最常用的电阻器原理图符号。相比欧式符号，我更喜欢美式电阻符号，纯粹是因为已经有很多“方框状”原理图符号用于其他元件（例如保险丝、IC），波浪线能让电阻器更容易区分（鉴于我对美国英制单位的不满，我从没想过自己会这么说！）。本网站其余部分均使用美式符号。
+
+<Image src={import('./_assets/schematic-symbols-amer-euro-resistors.png')} width="500px">电阻器的 \"美式\" 和 \"欧式\" 原理图符号。我更喜欢美式，因为它最容易与其他方框状符号区分。</Image>
+
+有关电阻器相关的更多原理图符号，参见[电位器和变阻器页面](/electronics/components/potentiometers-and-rheostats/)。
+
+## 欧姆定律
+
+电压、电流和电阻之间的基本关系由欧姆定律给出：
+
+$$
+\begin{align*}
+V = IR
+\end{align*}
+$$
+
+<p className="centered">其中：<br/>
+$V$ 是电阻器两端的电压，单位 $\mathrm{V}$<br/>
+$I$ 是流过电阻器的电流，单位 $\mathrm{A}$<br/>
+$R$ 是电阻器的电阻，单位 $\mathrm{\Omega}$<br/></p>
+
+### 欧姆定律计算器
+
+使用下面的计算器，在已知电压、电流或电阻中任意两个量的情况下求解 $V = IR$ 中的第三个量。输入支持公制前缀（例如 `12`、`1m`、`4k7`）。
+
+<OhmsLaw client:load />
+
+## 电阻器的串联和并联
+
+电阻器串联和并联时的行为与[电感器](/electronics/components/inductors/)完全相同，与[电容器](/electronics/components/capacitors/)的行为恰好相反。
+
+### 电阻器并联
+
+两个电阻器并联时，等效总电阻遵循倒数定律：
+
+$$
+\begin{align*}
+R_{total} = \frac{1}{\frac{1}{R1} + \frac{1}{R2}}
+\end{align*}
+$$
+
+通常更容易记住以下形式：
+
+$$
+\begin{align*}
+\frac{1}{R_{total}} = \frac{1}{R1} + \frac{1}{R2}
+\end{align*}
+$$
+
+可推广到 $n$ 个电阻器并联：
+
+$$
+\begin{align*}
+\frac{1}{R_{total}} = \sum_{i=1}^{n} \frac{1}{R_i}
+\end{align*}
+$$
+
+<Aside type="tip">
+另一种理解方式是：并联总电阻等于各电阻的[调和平均数](/mathematics/statistics/the-three-classical-pythagorean-means/) $H$ 除以电阻器数量 $n$：
+
+$$
+\begin{align*}
+H = \frac{n}{\sum_{i=1}^{n} \frac{1}{R_i}}, \quad R_{total} = \frac{H}{n}
+\end{align*}
+$$
+</Aside>
+
+下图展示了这一关系。
+
+<Image src={import('./_assets/resistors-in-parallel-equivalence-with-equation.webp')} width="700px">两个并联电阻器可用图中方程等效为一个电阻器。</Image>
+
+只要你**只有两个并联电阻器**，就可以记住这个简便公式：
+
+$$
+\begin{align*}
+R_{total} &= \frac{R1R2}{R1 + R2}
+\end{align*}
+$$
+
+使用下面的计算器求两个或多个并联电阻器的总电阻。每个输入支持公制前缀（例如 <code>10k</code>、<code>2M2</code>、<code>470R</code>）。
+
+<ParallelResistance client:load />
+
+### 电阻器串联
+
+两个电阻器串联时，等效总电阻等于各电阻之和。
+
+$$
+\begin{align*}
+R_{total} = R1 + R2
+\end{align*}
+$$
+
+如下图所示。
+
+<Image src={import('./_assets/resistors-in-series-equivalence-with-equation.webp')} width="700px">两个串联电阻器等效于一个电阻器，其阻值由图中方程给出。</Image>
+
+可简单推广到 $n$ 个电阻器串联：
+
+$$
+\begin{align*}
+R_{total} = \sum_{i=1}^{n} R_i
+\end{align*}
+$$
+
+使用下面的计算器求两个或多个串联电阻器的总电阻。每个输入支持公制前缀（例如 <code>10k</code>、<code>2M2</code>、<code>470R</code>）。
+
+<SeriesResistance client:load />
+
+### 网络分析
+
+有时你必须仔细分析电路连接，才能确定电阻器是串联还是并联。例如，下图中 $A$ 点和 $B$ 点之间的等效电阻是多少？
+
+<Image src={import('./_assets/3-resistors-in-a-confusing-parallel-arrangement.webp')} width="800px">图中 $A$ 点和 $B$ 点之间的等效电阻是多少？</Image>
+
+答案是 $\frac{R}{3}$，因为所有电阻器都是并联的（使用上面的并联电阻公式）。乍看之下可能不明显，但下图已高亮出两个节点。之后应该就很清楚所有电阻器都是并联的。虽然在实际项目/设计中你绝不应该这样画原理图（目标应是尽可能清晰地绘制），但这是养成分析电路节点习惯的有用练习（这种绕来绕去的串/并联排列问题深受大学考试出题者喜爱）。
+
+<Image src={import('./_assets/3-resistors-in-a-confusing-parallel-arrangement-nodes-highlighted.webp')} width="800px">与上图相同的电路，但用不同颜色高亮了两个节点。现在应该能看清楚所有电阻器都是并联的。</Image>
+
+有些更复杂的电阻网络无法仅通过系统地应用串并联组合来求解。更多信息参见[三角形-星形电阻网络页面](/electronics/components/resistors/delta-wye-resistor-networks/)。
+
+<Image src={import('./delta-wye-resistor-networks/_assets/delta-wye-pi-t-networks.png')} width="500px">讲解[三角形-星形电阻网络页面](/electronics/components/resistors/delta-wye-resistor-networks/)中所示电路的截图。</Image>
+
+[基尔霍夫电路定律](/electronics/circuit-design/kirchhoffs-circuit-laws/)（KVL 和 KCL）是分析电阻网络时的另一个有用工具。
+
+## 电阻分压器
+
+**电阻分压器是串联配置的两个或多个电阻器**，使得串联链中某个节点处的电压是施加在链两端的总电压的固定比例。这样，它们将输入电压（施加在整个链上）**分压**为较小的输出电压（仅测量链的一部分）。
+
+最简单的分压器仅由两个串联电阻器组成，如下所示。
+
+<Image src={import('./_assets/resistor-divider-schematic.webp')} width="350px">简单电阻分压器的基本原理图。你会在电路中到处看到它们！</Image>
+
+$V_{OUT}$ 的方程为：
+
+$$
+\begin{align*}
+V_{OUT} &= \frac{R2}{R1\ +\ R2} V_{IN} \\
+\end{align*}
+$$
+
+输入电压根据相对阻值按比例“分配”到各电阻器上。某个电阻器的阻值越大，其上的压降就越大。对电路应用欧姆定律即可轻松得到上述方程。
+
+<Aside type="tip">
+上述方程**仅在**输入电压源阻抗足够低（例如线性稳压器（linear regulator）、SMPS 的输出），且输出连接到阻抗相对较高的对象（ADC 输入、运算放大器输入等）时**成立**。
+</Aside>
+
+在电路设计中，你有时会知道上述方程中的三个量，而需要求解另一个量。因此，为方便起见，下面给出了针对每个变量重排后的形式（其中 $V_{IN}$ 和 $R1$ 可稍作简化）：
+
+$$
+\begin{align*}
+V_{IN} &= \frac{R1 + R2}{R2} V_{OUT} \\
+       &= \left( \frac{R1}{R2} + 1 \right) V_{OUT} \\
+R1 &= \frac{V_{IN} - V_{OUT}}{V_{OUT}} R2 \\
+   &= \left( \frac{V_{IN}}{V_{OUT}} - 1 \right) R2 \\
+R2 &= \frac{V_{OUT}}{V_{IN} - V_{OUT}} R1 \\
+\end{align*}
+$$
+
+使用下面的计算器，在已知其他三个参数的情况下求解电阻分压器的任一参数。用该行上的单选按钮选择要计算的参数；其余行变为输入。电压和电阻输入均支持公制前缀（例如 <code>5V</code>、<code>3.3</code>、<code>10k</code>、<code>2M2</code>）。
+
+<ResistorDivider client:load />
+
+### 戴维南等效电路
+
+电阻分压器的戴维南等效电路如下所示。这是从 $V_{OUT}$ 看入电阻分压器所得到的等效电路。
+
+<Image src={import('./_assets/resistor-divider-thevenin-equivalent-diagram.webp')} width="800px">电阻分压器的戴维南等效电路。</Image>
+
+其中戴维南电压 $V_{TH}$ 等于开路输出电压：
+
+$$
+\begin{align*}
+V_{TH} &= \frac{R2}{R1 + R2} V_{IN} \\
+\end{align*}
+$$
+
+戴维南电阻 $R_{TH}$ 等于开路输出电压除以短路电流：
+
+$$
+\begin{align*}
+R_{TH} &= R1 || R2 \\
+       &= \frac{R1 \cdot R2}{R1 + R2} \\
+\end{align*}
+$$
+
+戴维南电阻有时称为输出电阻或阻抗 $\mathbf{Z_O}$。戴维南等效电路可用于计算连接到输出的电容充电到某一电平需要多长时间。它让你可以得到一个单一电阻值，然后代入时间常数方程 $\tau = RC$。更多信息参见 [RC 充电电路页面](/electronics/circuit-design/rc-charging-circuits/)。它也可用于分析频率响应，更多信息参见[模拟滤波器页面](/electronics/circuit-design/analogue-filters/)。
+
+<Aside type="example">
+
+计算下图中电容充电到最终电压 90% 所需的时间。
+
+<Image src={import('./_assets/resistor-divider-charging-a-capacitor-example-1.webp')} width="400px">电容通过电阻分压器充电的原理图。充电需要多长时间？</Image>
+
+将电路转换为其戴维南等效电路。
+
+$$
+\begin{align*}
+V_{TH} &= \frac{R2}{R1 + R2} V_{IN} \\
+       &= \frac{10\unit{k\Omega}}{22\unit{k\Omega} + 10\unit{k\Omega}} \cdot 5.0\unit{V} \\
+       &= 1.56\unit{V} \\
+\end{align*}
+$$
+
+$$
+\begin{align*}
+R_{TH} &= R1 || R2 \\
+       &= \frac{R1 \cdot R2}{R1 + R2} \\
+       &= \frac{22\unit{k\Omega} \cdot 10\unit{k\Omega}}{22\unit{k\Omega} + 10\unit{k\Omega}} \\
+       &= 6.88\unit{k\Omega} \\
+\end{align*}
+$$
+
+现在得到如下图所示的等效电路。
+
+<Image src={import('./_assets/resistor-divider-charging-a-capacitor-example-2.webp')} width="400px">戴维南等效电路。</Image>
+
+现在计算时间常数，并使用 RC 充电电路的公式[^mbedded-ninja-rc-charging-circuits]：
+
+$$
+\begin{align*}
+V_C &= V_S (1 - e^{\frac{-t}{RC}}) \\
+\frac{V_C}{V_S} &= (1 - e^{\frac{-t}{RC}}) \\
+0.9 &= (1 - e^{\frac{-t}{RC}}) \\
+e^{\frac{-t}{RC}} &= 0.1 \\
+\frac{-t}{RC} &= \ln(0.1) \\
+t &= -RC \cdot \ln(0.1) \\
+  &= -6.88\unit{k\Omega} \cdot 10\unit{nF} \cdot \ln(0.10) \\
+  &= 158\unit{\mu s}
+\end{align*}
+$$
+
+</Aside>
+
+注意，与其他“标准”电压源相比，电阻分压器的输出阻抗通常相当高。因此，**通常不能用电阻分压器降压并为器件供电**。这是学习电子学的人常犯的错误；实际上你应该使用[线性稳压器](/electronics/components/power-regulators/linear-regulators/)、[SMPS](/electronics/components/power-regulators/switch-mode-power-supplies-smps/) 或变压器。电压分压器通常只应用于为高阻抗输入提供电压（例如运算放大器输入、比较器输入、微控制器 ADC 输入，或通信信号的电压电平转换）。
+
+上述规则的例外情况是满足以下条件：
+
+- 器件汲取的电流足够小，使 $R1$ 上额外电流引起的电压跌落可以接受。
+- 负载变化时的电压波动可以接受（即这不是有源调节……没有反馈）。
+- 流过 $R1$ 的电流不会导致其过热。
+
+### 应用
+
+电阻分压器在电路设计中无处不在！它们常用于：
+
+- 将较高电压（例如 0-12V 电压轨）按比例降低到 [ADC](/electronics/components/analogue-to-digital-converters-adcs/) 可测量的范围（例如 0-2.5V）。
+- 为[晶体管](/electronics/components/transistors/)提供偏置。
+- 为[运算放大器](/electronics/components/op-amps/)的输入提供正确电压。
+
+我见过的一个有趣例子是：低功耗微控制器通过电阻分压器、二极管和电容直接从市电（240VAC）供电。该微控制器仅消耗几 $\mathrm{\mu A}$，因此满足上述将电阻分压器用作电源的条件。
+
+### 在线计算器
+
+[NinjaCalc](https://ninjacalc.mbedded.ninja/) 有一个计算器，可计算电阻分压器的电压、电阻和电流。
+
+<Image src={import('./_assets/screenshot-of-ninjacalc-resistor-divider-calculator.png')} width="604px">NinjaCalc“Resistor Divider”计算器的截图，正在用于求上电阻。</Image>
+
+## 容差
+
+电阻器的容差定义其实际阻值与标称值的接近程度，通常以百分比表示。5% 和 1% 电阻器最常见。通常容差越小，电阻器成本越高，因为需要更高的制造精度。
+
+对于大多数电阻器用途，5% 电阻器通常就足够了，例如：
+
+- 限流
+- ESD 保护
+- 上拉/下拉
+- 端接电阻
+
+以下场合通常需要 1% 或更高精度：
+
+- ADC 输入的电阻分压器
+- 运算放大器增益电阻
+- 电流测量电阻（这里可能需要 0.1% 精度，而且价格开始有点贵了！）
+
+随着 SMD 电阻器的出现，1% 与 5% 电阻器之间的价格差异小到可以忽略，以至于**在大多数场合，你可以对电路设计中的所有电阻都使用 1% 容差电阻器**。
+
+## 可以将电阻器串联或并联以获得更好的容差吗？
+
+**简短回答：不能。** 两个 $1\unit{k\Omega}$、1% 的电阻器串联，等效于一个 $2\unit{k\Omega}$、1% 的电阻器。
+
+**详细回答：** 将两个电阻器串联或并联绝不会使容差变差。但是，根据原始电阻器的分布，你可能会得到更好的数值分布。如果假设（这可能是个糟糕的假设）电阻值服从高斯分布，那么合成后的分布是更好的高斯分布（更窄、偏差更小）。如果原始电阻器呈均匀分布，合成后的分布则呈三角形。
+
+然而，电阻值的分布可能有多种形状。例如，制造商可能生产大量 5% 的 $1\unit{k\Omega}$ 电阻器，然后进行测量。如果阻值落在 $1\unit{k\Omega}$ 的 1% 范围内，就将它们归为 1% 电阻器。这会使 5% 电阻器这一档呈现双峰，并在分布正中间形成谷底。
+
+此外，同一制造批次中电阻器之间的相关性可能意味着你无法获得任何标准差改善。
+
+## 手动微调电阻
+
+对于非重复性的高精度阻值，你实际上可以用金属锉磨掉一部分电阻材料来微调电阻值。这仅适用于金属膜电阻器。参见[这个视频](https://www.youtube.com/watch?v=OQDjjIvLaj4) 作为示例。
+
+## E 系列
+
+几乎所有电阻器都遵循 _E 系列_，这是由 IEC 60063 标准化的**预定义阻值刻度**。这类数列称为[优先数](https://en.wikipedia.org/wiki/Preferred_number)。常见的 E 系列有 E12、E24、E48、E96 和 E192 系列。该系列将 1 到 10 之间的数值划分为 12、24、48 等步进。这些步进的选取使所需任意阻值与系列中最接近阻值之间的最大相对误差固定（即恒定）。
+
+简单来说，这意味着每个系列都能保证你找到一个电阻器，其阻值与所需阻值的误差在**固定的最大百分比误差**之内。
+
+<Aside type="tip">
+容易混淆的是，每个系列的实际误差可能比下表列出的略高。这是由于最后的舍入过程（例如 E96 电阻器四舍五入到三位有效数字）。
+</Aside>
+
+| 系列 | 最大百分比误差
+|--------|--------------------------
+| E6     | 20%
+| E12    | 10%
+| E24    | 5%
+| E48    | 2%
+| E96    | 1%
+| E192   | 0.5%
+
+E192 系列也用于 0.25% 和 0.1% 误差的电阻器。
+
+下面是最常见 E 系列（E6、E12 和 E24）的实际数值。它们以 [C 编程语言](/programming/languages/c/) 中的初始化数组形式给出，便于你复制到代码中使用（其他编程语言可能需要进行一些修改）。
+
+```text
+E6[6] = {10, 15, 22, 33, 47, 68};
+
+E12[12] = {10, 12, 15, 18, 22, 27, 33, 39, 47, 56, 68, 82};
+
+E24[24] = {10, 11, 12, 13, 15, 16, 18, 20, 22, 24, 27, 30,
+           33, 36, 39, 43, 47, 51, 56, 62, 68, 75, 82, 91};
+```
+
+注意，E6、E12 和 E24 的数值有两位有效数字，而 E48、E96 和 E192 的数值有三位有效数字。这两组各三个系列彼此具有特殊关系：E6 是 E12 系列中每隔一个取一个值，E12 是 E24 系列中每隔一个取一个值。类似地，E48 是 E96 系列中每隔一个取一个值，E96 是 E192 系列中每隔一个取一个值。
+
+这些数值来自指数数列，使用以下方程：
+
+$$
+\begin{align*}
+v(i, n) = 10^{i/n}
+\end{align*}
+$$
+
+<p className="centered">其中：<br/>
+$i$ = 系列中的第 i 个元素，范围从 $0$ 到 $n - 1$<br/>
+$n$ = 系列中元素的总数<br/></p>
+
+然后将结果舍入到该系列相应的有效数字位数。
+
+对于任何 E 系列范围，该模式应用于每个数量级的电阻，例如 $1-10\unit{\Omega}$、$10-100\unit{\Omega}$、$100\unit{\Omega}-1\unit{k\Omega}$ 等。标准电阻器系列大约从 $1\unit{\Omega}$ 开始，一直到 $10-20\unit{M\Omega}$。超出此范围的阻值通常需要寻找专用产品（例如精密电流测量电阻器），并为此多付一些费用。
+
+<Image src={import('./_assets/yageo-rc-series-thick-film-general-purpose-resistors-summary-table.png')} width="900px">Yageo RC 系列通用厚膜电阻器可提供的阻值范围表。[^bib-yageo-rc-family-product-page]</Image>
+
+### E 系列阻值查找器
+
+使用下面的交互式查找器，针对给定的目标阻值，查询每个 E 系列中最接近的优先值（以及最接近的等于或更低/等于或更高值）。
+
+<ESeriesFinder client:load />
+
+有关这些系列的更多信息，参见 [Wikipedia - Preferred Number](https://en.wikipedia.org/wiki/Preferred_number)。
+
+## 电阻器制造工艺
+
+### 绕线
+
+绕线电阻器是最古老的电阻器类型，通过将一段导线绕制成线圈来获得所需阻值。在现代，它们通常仅用于大功率应用以及保险丝等场合，额定功率可达数百瓦。
+
+<Image src={import('./_assets/wire-wound-resistor-diagram-bourns.png')} width="300px">典型绕线电阻器的剖视图。图片由 Bourns 提供，检索于 2021-08-14，来自 https://www.bourns.com/products/resistors/wirewound-resistors。</Image>
+
+由于它们通常是导线线圈，因此可能具有显著的寄生电感，并可能发出磁场或易受磁场影响。
+
+<Image src={import('./_assets/tt-electronics-w22-2kji-2kr-wirewound-resistor.png')} width="500px">TT Electronics W22-2KJI 2kΩ 7W 绕线电阻器的特写照片。[^bib-tt-electronics-w20-series-ds]</Image>
+
+### 金属膜
+
+金属膜电阻器是当今市场上最流行的电阻器。由于成本更低、噪声更低且尺寸更小，它们在大多数应用中已取代碳膜电阻器。金属膜电阻器可分为两个子类：厚金属膜和薄金属膜。
+
+#### 厚金属膜
+
+厚膜是最常见的金属膜电阻器类型。大多数 1% 和 5% 的 SMD 片式封装电阻器（0402、0603 等）采用厚膜技术。
+
+#### 薄金属膜
+
+大多数 0.1% 的 SMD 片式封装电阻器（0402、0603 等）采用薄膜技术。薄膜电阻器可分为两个子类：商用薄膜和精密薄膜。
+
+### 金属箔
+
+金属箔电阻器技术比厚膜和薄膜电阻器更罕见，它可以制造出最精确的电阻器。
+
+### 碳膜
+
+碳膜电阻器通过在陶瓷基板上形成导电碳膜制成。在大多数应用中，碳膜电阻器已被金属膜电阻器取代。
+
+## 功率电阻器
+
+功率电阻器是指通常额定耗散 1W 或更多功率（不带散热器）的电阻器。
+
+<Image src={import('./_assets/bunch-of-ceramic-power-resistors.jpg')} width="600px">一组额定功耗为 5 至 25W 的陶瓷功率电阻器。</Image>
+
+功率电阻器可用于有意加热物体。下图展示了一个常见的 5W 电阻器用于加热一小容器油，并使用热水储水罐上的铜质恒温器控制温度。
+
+<Image src={import('./_assets/using-a-power-resistor-to-heat-oil.jpg')} width="800px">功率电阻器可用于加热。照片展示一个 5W 电阻器加热一小容器油，并用热水储水罐的恒温器控制温度。</Image>
+
+## 电流检测电阻器
+
+电流检测电阻器是对低阻值、高精度（1% 或更好）且高功率电阻器的一种称谓，适合用于电流检测电路。有时这些电阻器并没有什么特别之处（纯粹是营销术语），有时它们可能有两个额外端子用于_开尔文检测_。四端子电阻器也称为_电流表分流器_。其中两个端子用于通过大电流，另外两个用于测量电阻器上的压降。这消除了因连接到电阻器的导线压降而引起的测量误差（当检测线与大电流路径为同一路径时）。
+
+<Image src={import('./_assets/current-sensing-resistor-large-four-lead.jpg')} width="500px">一个大型四引线电流检测电阻器。</Image>
+
+有关如何构建电流检测电路的更多信息和原理图，参见[电流检测页面](/electronics/circuit-design/current-sensing/)。
+
+## 高压电阻器
+
+高压电阻器是额定电压很高（通常 1000 V 或更高）的电阻器。它们用于高压应用，例如电源。高压电阻器通常还具有非常大的阻值（否则电流和功耗会过高！），常常高达 1TΩ（1 太欧）。[^nicrom-homepage]
+
+<Image src={import('./_assets/ohmcraft-hvrw42k1009j4-1414-resistor-photo.webp')} width="900px">Ohmcraft（Exxelia）HVRW42K1009J4-1414 高压径向（又称平面[^nicrom-homepage]）电阻器（大块蓝色矩形）的照片，位于 Fluke 5322A“Electrical Safety Tester Calibrator”（测试设备）内的 PCB 上。该电阻器为 100 GΩ，可承受 2 kV。[^ohmcraft-hvr-series-high-voltage-leaded-resistor-series-datasheet]</Image>
+
+## 跳线
+
+大多数电阻器系列还包括 0Ω **跳线**电阻器。跳线电阻器非常适合在 PCB 设计中跨接走线，同时也为在不同 PCB 变体中连接/断开某些走线提供了一种方便且廉价的方式。
+
+注意，这些跳线电阻器有时能承受的电流远低于你的预期！例如，大多数 0603/0805 尺寸的 SMD 跳线电阻器仅额定 1-2A，尽管在该电流下 $I^2 R$ 功耗远低于连续最大值（0.1-0.5W）。不过，有些可以承受可观的电流，例如 [Susumu YJP1608-R001 0603 跳线电阻器](http://www.digikey.com/product-detail/en/YJP1608-R001/408-1515-1-ND/2815069)，可连续承受 10A。
+
+跳线电阻器不像大多数其他电阻器那样标称百分比容差，因为那没有意义（0Ω 的 5% 是多少？）。相反，它们标为 0Ω，并在数据手册中给出最大电阻，通常为 1-50mΩ 量级。
+
+## 体积电阻（体电阻）
+
+体积电阻（也称为电阻率、电阻系数或体电阻）的 SI 单位是 $\mathrm{\Omega m}$。它衡量特定材料导电能力的强弱，是该材料的固有属性（不取决于材料多少或形状）。如果在 $1 \times 1 \times 1\unit{m}$ 材料立方体相对两面上的两个导电板之间测得电阻为 $1\unit{\Omega}$，则该材料的体积电阻率为 $1\unit{\Omega m}$。
+
+## 寄生元件
+
+对于大多数日常应用，电阻器可以仅视为具有电阻。然而在高频电路中，还必须考虑电阻器的其他寄生元件。通常，主要寄生效应建模为额外的电感和电容，但没有标准的连接方式（取决于你阅读的文献）。下面展示了一种流行的配置。
+
+<Image src={import('./_assets/parasitic-model-of-resistor-series-rl-parallel-c.svg')} width="600px">电阻器的寄生模型，将电阻建模为与电感并联，再与电容串联。</Image>
+
+下图展示了另一种流行模型，它将电阻建模为与端帽电容并联，再与引线电感串联。[^bib-edn-resistors-arent-resistors]
+
+<Image src={import('./_assets/parasitic-model-of-resistor-parallel-rc-series-l.svg')} width="600px">电阻器的寄生模型，将电阻建模为与端帽电容并联，再与引线电感串联。</Image>
+
+下表列出了电阻器类型及其寄生电感范围[^bib-eepower-res-ind]：
+
+| 电阻器类型 | 电容   | 电感
+|---------------|---------------|---------------
+| 绕线     |               | 0.03-56uH
+| 金属氧化物   |               | 3-200nH
+| 金属箔    | 0.05pF        | &lt;80nH
+| 金属膜    |               | &lt;2nH
+
+螺旋绕线电阻器具有特别大的寄生电感，因为它们绕成线圈。它们也特别容易受到磁拾取的影响（附近磁场会在电路中感应出电噪声）。还有特殊的_无感_绕线电阻器，其导线来回绕制而非绕成线圈，从而大幅降低电感（它们使用_艾尔顿-佩里绕法_）。
+
+## 电阻器噪声
+
+电阻器会向电路中引入_热（约翰逊-奈奎斯特）噪声_。更多信息参见[电噪声页面](/electronics/circuit-design/electrical-noise/)。
+
+## 封装
+
+电阻器有多种封装，从线圈状和块状的大型绕线功率电阻器，到较小的通孔电阻器，再到更小的 SMD 电阻器。有关电阻器封装的更多信息，参见[元件封装数据库](/pcb-design/component-packages/)页面。
+
+通孔电阻器使用较旧的色码方案（截至 2013 年的现行国际标准是 IEC 60062）。较新的表面贴装（surface-mount）电阻器通常直接将阻值印在元件上（最常见的是三位数字，第三位为乘数）。
+
+<Image src={import('./_assets/500-0603-smd-resistors-on-tape.jpg')} width="530px">SMD 电阻器通常像图中这样装在编带（可能绕在卷盘上）中，一卷包含 500 个 0603 SMD 电阻器。</Image>
+
+从编带中取出后，它们看起来没什么特别的！
+
+<Image src={import('./_assets/500-0603-smd-resistors-next-to-a-pin.jpg')} width="517px">500 个 0603 SMD 电阻器堆在一根大头针旁。这是为了说明它们有多小！（而且还能更小）。</Image>
+
+下图中，我试着用大约 30,000 个卷盘 0603 电阻器分装到容器中用于原型设计后剩下的边角料搞点艺术感。
+
+<Image src={import('./_assets/reel-0603-resistor-leftovers-best.jpg')} width="900px">这是我试着用大约 30,000 个卷盘 0603 电阻器分装到容器中用于原型设计后剩下的边角料搞点创意。</Image>
+
+## 电阻器优化工具
+
+Janne Ahonen 有一个很棒的免费工具，名为 _Resistor Optimizer_（[在此下载](http://jahonen.kapsi.fi/Electronics/ResOptimizer/)），可为电阻分压器寻找最优值，并为串/并联电阻组合寻找最优值以达到所需总电阻。它运行在 Windows 上（Win32 应用）。[^bib-jahonen-kapsi-resistor-optimizer]
+
+<Image src={import('./_assets/resistor-optimizer-janne-ahonen-screenshot.png')} width="700px">Resistor Optimizer 工具的截图。[^bib-jahonen-kapsi-resistor-optimizer]</Image>
+
+## 延伸阅读
+
+有关在电路保护应用中用作“保险丝”的正温度系数电阻器的信息，参见 [PTC 自恢复保险丝页面](/electronics/components/ptc-resettable-fuses/)。
+
+有关机械可变电阻器的信息，参见[电位器和变阻器页面](/electronics/components/potentiometers-and-rheostats/)。
+
+有关数字控制可变电阻器的信息，参见[数字电位器（DPOT）页面](/electronics/components/digital-potentiometers-dpots/)。
+
+[三角形-星形电阻网络页面](/electronics/components/resistors/delta-wye-resistor-networks/)展示了如何将三角形电阻网络转换为星形网络，反之亦然。这些网络无法仅通过简单的串并联组合分析求解。
+
+有关如何分析电路中电阻器上的压降的信息，参见[基尔霍夫电路定律页面](/electronics/circuit-design/kirchhoffs-circuit-laws/)。
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^bib-eepower-res-ind]: EE Power。_Resistor Inductance_。检索于 2021-08-13，来自 https://eepower.com/resistor-guide/resistor-fundamentals/resistor-inductance/。
+[^bib-edn-resistors-arent-resistors]: Kenneth Wyatt（2013 年 10 月 29 日）。_Resistors aren’t resistors_ [文章]。EDN。检索于 2021-08-15，来自 https://www.edn.com/resistors-arent-resistors/。
+[^bib-tt-electronics-w20-series-ds]: TT Electronics（2020 年 6 月）。_Vitreous Enamelled Wirewound Resistors: W20 Series_ [数据手册]。检索于 2022-04-21，来自 https://www.mouser.com/datasheet/2/414/TTRB_S_A0010754439_1-2565592.pdf。
+[^bib-jahonen-kapsi-resistor-optimizer]: Janne Ahonen（2018 年 6 月 17 日）。_Resistor optimizer_ [产品页面]。检索于 2022-08-26，来自 http://jahonen.kapsi.fi/Electronics/ResOptimizer/。
+[^bib-yageo-rc-family-product-page]: Yageo。_Thick Film General Purpose_ [产品页面]。检索于 2022-10-05，来自 https://www.yageo.com/en/Product/Index/rchip/thick_film_general_purpose。
+[^mbedded-ninja-rc-charging-circuits]: Geoffrey Hunter（2024 年 2 月 16 日）。_RC Charging Circuits_。mbedded.ninja。检索于 2024-02-16，来自 https://blog.mbedded.ninja/electronics/circuit-design/rc-charging-circuits/。
+[^ohmcraft-hvr-series-high-voltage-leaded-resistor-series-datasheet]: Ohmcraft。_HVR Series - High Voltage Leaded Resistors_ [数据手册]。检索于 2025-10-08，来自 https://ohmcraft.com/wp-content/uploads/2022/02/HVR-datasheet.pdf。
+[^nicrom-homepage]: Nicrom。_Homepage_。检索于 2025-10-09，来自 https://www.high-voltage-resistors.com/。

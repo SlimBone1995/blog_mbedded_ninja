@@ -1,0 +1,273 @@
+---
+authors: [gbmhunter]
+date: 2011-09-03
+lastUpdated: 2026-06-09
+tags: [electronics, communication protocols, SPI, bit-banging, MOSI, MISO, peripherals, microcontrollers, MCP4131, Arduino, controller, peripheral, master, slave, OSHWA, execute-in-place, XIP, WS2812, RGB, low power, octo-spi, hexadeca-spi]
+title: SPI 通信协议
+type: page
+sourcePath: electronics/communication-protocols/spi-communication-protocol/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:58f4aa888d3cb76c82962347423497bc8ef31388f0fe24a7c7e89ec47a4f5c96
+sourceUrl: https://blog.mbedded.ninja/electronics/communication-protocols/spi-communication-protocol/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+SPI（*Serial Peripheral Interface*，串行外设接口）是一种**常用于电路板上微控制器/FPGA 与外设 IC 之间通信的通信协议**。SPI 协议最初由 Motorola 开发。它是**全双工**的（可同时双向发送数据），非常适合在同一 PCB 上的器件之间发送中速数据流（典型速率最高 10-24Mbps[^totalphase-single-dual-quad-spi]）。它是一种**事实标准**，这意味着没有管理机构来定义和规范该协议。因此，协议存在相当多的变体。
+
+<Image src={import('./_assets/spi-basic-master-slave-diagram.webp')} width="600px">SPI 主设备与单个 SPI 从设备之间所需的基本连接。</Image>
+
+## 优点
+
+- 与其他板级通信协议（如 I2C 或 1-wire）相比，SPI 的吞吐量高得多，主要因为总线线路被主动驱动为高电平和低电平，并且发送和接收各有独立导线（全双工）。但不如 LVDS 等协议快。
+- SPI 可支持任意数据/帧长度。
+- 大多数逻辑分析仪支持 SPI 解码。
+
+## 缺点
+
+- 按标准方式配置时，SPI 总线上每增加一个从设备，主设备就需要多一根控制线（用于从设备选择信号）。对于 SPI 器件数量较多的设计，这会占用更多空间和 I/O 引脚。
+
+## 物理层
+
+SPI 以三根线（SCLK、MOSI 和 MISO）为基础，另外每个从设备各有一根片选（nCS）线。在只有一个从设备的特殊情况下，可以省去片选线，并将从设备上的该引脚永久拉低。
+
+这些连接的作用如下：
+
+<table>
+  <thead>
+    <tr><th style={{ width: '100px' }}>名称</th>   <th>功能</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>nCS</td>    <td><i>片选</i>，又称<i>从设备选择</i>（nSS）。主设备将其驱动为低电平（因此名称中有 `n`）以选中某个从设备。主设备到每个从设备各有一根独立的片选线。</td></tr>
+    <tr><td>SCLK</td>   <td><i>时钟</i>。由主设备驱动，为从设备提供时钟信号，用于同步数据的移入和移出。具体使用哪种极性和边沿取决于 CPOL 和 CPHA 的取值。</td></tr>
+    <tr><td>MOSI</td>   <td><i>主设备输出、从设备输入</i>。又称<i>主节点输出、子节点输入</i>。主设备驱动该线并向从设备提供数据。只有 nCS 有效（低电平）的从设备才会监听数据。</td></tr>
+    <tr><td>MISO</td>   <td><i>主设备输入、从设备输出</i>。又称<i>主节点输入、子节点输出</i>。被选中的从设备可驱动该线向主设备发送数据。</td></tr>
+  </tbody>
+</table>
+
+<Image src={import('./_assets/spi-basic-master-slave-diagram.webp')} width="600px">SPI 主设备与单个 SPI 从设备之间所需的基本连接。</Image>
+
+SPI 的一个限制是：所有通信都必须由主设备**发起**。如果从设备有数据要发给主设备，但主设备尚未请求或不知道何时请求，就会成为问题。如果无法进行持续轮询，设计者通常还会向主设备提供一根 _Data Ready_ 线来绕过这个问题。该线与 SPI 接口相互独立，通常设置为触发**中断**，以通知主设备通过 SPI 接口请求数据。
+
+SPI 连接**不需要特定的端接**。长距离连接（数米或更长）和高数据速率（>10MHz）可能需要采用标准端接措施来防止反射。
+
+Arduino 已不再使用 master/slave 术语（这一做法得到 [OSHWA 决议](https://www.oshwa.org/a-resolution-to-redefine-spi-signal-names) 的支持），现在对 SPI 使用以下 _controller/peripheral_ 术语：[^arduino-spi]
+
+旧术语（Master/Slave）        | 新术语（Controller/Peripheral）
+----------------------------|---------
+SS（Slave Select，从设备选择）           | CS（Chip Select，片选）
+SCLK（Serial Clock，串行时钟）         | SCK（Serial Clock，串行时钟）
+MOSI（Master Out, Slave In，主出从入） | COPI（Controller Out, Peripheral In，控制器输出、外设输入）
+MISO（Master In, Slave Out，主入从出） | CIPO（Controller In, Peripheral Out，控制器输入、外设输出）
+
+## 协议
+
+许多**微控制器**通过**专用外设硬件**支持 SPI 协议，以执行与发送和接收 SPI 数据相关的底层功能。不过，SPI 也可以通过**位操作（bit-banging）**实现（见下文）。
+
+通常先发送 MSB（最高有效位），它自然也是最先接收到的位。但标准并未规定这一点，偶尔你会遇到要求 LSB 在前的 SPI 器件。SPI 没有预定义的数据包格式，因此协议本身不增加任何开销。这使 SPI 非常适合快速传输任意数据流，但原始字节的含义要由应用层来解释。
+
+片选通常使用反相逻辑（低电平 = 选中芯片）。它通常用于“框定”一条命令序列。
+
+由于主设备必须始终驱动时钟信号，如果从设备想向主设备回传数据，主设备必须知道这一点，并且必须有办法知道要发送多少个时钟信号。
+
+## 模式
+
+SPI 有**四种**标准“模式”。它们定义了时钟周期的不同极性，以及采样发生在时钟的正边沿还是下降沿。这有时称为 _SPI 时钟极性（CPOL）_ 和 _SPI 时钟相位（CPHA）_。
+
+时钟极性（CPOL）决定时钟信号的空闲状态是 0（CPOL = 0）还是 1（CPOL = 1）。
+
+时钟相位（CPHA）决定数据是在上升沿还是下降沿被捕获/发送。**如果 CPHA = 0，则在第一个时钟边沿采样数据。如果 CPHA = 1，则在第二个时钟边沿采样数据。** 无论时钟极性（CPOL）如何设置，这一点都成立，并且对主设备和所有从设备都适用。注意，如果 CPHA = 0，数据必须在第一个时钟边沿之前建立好。如果 CPHA = 1，则器件可利用第一个时钟边沿将数据移位到线上，为第二个时钟边沿的采样做准备。
+
+下表给出 _Microchip PIC_ 或 _基于 ARM_ 的微控制器的命名约定，以及 Arduino SPI API 所使用的命名：[^arduino-spi]
+
+SPI 模式 | 时钟极性（CPOL） | 时钟相位（CPHA） | 用于采样/移位的时钟边沿
+---------|-----------------------|--------------------|--------------------------------------------------------------
+0        | 0                     | 0                  | 数据在上升沿采样、在下降沿移出。
+1        | 0                     | 1                  | 数据在下降沿采样、在上升沿移出。
+2        | 1                     | 0                  | 数据在下降沿采样、在上升沿移出。
+3        | 1                     | 1                  | 数据在上升沿采样、在下降沿移出。
+
+一个常见的混淆点是：对于不同的时钟极性，时钟相位（CPHA）对数据采样/移位究竟意味着什么。我在网上见过许多网站和示意图声称 CPHA 为 `0` 表示数据在上升沿采样（只有 CPOL 也为 0 时才成立）。
+
+下图以图形方式表示不同的 CPOL 和 CPHA 设置。MOSI 和 MISO 线上的位始终在跳变中间时刻采样。对于 CPHA=0，这意味着数据在时钟边沿 1、3、5……处采样；对于 CPHA=1，数据在时钟边沿 2、4、6……处采样。
+
+<Image src={import('./_assets/cpol-and-cpha-diagram.webp')} width="800">显示不同 CPOL 和 CPHA 设置下不同行为的示意图。</Image>
+
+下面是一个 CPOL=0、CPHA=0 的单字节传输示例。主设备发送数据 `0xA1`，从设备发送 `0x75`。数据在红色虚线处采样。
+
+<Image src={import('./_assets/example-transmission-cpol0-cpha0.webp')} width="800">CPOL=0、CPHA=0（模式 0）的单字节传输示例。主设备发送 0xA1，从设备发送 0x75。数据在红色虚线处采样。</Image>
+
+作为对比，下面是相同数据在 CPOL=1、CPHA=1（模式 3）下传输的样子：
+
+<Image src={import('./_assets/example-transmission-cpol1-cpha1.webp')} width="800">CPOL=1、CPHA=1（模式 3）的单字节传输示例。主设备发送 0xA1，从设备发送 0x75。数据在红色虚线处采样。</Image>
+
+标准定义这些不同模式，是为了让可使用 SPI 的主设备和从设备具有更大的灵活性。
+
+<Aside type="note">
+许多器件并不支持全部四种 SPI 模式。常见的情况是（尤其是从设备）只支持 CPOL=0、CPHA=0 和 CPOL=1、CPHA=1 这两种模式。
+</Aside>
+
+为了说明这对固件意味着什么，下面是 [Microchip SAM D21 MCU 数据手册](https://ww1.microchip.com/downloads/en/DeviceDoc/SAM-D21-DA1-Family-Data-Sheet-DS40001882H.pdf) 中 SPI 模式表的截图。本例中我们很幸运，SAMD21 微控制器支持全部四种工作模式。
+
+<Image src={import('./_assets/microchip-sam-d21-spi-transfer-modes-table.png')} width="800px">Microchip SAM D21 数据手册中 SPI 模式表的截图。[^microchip-samd21-datasheet]</Image>
+
+### 单个主设备能否在同一条总线上支持多种 SPI 模式？
+
+可以。只要主设备能够配置为所有相关模式（微控制器内的大多数 SPI 外设都支持多种 SPI 模式），单个主设备就能在同一条总线上支持不同的 SPI 模式。当从设备的片选无效（高电平）时，SPI 从设备并不关心 SCLK、MOSI 和 MISO 线上发生什么。因此，在对所有其他从设备保持片选为高（即正常工作状态）时，可以与使用其他 SPI 模式的从设备通信。需要注意的是，在使能从设备片选之前，必须把时钟极性切换为该从节点所期望的值。
+
+## 时序
+
+SPI **本质上是同步的**（需要时钟信号）。与 UART 和其他传输协议不同，**不存在异步 SPI**。
+
+## 位操作（Bit-Banging）
+
+由于 SPI 是同步的，且主设备完全控制时钟，因此（在主设备上）进行位操作**很容易实现**，时序可以随意调整。必须注意在施加下一个时钟跳变之前正确拉高或拉低相应线路并读取数据，同时遵守每种状态的最小/最大时间规范。
+
+## 菊花链（Daisy-Chaining）
+
+SPI _菊花链_ 是一种**克服**大量 SPI 从设备导致**大量从设备选择线**这一布线/能力问题的方法。只有支持 _DOUT_（或类似）信号的 IC 才能实现 SPI 菊花链。
+
+基本思路是：主设备的数据线不再连接到每个从设备，而是**只连接到一个从设备**，该从设备的 DOUT 再连接到下一个从设备的数据输入，形成一条_菊花链_。另一个区别是，**所有从设备 IC 共用一根片选线**。
+
+数据从微控制器传到第一个从设备，该从设备将其存储在**移位寄存器**中。经过若干个时钟周期后，数据到达其内部移位寄存器的末端，并被传给下一个从设备。微控制器持续输出数据，直到所有从设备的移位寄存器都装满；此时向全局片选信号发送一个脉冲，使各从设备读取/执行/处理其移位寄存器中当前的数据。
+
+支持菊花链的器件包括 Microchip 的 MCP42xxx 数字电位器和 Analog Devices（原 Linear Technology）的 LED 驱动器。
+
+## 点对点 SPI
+
+有些从设备只支持_点对点_ SPI 通信。这意味着**总线上只能有一个主设备，也只能有一个从设备**（即支持点对点 SPI 的器件）。Freescale（现 NXP）的 `FXOS8700CQ` 磁力计就是这样一个例子。
+
+<Image src={import('./_assets/fxos8700cq-freescale-magnetometer-note-supports-only-point-to-point-spi-protocol.png')} width="745px">Freescale FXOS8700CQ 磁力计中说明其仅支持“点对点”SPI 协议的注释。[^nxp-fxos8700cq-ds]</Image>
+
+## 专用片选引脚
+
+有些微控制器具有连接到内部 SPI 外设的专用片选引脚。该引脚通常有多种用途：
+
+- 用于选择要通信的从设备（实际上只有在 SPI 总线上仅有一个从设备时才有用）
+- 同步数据帧
+- 检测多个主设备之间的冲突
+
+在 STM32 微控制器上，该引脚称为 `NSS`（代表 _not slave select_，其中 _not_ 表示信号低电平有效）。
+
+## 共用 MOSI/MISO 引脚
+
+一些引脚数较少的封装 IC 使用共用的 MOSI/MISO 线。Microchip MCP4XXX 系列中的部分数字电位器（DPOT）就是这样的例子。MCP4131 等 8 引脚电位器型号只有一个 MOSI/MISO 引脚（称为 SDI/SDO）。这显然会阻止数据同时双向传输。如果将此类器件连接到普通的硬件 SPI 外设，当 MCP4131 向微控制器回传数据时，需要用一个电阻来防止驱动器冲突（如下图所示）。如果你用位操作实现 SPI 通信，可以在正确的时钟边沿巧妙地将主机控制器输出切换为输入以接收数据，从而省去该电阻。
+
+<Image src={import('./_assets/microchip-mcp41x1-dpot-spi-connections.png')} width="600px">MCP4XXX DPOT 数据手册中的原理图，展示如何将共用 MOSI/MISO 引脚（称为 SDI/SDO）连接到 SPI 总线和 SPI 主机。[^microchip-mcp4xxxx-dpot-ds]</Image>
+
+数据手册明确说明了 SDI 何时会变为 SDO 并回传数据：
+
+> 8 引脚单电位器器件受引脚数量限制，因此 SDO 引脚与 SDI 引脚复用（SDI/SDO 引脚）。在接收到地址/命令（前 6 位）后，如果请求的是有效的读命令，SDO 引脚便开始将所请求的读数据驱动到 SDI/SDO 引脚上。[^microchip-mcp4xxxx-dpot-ds]
+
+## 双线和四线 SPI
+
+双线 SPI 和四线 SPI（QSPI）是基本 SPI 总线的扩展，可实现更高的通信速率。双线 SPI 用双向的 `IO0` 和 `IO1` 线取代 `MOSI` 和 `MISO` 线。这让任一时刻单一方向的数据传输速率翻倍，但也使协议变为半双工（不再能同时双向传输数据）。
+
+<Image src={import('./_assets/dual-spi-diagram.webp')} width="500">双线 SPI 总线，其中 MOSI 和 MISO 已被双向的 IO0 和 IO1 取代。</Image>
+
+QSPI 更进一步，增加了两条额外的双向数据线 `IO2` 和 `IO3`，如下图所示：
+
+<Image src={import('./_assets/quad-spi-diagram.webp')} width="500">四线 SPI（QSPI）总线，类似双线 SPI 总线，但多了两条数据线 IO2 和 IO3。</Image>
+
+凭借 QSPI 的四条数据线，**一个字节可在两个时钟周期内发送完毕**（每个时钟周期 4 位）。QSPI 常用于外部 NOR 闪存。示例包括 [Cypress S79FS01GS 1 Gbit、1.8 V 双线/四线串行外设接口多 I/O 闪存](https://www.infineon.com/dgdl/Infineon-S79FS01GS_1_Gbit_1.8_V_Dual-Quad_Serial_Peripheral_Interface_with_Multi-I_O_Flash-DataSheet-v03_00-EN.pdf?fileId=8ac78c8c7d0d8da4017d0ee7dd5970c3)。支持 QSPI 的芯片通常也支持双线 SPI。
+
+<Image src={import('./_assets/infineon-s25fs128s-qspi-flash-connection-diagram.png')} width="500px">Infineon S25FS128S QSPI 闪存 IC 的接线图。[^infineon-s25fs128s-ds]</Image>
+
+## Octo-SPI 和 Hexadeca-SPI
+
+甚至双线 SPI 和四线 SPI 对某些用户来说也不够快，因此现在有了 Octo-SPI（8 线）和 Hexadeca-SPI（16 线，缩写为 `HSPI`）。它们与双线、四线 SPI 一样是 SPI 总线的扩展：放弃全双工通信、改为半双工，并增加数据线以提高传输速度。Octo-SPI 在与存储器接口时几乎总是使用 DDR（双倍数据速率），从而在时钟的两个边沿都传输数据。Octo-SPI 和 Hexadeca-SPI 用于高速外部存储器接口（例如 PSRAM、HyperRAM、HyperFlash）。其速度足以支持 XIP（execute-in-place，原地执行——指令直接从外部存储器执行，而不是先复制到内部存储器）。
+
+STMicroelectronics 的 STM32L4、L5、H5、H7、N6、U3 和 U5 等 MCU 系列支持该总线。[^st-an5050-octospi-xspi] STMicroelectronics 最初推出了支持 Octo-SPI 的 `OCTOSPI` 外设，随后用 `XSPI` 外设取代了它，后者可进行 8 位和 16 位宽度传输。该外设支持 SDR、DDR、经典 SPI 闪存命令模式、HyperBus 和 JEDEC xSPI 配置。
+
+<Aside type="note">
+随着 Octo-SPI 和 Hexadeca-SPI 的出现，我觉得我们真的在挑战“串行”总线的定义了。你完全可以说这实际上是并行总线，因为所有线路彼此同步时钟。相比之下，PCIe 通道（lane）中每根线仍然是真正串行的，因为它们各自独立时钟（每条通道嵌入并恢复自己的时钟信号）。
+</Aside>
+
+## 原地执行（XIP）
+
+许多 QSPI 闪存 IC 支持_原地执行_（XIP）。此时 CPU 主存的一部分被映射到外部闪存。CPU 并不知道这段存储器位于芯片外，取指过程会通过 QSPI 接口在后台自动完成。
+
+## 固件
+
+Arduino 平台提供了一致的 API 来访问 SPI 总线上的外设。在你的 `.cpp` 文件中包含 `SPI.h` 即可使用该 API。如果微控制器只有一条 SPI 总线，通常可以通过全局对象 `SPI` 访问。
+
+```c++
+#include <SPI.h>
+
+const int slavePin = 20;
+
+int main() {
+    uint8_t val1, val2;
+
+    // Begin SPI transaction, setting clock speed to 1MHz, most significant bit first (typical), and
+    // SPI Mode 0 (CPOL=0, CPHA=0).
+    SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+
+    // Assert the slaves chip select (drive low)
+    digitalWrite(slavePin, LOW);
+
+    // Two bytes transferred across, and read the two bytes sent back to us
+    val1 = SPI.transfer(0xA1);
+    val2 = SPI.transfer(0x07);
+
+    // De-assert the chip select
+    digitalWrite(slavePin, HIGH);
+
+    // End transaction, SPI bus is now free to be used by other devices
+    SPI.endTransaction();
+}
+
+```
+
+## SPI 在低功耗设计中的应用
+
+有些 SPI 从设备专为低功耗运行而设计，并提供低功耗工作模式。要确保睡眠期间所有 SPI 数字输入都处于有效逻辑状态（高电平或低电平），否则输入缓冲器会因直通电流而消耗电流（典型值为 50-1000uA）。
+
+这包括从主设备到从设备的线（SCK 和 MOSI，相对于从设备它们是输入）以及从从设备到主设备的线（MISO，相对于主设备它是输入）。睡眠期间从设备通常不会驱动 MISO 线，因此要确保在 MISO 线上连接一个高阻值（例如 100kΩ 至 1MΩ）的下拉电阻（pull-down resistor）或上拉电阻（pull-up resistor），使其在睡眠期间保持有效逻辑状态。
+
+更多信息参见[低功耗设计](/electronics/low-power-design/)页面。
+
+## 非标准用途
+
+### WS2812 RGB LED
+
+微控制器的 SPI 外设常用于生成与长串 WS2812 RGB LED 通信所需的数据。WS2812 RGB LED 采用定制的单线通信协议。没有时钟线，只有一根数据线。每一位宽度固定：发送 0 时，线在该位期间保持高电平一段时间，然后转为低电平；发送 1 时，电压在该位期间保持高电平的时间稍长，然后再转为 0。这种“归零（RTZ）”方案使时钟可以很容易地从数据中恢复。
+
+<Image src={import('./_assets/ws2812b-comms-protocol-info.webp')} width="900px">展示 WS2812 RGB LED 通信协议如何依赖一位中高、低电平部分的时序来判定 0 或 1 的数据。[^worldsemi-ws2812b-rgb-led-ds]</Image>
+
+具体取决于 MCU，由于波特率高且对高/低电平时序有要求，用“位操作”生成这些时序可能很困难。不过，可以用运行在更高比特率的 SPI 外设相对容易地生成数据。一种方案是设置 SPI 速率，使每个 WS2812 位对应三个 SPI 位。SPI 位周期可设为 `0.4us`，这样三位耗时 `1.2us`。然后可以用 SPI 位模式 `100` 表示 WS2812 的 `0`，用 `110` 表示 WS2812 的 `1`[^controllers-tech-ws2812-leds-using-spi]。另一种方法是每个 WS2812 位使用 8 个 SPI 位。[^hackster-neopixel-ws2812b-driver]
+
+在所有这些情况下，都只使用 SPI 外设的 MOSI 输出，SCLK 和 MISO 不使用。
+
+## 类似协议
+
+### Microwire（uWire）
+
+Microwire 协议比 SPI 协议更早，最初是 National Semiconductors 在其 COPS 处理器系列中使用的协议。[^scienceprog-microwire-compared] 当 `CPOL = 0` 且 `CPHA = 0` 时，它通常等同于 SPI。[^microchip-forums-spi-3-wire-microwire] 其信号线称为 `SO`、`SI` 和 `SK`。[^ti-an-452-microwire]
+
+### mSPI（mini-SPI）
+
+mSPI 总线是 SPI 总线的一种变体，强制通信协议始终使用 4 根线，无论连接了多少个从设备。这简化了从设备所需的软件。所有器件共用同一根 SS（从设备选择）线。
+
+### RapidS
+
+RapidS 一词由 [Atmel](http://www.atmel.com/) 和 [Adesto Technologies](http://www.adestotech.com/) 使用。它常见于 EEPROM 和闪存 IC 等存储芯片。RapidS 串行接口在高达 33MHz 的频率下与 SPI 兼容。RapidS 协议不同于 Rapid8 协议，后者是**并行接口**。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^microchip-mcp4xxxx-dpot-ds]: Microchip（2008）。_Microchip MCP413X/415X/423X/425X: 7/8-Bit Single/Dual SPI Digital POT with Volatile Memory_ [数据手册]。检索于 2022-06-02，来自 https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ProductDocuments/DataSheets/22060b.pdf。
+[^nxp-fxos8700cq-ds]: NXP（2017 年 4 月 25 日）。_FXOS8700CQ 6-axis sensor with integrated linear accelerometer and magnetometer_。检索于 2022-06-02，来自 https://www.nxp.com/docs/en/data-sheet/FXOS8700CQ.pdf。
+[^microchip-forums-spi-3-wire-microwire]: Microchip Forum（2006 年 11 月 13 日）。_Differences between SPI, 3-Wire and Microwire_。检索于 2022-06-02，来自 https://www.microchip.com/forums/m202051.aspx。
+[^scienceprog-microwire-compared]: ScienceProg。_Microwire compared to SPI and I2C_。检索于 2022-06-02，来自 https://scienceprog.com/microwire-compared-to-spi-and-i2c/。
+[^ti-an-452-microwire]: Texas Instruments（1992 年 1 月）。_AN-452: MICROWIRE Serial Interface_。检索于 2022-06-02，来自 https://www.ti.com/lit/an/snoa743/snoa743.pdf。
+[^arduino-spi]: Arduino。_Arduino & Serial Peripheral Interface (SPI)_。检索于 2022-06-25，来自 https://docs.arduino.cc/learn/communication/spi。
+[^totalphase-single-dual-quad-spi]: Kathleen Chan。_What are the Differences of Single vs Dual vs Quad SPI?_。TotalPhase。检索于 2022-06-25，来自 https://www.totalphase.com/blog/2020/05/what-are-the-differences-of-single-vs-dual-vs-quad-spi/。
+[^infineon-s25fs128s-ds]: Infineon（2019 年 11 月 22 日）。_S25FS128S/S25FS256S: 1.8 V, Serial Peripheral Interface with Multi-I/O, MirrorBit® Non-Volatile Flash_ [数据手册]。检索于 2022-06-26，来自 https://www.infineon.com/dgdl/Infineon-S25FS128S_S25FS256S_1.8_V_Serial_Peripheral_Interface_with_Multi-I_O_MirrorBit(R)_Non-Volatile_Flash-DataSheet-v14_00-EN.pdf?fileId=8ac78c8c7d0d8da4017d0ed6b5ab5758。
+[^microchip-samd21-datasheet]: Microchip（2021）。_SAM D21/DA1 Family: Low-Power, 32-bit Cortex-M0+ MCU with Advanced Analog and PWM_ [数据手册]。检索于 2022-10-10，来自 https://ww1.microchip.com/downloads/en/DeviceDoc/SAM-D21-DA1-Family-Data-Sheet-DS40001882H.pdf。
+[^worldsemi-ws2812b-rgb-led-ds]: Worldsemi。_WS2812B - Intelligent control LED integrated light source_ [数据手册]。Adafruit。检索于 2024-01-15，来自 https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf。
+[^controllers-tech-ws2812-leds-using-spi]: Controllerstech。_WS2812 LEDs using SPI_。检索于 2024-01-15，来自 https://controllerstech.com/ws2812-leds-using-spi/。
+[^hackster-neopixel-ws2812b-driver]: Rudra Lad。_NeoPixel WS2812b SPI driver with Ada on STM32F4 Discovery_。Hackster。检索于 2024-01-16，来自 https://www.hackster.io/RVLAD/neopixel-ws2812b-spi-driver-with-ada-on-stm32f4-discovery-d330ea。
+[^st-an5050-octospi-xspi]: STMicroelectronics。_AN5050: Getting started with Octo-SPI / Hexadeca-SPI and XSPI interface on STM32 MCUs_ [应用笔记（application note）]。检索于 2026-06-09，来自 https://www.st.com/resource/en/application_note/an5050-getting-started-with-octospi-hexadecaspi-and-xspi-interface-on-stm32-mcus-stmicroelectronics.pdf。

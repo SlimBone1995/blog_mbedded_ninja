@@ -1,0 +1,397 @@
+---
+authors: [gbmhunter]
+date: 2011-09-03
+description: I2C 通信协议教程。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-06-10
+tags: [I2C, communication protocol, bus, serial, microcontroller, open-collector, data, transceiver, TX, RX, SCL, SDA]
+title: I2C 通信协议
+type: page
+sourcePath: electronics/communication-protocols/i2c-communication-protocol/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:64f45d90f71aa0d15136a3d249ef47b1e79bc20a519826b0ad1214c1d222789c
+sourceUrl: https://blog.mbedded.ninja/electronics/communication-protocols/i2c-communication-protocol/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+I²C（*Inter-Integrated Circuit*，读作 *I-2-C*，也写作 I2C）总线是一种通信协议，常用于 PCB 上 IC 与微控制器之间的传输。它是一种半双工、同步协议，需要 2 根线（如果计入电源和地，则为 4 根）。它使用器件寻址（通常为 7 位）来指明数据的接收方。仲裁通过 SCL 和 SDA 线上的开漏（open-drain）或开集（open-collector）输出来实现（少见的超快速模式除外，该模式使用推挽驱动器）。它通常用于向 IC 发送小数据包（例如配置参数或传感器读数），而 [SPI](/electronics/communication-protocols/spi-communication-protocol/) 则用于数据量更大的通信（因为 SPI 是全双工，并采用推挽驱动）。I2C 协议不定义语义（即数据的含义）。I2C 支持同一条总线上有多个控制器，得益于开漏拓扑，总线仲裁内建于协议之中。
+
+<Image src={import('./_assets/i2c-logo.gif')} width="200px">I2C 标志。</Image>
+
+<Aside type="tip">
+虽然名称听起来相似，但不要将 I2C 与专门用于音频的 [I2S 通信协议](/electronics/communication-protocols/i2s-communication-protocol/) 混淆。
+</Aside>
+
+## 历史
+
+I2C 的专利“用于互连多个站点的包含时钟线和数据线的双线总线系统”由 Philips 于 1981 年提交[^patent-i2c]。第一套 100kHz 系统于 1982 年开发完成。400kbit/s 快速模式于 1992 年推出，3.4Mbit/s 高速模式于 1998 年推出。
+
+官方 I2C 总线规范（NXP 文档 UM10204）的修订历史如下表所示[^nxp-um10204-i2c-bus-specification]：
+
+| 修订版 | 日期       | 说明
+|----------|------------|------------
+| 原始版 | 1982       | 首次发布。
+| v1.0     | 1992       | I2C 总线规范 1.0 版。
+| v2.0     | 1998       | 增加高总线速率和低电压内容。
+| v2.1     | 2000       | I2C 总线规范 2.1 版。
+| v3      | 2007-06-19 | 增加快速模式增强版（Fm+），驱动能力最高提升 10 倍，数据速率提升至 1Mbit/s，同时保持与快速模式和标准模式向下兼容。
+| v4      | 2012-02-13 | 用户手册 Rev. 4。
+| v5      | 2012-10-09 | 用户手册；第五版。
+| v6      | 2014-04-04 | 用户手册；第六版。<br/>修改内容：<br/>• 更新图 41（重新计算）<br/>• 更新图 42（重新计算）
+| v7      | 2021-10-01 | 用户手册；第七版。<br/>修改内容：<br/>• 更新表 5<br/>• 全文将 “master/slave” 术语改为 “controller/target”，以与 MIPI I3C 规范和 NXP 的 Inclusive Language Project 保持一致<br/>• 增加第 9 节
+
+<Aside type="note">
+自 I2C 规范 v7（2021 年发布）起，NXP 将总线角色从 **master/slave** 更名为 **controller/target**，以与 [I3C 规范](/electronics/communication-protocols/i3c-communication-protocol/) 保持一致，这也是 NXP Inclusive Language Project 的一部分。本页全文使用现代的 **controller/target** 术语。你在许多数据手册、库和 API（例如寄存器和函数名）中仍会遇到旧的 **master/slave** 术语，它们在这些地方仍然广泛使用。
+</Aside>
+
+## 典型电气规格
+
+
+| 规格 | 数值
+|---------------|-----------
+| 总线容性负载 | 最大 400pF（这限制了线缆长度和扇出）
+| 信号上升时间   | 标准模式最大 1000ns，快速模式最大 300ns
+| 最大下拉电流| 3mA（这限制了最小上拉电阻（pull-up resistor））
+| 信号命名约定 | SCL（时钟），SDA（数据）
+
+## 信号名称
+
+| 名称 | 方向 | 说明
+|------|------|-------------
+| SCL（有时称为 SCK） | 控制器驱动（目标设备可将其拉低以进行时钟拉伸） | 时钟
+| SDA | 双向 | 数据
+
+## 上拉电阻
+
+I2C 总线使用开漏（如果使用 BJT 而不是 MOSFET，则为开集）驱动器，以便在不同电压下工作的芯片之间实现**兼容性**、总线仲裁和热插拔。因此，上拉电阻（pull-up resistor）对于将总线恢复到无源电压状态至关重要。0V 被视为低电平，+3.3V 或 +5.0V 是常见的“高”电平。
+
+<Image src={import('./_assets/i2c-pull-up-resistors.png')} width="488">I2C 上拉电阻。</Image>
+
+**电阻值决定了总线的最高速度（电阻越低，总线可运行得越快）。** 电阻的下限受 I²C 芯片能够提供的最大总线电流以及最大功耗（如果相关）限制。I2C 规范规定，符合 I2C 标准的器件必须能够从 I2C 总线线路灌入至少 3mA 电流，并且在此过程中逻辑低电平不得高于 $V_{OL} = 0.4\unit{V}$。利用这些信息，很容易推导出允许的最小电阻公式：
+
+$$
+\begin{align}
+R_{min} = \frac{V_{CC} - V_{OL}}{I_{OL}}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$ V_{CC} $ 是上拉电阻一端所连接的电源电压，单位为伏特<br/>
+$ V_{OL} $ 是器件灌入 $I_{OL}$ 时总线上允许的最大电压，单位为伏特<br/>
+$ I_{OL} $ 是将总线拉低的 I2C 器件需要灌入的最大电流（典型值 3mA），单位为安培<br/></p>
+
+代入已知固定值后，可简化为：
+
+$$
+\begin{align}
+R_{P, min} = \frac{V_{CC} - 0.4\unit{V}}{3\unit{mA}}
+\end{align}
+$$
+
+由于 I2C 采用开集拓扑，**当器件释放线路（即停止将其拉向地）时，将线路拉高完全由上拉电阻负责**。上拉电阻与总线电容 $ C_{BUS} $ 共同形成时间常数，从而减慢总线电压的上升时间。I2C 规范规定，高于 $ V_{IH} = 0.7V_{CC} $ 的电压必须被所有器件视为逻辑高电平。
+
+$$
+\begin{align}
+R_{P, max} = \frac{T_R}{0.8473C_{BUS}}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$ T_R $ 是 I2C 规范针对特定模式规定的最大允许上升时间，单位为秒<br/>
+$ C_{BUS} $ 是总总线电容，单位为法拉<br/></p>
+
+I2C 标准针对每种 I2C 模式规定了最大上升时间 $ T_R $，如下表所示：
+
+| I2C 模式 | 最大上升时间 $T_R$
+|----------|-----------------
+| 标准模式 | 1000ns
+| 快速模式 | 300ns
+
+注意，这并不是限制最大上拉电阻的唯一因素；**高电平输入电流** $ I_{IH} $ 也会限制最大电阻（它通常比最大上升时间带来的限制更宽松，因此很少被考虑）。高电平输入电流来自连接到总线的数字输入引脚漏电流，它会在上拉电阻上产生恒定压降（请记住，正是这些电阻将总线拉高）。
+
+典型上拉电阻值：波特率最高 100kHz 时使用 10kΩ，最高 400kHz 时使用 1kΩ。应使用外部上拉电阻，因为微控制器端口和其他符合 I2C 标准的器件内部上拉电阻通常太大（100kΩ–1MΩ）。
+
+PCB 设计中的一个**常见陷阱**是**无意中为每条总线线路添加了多组上拉电阻**。也许你为每个 I2C 目标设备都加上了上拉电阻，然后把它们接到同一条总线上？也许你设计了一块带有 I2C 目标设备的插接板，并在上面也加了电阻？无论如何，**尽量确保只有一组上拉电阻**，并与 I2C 总线控制器关联。如果确实需要多个电阻，请确保它们的**并联等效电阻不会违反** I2C 规范。
+
+## 传输速率
+
+### 概述
+
+I2C 总线上的数据可以以不同速率传输，具体取决于发送方和接收方都支持哪些模式。下表列出了这些模式及其可传输数据的最高速率。
+
+<Aside type="note">
+由于数据是同步时钟驱动的，几乎没有最低速率限制（除非器件实现了某种超时功能）。
+</Aside>
+
+| I2C 模式               | 最高速率 | 最大总线电容 | 驱动方式
+|------------------------|---------------|-------------------------|--------------------------
+| 标准模式               | 100kbit/s     | 400pF                   | 开漏
+| 快速模式（Fm）         | 400kbit/s     | 400pF                   | 开漏
+| 快速模式增强版（Fm+）   | 1Mbit/s       | 550pF                   | 开漏
+| 高速模式（Hs）   | 1.7Mbit/s     | 400pF                   | 开漏 + 控制器电流源
+| 高速模式（Hs）   | 3.4Mbit/s     | 100pF                   | 开漏 + 控制器电流源
+| 超快速模式（UFm）  | 5Mbit/s       | 不适用                     | 推挽[^i2c-bus-ufm]
+
+### 标准模式
+
+标准通信速率（又称原始速率）允许最高 100kHz 的通信速度。如果没有特别说明某种速度模式，这通常就是最高速率。
+
+### 快速模式（Fm）
+
+快速模式是 I2C 总线的一种工作模式，允许器件以最高 400kHz 的速度通信。大量 I2C 器件支持该模式。
+
+### 快速模式增强版（Fm+）
+
+快速模式增强版（Fm+）是 I2C 快速模式的扩展，允许器件以最高 1MHz 的速度通信。它由 Philips Semiconductors（现为 NXP）于 2006 年 4 月推出，并于 2007 年纳入 I2C 规范 v3。它偶尔用于需要高数据吞吐量的 I2C 器件。
+
+### 高速模式（Hs）
+
+高速模式允许最高 3.4MHz 的通信速率，是现有最快的双向 I2C 模式（只有单向的超快速模式更快）。它是**官方支持**的工作模式，但支持该模式的 I2C 器件并不多（在 >1Mbps 的场景中，竞争性的 [SPI 通信协议](/electronics/communication-protocols/spi-communication-protocol) 似乎是更常用的选择）。高速模式与其他所有速度模式的关键区别之一，是控制器器件在 Hs 模式下具备**电流源**能力。这允许**控制器向 I2C 线路注入电流以更快地将线路拉高**，速度超过仅靠上拉电阻所能达到的水平。
+
+此外，Hs 模式下时钟信号的高电平与低电平标称比例为 1:2（其他模式不强制固定比例）。
+
+### 超快速模式（UFm）
+
+*超快速模式*（UFm）是目前可用的最快 I2C 模式，速率为 5Mbit/s。它与其他所有模式有显著差异，因为它使用推挽驱动器而不是开漏驱动器。这意味着总线不再是双向的，数据只能从控制器发送到目标设备。目标设备不发送应答位[^i2c-bus-ufm]。
+
+超快速模式几乎主要用于 LED 驱动器，例如 [NXP 的 PCU9656B 24 位 UFm 5MHz I²C 总线 100mA 40V LED 驱动器](https://www.nxp.com/products/power-management/lighting-driver-and-controller-ics/ic-led-controllers/24-bit-ufm-5-mhz-ic-bus-100-ma-40-v-led-driver:PCU9656B)。
+
+## I²C 总线协议与变体
+
+I2C 总线存在多种变体，由不同厂商定义和实现，包括：
+
+- SMBus——系统管理总线，由 Intel 定义，常见于 PC 主板。与 I2C 相比，它具有更严格的电气限制、100kHz 的最高速率（SMBus 3.0 中提高到 1MHz），以及可防止总线卡死的时钟低电平超时。
+- PMBus——扩展了 SMBus 功能
+- IPMB——智能平台管理总线
+- TWI——双线接口。部分厂商（包括 ATMEL）用来描述 I2C 总线的名称（完全相同）。
+- ACCESS.bus
+- DDC、E-DDC——（增强型）显示数据通道，HDMI 协议用它从接收端向发送端发送关于所支持分辨率和帧率的数据。HDMI 规范要求它支持标准速率 I2C（100kbit/s），并可选支持快速模式（400kbit/s）。
+
+## I2C 在工业中的应用
+
+- 汽车（尽管在汽车环境中，由于抗噪性更强，CAN/LIN 总线更流行）
+- 消费电子
+- 工业（以太网在工业控制中也很流行）
+- 移动设备
+- 电信/网络
+- 无线电/电视
+
+<Image src={import('./_assets/typical-application-schematic-for-i2c-io-expander.png')} width="400px">I2C I/O 扩展器的典型应用原理图。</Image>
+
+### 显示协议（VGA、DVI 和 HDMI）
+
+I2C 用于 VGA、DVI 和 HDMI 协议中[^ken-shirriff-vga-i2c]，在相连设备之间共享附加信息（不用于视频信号）。使用 I2C 的这个信号称为 DDC（*Display Data Channel*，显示数据通道）信号。该协议的实现方式是：在显示器一侧，你只需接上一颗标准 I2C EEPROM 存储芯片[^elec-se-hdmi-and-i2c]。
+
+## 协议格式
+
+### 起始条件
+
+*起始条件*是在 SCL 为高电平期间，SDA 线上由高到低的跳变。控制器在所有消息帧开始时发出该条件。这是一个独特的跳变，因为传输数据时所有其他 SDA 跳变都发生在 SCL 为低电平期间。
+
+### 地址字节
+
+地址字节位于起始条件之后。它是由 8 位组成的序列，用于标识控制器希望与 I2C 总线上的哪个器件通信。前 7 位是目标设备的*地址*，最后一位决定执行读操作还是写操作。SDA 线始终由控制器驱动。
+
+### ACK/NACK 位
+
+每个字节（无论是地址字节还是数据字节）之后都跟着第九位，称为*应答*（ACK）位。在第九个时钟脉冲期间（与所有时钟脉冲一样，由控制器产生），发送该字节的一方释放 SDA，由接收方接管。如果接收方将 SDA 拉低，即为 ACK。如果接收方让 SDA 保持高电平（即线路保持上拉状态），即为 NACK（非应答）。其含义取决于上下文：
+
+- **地址字节之后：** 被寻址的目标设备将 SDA 拉低，以确认它存在于总线上。如果没有目标设备响应，SDA 保持高电平，控制器看到 NACK——当目标设备缺失、未上电、处于复位状态或使用了错误地址时，就会发生这种情况（波形示例见 [典型 I2C 操作](#typical-i2c-operation) 一节）。
+- **写操作的数据字节之后：** 目标设备对成功接收的每个字节回 ACK。NACK 表示目标设备无法接收该数据（或无法接收更多数据），控制器应发出 STOP 或重复 START。
+- **读操作的数据字节之后：** 角色互换——控制器现在是接收方，它对每个字节回 ACK，以向目标设备请求更多数据。控制器会故意对**最后一个**字节回 NACK，告诉目标设备释放 SDA，然后发出 STOP 条件。
+
+注意，由于总线默认被上拉为高电平，NACK 不需要任何一方采取动作——这就是为什么缺失或无响应的器件会自动产生 NACK。
+
+### 数据字节
+
+数据字节跟在地址字节之后。这些字节表示控制器与目标设备之间实际传输的信息。一个消息帧内可以传输多少个数据字节，取决于器件和控制器的具体需求。如果控制器在地址字节中指示写操作，则在数据字节期间由控制器驱动 SDA 线。如果控制器指定读操作，则由被寻址的目标设备驱动 SDA 线。
+
+数据字节的含义和上下文不由 I2C 标准定义，而是留给“协议栈”中的更高层，即微控制器和目标器件 IC 厂商。
+
+不过，有一种被广泛使用的常见协议：在 WRITE 操作中，地址字节之后的第一个数据字节通常是目标器件内部的寄存器地址；随后的数据字节用于向该寄存器写入新数据。再往后的数据字节写入下一个更高地址的寄存器，依此类推（即寄存器指针在每次写入时自动加 1）。相反，在 READ 操作中，先执行一个 WRITE 阶段来设置寄存器地址，然后发出重复 START 条件（不发出 STOP），再执行 READ 操作以读取所选寄存器地址处的数据。这一过程便于访问和操作目标器件，包括修改设置、读取状态和控制器件。
+
+### 停止条件
+
+*停止条件*是在 SCL 为高电平期间，SDA 线上由低到高的跳变。它类似于起始条件，只是方向为上升沿而不是下降沿。
+
+## 寻址
+
+所有 I2C 目标器件都必须有地址。控制器用该地址选择要与哪个器件通信。标准地址为 7 位，10 位扩展地址相当少见。对于 7 位地址，它会被左移一位并打包进控制器通过 I2C 总线发送的第一个字节（第一个字节的最后一位，即 bit 0，用于指示即将进行读操作还是写操作）。
+
+### 多个 IC 使用相同地址？
+
+将两个相同器件（例如两个温度传感器）连接到同一条 I2C 总线，且它们具有相同的预编程 I2C 地址，意味着控制器无法单独寻址它们，功能会严重受限。为解决这个问题，许多 I2C 目标 IC 还提供几个地址引脚。这些地址引脚是数字输入，决定目标设备响应哪个 I2C 地址。一个典型的带两个地址引脚的器件允许设计者将地址引脚连接到 $V_{CC}$ 和 GND 的不同组合，从而将最多四个相同 IC 连接到同一条 I2C 总线。
+
+较新的引脚受限 I2C 目标器件允许将地址引脚连接到 SCL 和 SDA，以进一步增加可分配的地址数量。使用两个地址引脚，每个引脚可连接到 $V_{CC}$、GND、SCL 或 SDA，总共可得到 16 个不同的 I2C 地址（$n = 4^2$）。
+
+<Image src={import('./_assets/i2c-slave-address-pins-logic-table-with-scl-sda-ability-ti-ina226.png')} width="800">TI INA226 IC 上 I2C 地址引脚的真值表。注意，除了标准的 VS 和 GND，还可以将地址引脚连接到 SCL 或 SDA，从而得到 16 个可能的 I2C 地址[^ti-ina226-power-mon]。</Image>
+
+解决地址问题的另一种方式（本可以表述得更好）是厂商为同一颗芯片提供一系列可订购料号，但 I2C 地址不同。一个例子是 TI 的 ADS1100 ADC，采用微小的 SOT-23-6 封装。这个 6 引脚封装没有多余的地址配置引脚——相反，你可以订购 8 种不同料号，它们的 I2C 地址位于 `0b1001000-0b1001111` 范围内[^ti-ads1100-adc]。
+
+### 保留的 I2C 地址
+
+I2C 规范保留了一些地址用于特殊用途。由于这些保留地址，使用 7 位地址方案的 I2C 器件只有 112 个地址可用。不要将你的器件设置为使用下面列出的这些地址。
+
+| 保留地址 | 说明
+|------------------|-------------------------------------
+| $0000000 0$ | 通用调用。
+| $0000000 1$ | 起始字节。
+| $0000001 x$ | CBUS 地址。
+| $0000010 x$ | 保留用于不同的总线格式。
+| $0000011 x$ | 保留供未来使用。
+| $00001xx x$ | 高速控制器代码。
+| $11110xx x$ | 10 位目标寻址。
+| $11111xx x$ | 保留供未来使用。
+
+### 通用调用
+
+$0000000(0)$ 是通用调用的 I2C 地址。它用于**控制器一次性寻址 I2C 总线上的所有目标设备**。第二个字节包含控制器希望发送给所有目标设备的命令。这些命令因为是通用命令，也作为 I2C 协议的一部分进行了规定。
+
+### 起始字节
+
+$0000000(1)$ 是**起始字节**的 I2C 地址。起始字节被加入 I2C 规范，是为了让没有专用 I2C 外设的微控制器也能使用 I2C 总线，而不必以高速轮询 I2C 线路来检测传输开始（这种技术称为位操作/bit banging），从而避免消耗过多功耗。相反，微控制器只需以较低的轮询速度检测起始字节中七个 0 之一，然后在剩余传输期间切换到高速率。控制器发送起始条件、起始字节、**哑应答脉冲**、重复起始条件，然后才是实际传输。
+
+### CBUS
+
+$0000001(x)$ 是保留给 CBUS 地址的 I2C 地址。CBUS 是一种三线总线，传输格式与 I2C 不同，用于家庭自动化产品。这个保留地址允许 CBUS 接收器连接到 I2C 总线。I2C 器件应忽略发送到该地址的任何消息。
+
+通过 I2C 进行 CBUS 寻址非常少见。
+
+### 10 位寻址
+
+由于 I2C 协议日益流行，而原始 7 位寻址方案可用地址有限（导致地址冲突），因此引入了 10 位寻址方案。10 位寻址额外提供 1024 个唯一地址。
+
+10 位寻址方案使用两个地址字节（而不是一个）。第一个字节在位位置 `7:3` 包含 `11110`，这是一个*保留代码*，表示后面跟着 10 位地址。实际的 10 位地址中的最高位（MSB）位于第一个地址字节的 `2:1` 位，最低位（LSB）位于第二个地址字节的 `7:0` 位。
+
+<Image src={import('./_assets/i2c-10-bit-addressing-scheme-bit-pattern-of-address-bytes.gif')} width="1000px">I2C 10 位寻址方案中两个地址字节的位模式。图片来自 [i2c-bus.org](http://www.i2c-bus.org/)。</Image>
+
+第一个地址字节的 bit `0` 是读/非写（RnW）位。**注意，使用 10 位寻址方案时，该位必须设为 0。** 因此，要执行读操作，必须使用*组合传输*。在*组合传输*中，先发送上述两个字节且 RnW 位为 `0`，然后发送重复起始条件，再发送第一个地址字节，但 RnW 位为 `1`。之后就可以照常执行读操作。
+
+10 位寻址方案的设计目标是与 7 位寻址方案共存于同一条总线。
+
+## 传输距离与缓冲器
+
+<Image src={import('./_assets/i2c-buffer-ic-example.jpg')} width="800px">NXP 应用笔记（application note）中的示例，展示其 P82B96 I2C 总线缓冲 IC 如何利用缓冲和双绞线增加 I2C 通信距离。</Image>
+
+如果遵循 I2C 规范，由于最大线路电容额定为 400pF，传输距离通常限制在几米。根据个人经验，尝试通过长线缆让 I2C 工作时，串扰通常是导致通信失败的原因。SCL 和 SDA 线之间的交叉电容会使信号相互混合，起始条件往往无法工作，因为 SDA 被拉低时会耦合到 SCL 并将其也拉低，从而使传输失效。降低跳变速度（即驱动强度）可能有所帮助，但上升/下降时间通常限制在最大 300ns。
+
+下图展示了使用长线缆时交叉耦合如何在 SDA 和 SCL 线上引入噪声。图中显示的是 8m 以太网线缆上的 SCL（黄色）和 SDA（蓝色）。
+
+<Image src={import('./_assets/i2c-noise-from-long-cable.jpg')} width="350px">长 I2C 传输线上出现的串扰噪声。图中显示的是 8m 以太网线缆上的 SCL（黄色）和 SDA（蓝色）。</Image>
+
+### 使用双绞线和缓冲 IC
+
+我在使用双绞线加 P82B96 缓冲 IC 延长 I2C 总线长度方面取得了很好的效果。将 SDA 和 SCL 线分别连接到不同线对中的导线，然后将电源或地连接到每对中的另一根导线，我成功通过 30m 线缆以 50kHz 传输 I2C。确保两端都用 100nF 陶瓷电容对电源和地进行良好去耦。在双绞线中同时使用数据/时钟线和电源或地，可以将它们紧密耦合，并减少耦合到线缆中其他导线上的辐射。可以使用 Cat5e 以太网线缆（按照上述示例，只使用 4 对中的 2 对）。
+
+下图展示了通过双绞线传输 I2C 时，将线对中的另一根导线接地所带来的差异。黄色迹线是 SCL（作为参考），白色迹线是第二根导线悬空时的 SDA，蓝色迹线是第二根导线接地或连接到 VCC 时的 SDA。注意蓝色迹线上的交叉耦合大幅减少。
+
+<Image src={import('./_assets/i2c-long-cable-ground-no-ground.jpg')} width="350px">通过双绞线传输 I2C 时，将线对中的另一根导线接地所带来的差异。黄色迹线是 SCL（作为参考），白色迹线是第二根导线悬空时的 SDA，蓝色迹线是第二根导线接地或连接到 VCC 时的 SDA。注意蓝色迹线上的交叉耦合大幅减少。测试使用的是 20m 以太网线缆。</Image>
+
+使用 I2C 缓冲 IC 也可以延长 I2C 传输距离。这些芯片对输入进行缓冲，并提供适合长线缆传输的高输出驱动信号。有些还支持 RX/TX 分离（将 SDA 上的 RX 和 TX 信号分别通过不同线路发送以增加传输距离），以及差分线路驱动。对 I2C 线路进行缓冲会引入“锁死”问题：如果总线被拉低，即使发送方已经释放，接收方仍会将其保持为低。为防止这种情况，厂商巧妙地引入了两个“逻辑低”电平，二者都符合 I2C 标准的逻辑低定义。通常，低于 0.5V 的任何电压都算作真正的“低”（会通过缓冲器传播），而 0.5V 到 0.9V 之间的是缓冲器生成的低电平，不会传播。
+
+传输距离也可以通过使用 I2C 控制器或桥接器来延长，这些器件会在发送前将通信协议转换为另一种协议（例如 UART）。不过这有点作弊，不是吗？
+
+如果参考现成案例，任天堂 Wii 手柄就是一个在超过设计距离下使用 I2C 的好例子。加上延长线后，其手柄线缆长度可达 2m。
+
+## 上升时间加速器
+
+上升时间加速器（例如 [NXP PCA9507 双线串行总线扩展器](https://www.nxp.com/docs/en/data-sheet/PCA9507.pdf) 上使用的那些）可用于延长 I2C 总线长度。它们的工作原理是智能检测总线电压何时上升（正被上拉电阻拉高），然后注入电流以缩短总线达到逻辑高电平所需的时间。随后电流注入器会迅速关闭，使 I2C 线路能够再次被拉低。
+
+## 热插拔
+
+### 预充电
+
+一种巧妙的 I2C 热插拔技巧是对总线线路预充电，[NXP PCA9511 可热插拔 I2C 总线缓冲器](https://www.nxp.com/docs/en/data-sheet/PCA9511A.pdf) 就采用了这种方法（该器件还具有上升时间加速器）。在插入期间（假设该芯片位于使用 I2C 的可热插拔设备上），总线线路会被预充电到约 1V，从而限制由于 I2C 线路电压不同而在插入时产生的最坏情况电容扰动。
+
+## 时钟拉伸
+
+目标设备可以通过将时钟线（SCL）拉低来表示它尚未准备好接收新数据。这告诉控制器在发送更多数据之前等待时钟线变高。
+
+## 互补/有用的 I2C 器件
+
+- I/O 扩展器——用于减少走线和简化布线。基本上就是一颗带有数字端口的 IC，可通过 I2C 通信打开或关闭。用于补充 I/O 有限的处理器，并驱动按键板等需要大量端口的 外设（你也可以使用专用的 I2C 按键板控制器）
+- I2C 多路复用器/开关——执行 I2C 走线的电压转换/隔离和多路复用。在处理混合电压 I2C 系统和解决地址冲突时很有用
+- USB 转 I2C 桥接器——在计算机与外部 I2C 通信线路之间提供接口。某些内置 MPSSE（多用途同步串行引擎）的 FTDI 芯片/线缆支持 USB 转 I2C 通信。参见此应用笔记（[Application Note AN-190: C232HM MPSSE Cable in USB to I2C/SMBus interface](https://ftdichip.com/wp-content/uploads/2020/08/AN_190_C232HM_MPSSE_Cable_in_USB_to_I2C_Interface.pdf)）。  
+  
+<Image src={import('./_assets/c232hm-ddhsl-0-ftdi-usb-to-mpsse-cable.jpg')} width="265">C232HM-DDHSL-0 FTDI USB 转 MPSSE 线缆。它在计算机与多种串行通信协议（如 SPI、I2C 和 UART）之间建立桥接。</Image>
+
+## 典型 I2C 操作
+
+I2C 通常用于在嵌入式环境中配置数字传感器 IC 并与之通信。加速度计、电容式传感器、数字温度计等 IC 通常具有用于配置和/或数据传输的 I2C 协议。
+
+<Image src={import('./_assets/typical-i2c-waveform.jpg')} width="483">典型的 I2C 波形。上方波形是时钟（SCL），下方波形是数据（SDA）。图中控制器试图与目标设备通信，但目标设备没有应答（第九位为高电平）。</Image>
+
+通常，IC 具有 7 位地址，该地址左移 1 位，读/写位位于 LSB。如果 IC 检测到自己的地址，就会发出应答。控制器通过 I2C 发送的第二个字（不一定是字节，取决于芯片上寄存器的大小，通常为 1 或 2 字节）写入地址指针，这决定了接下来要读/写哪个寄存器。这始终是写操作。
+
+此时，**如果控制器执行写操作**，控制器的第三个字将写入地址指针所指向的寄存器（该指针已作为第二个字发送）。此时地址指针会自动加 1，使控制器能够一次写入连续寄存器，而无需执行单独的 I2C 传输。
+
+<Image src={import('./_assets/i2c-waveform-example-saleae-logic-analyser.png')} width="800px">使用信号分析仪（带 I2C 解码）的典型 I2C 捕获。</Image>
+
+但如果**控制器执行读操作**，通常在写入地址指针后发出重复起始条件。然后控制器发出读命令（IC 的 7 位地址以及正确设置的读/写位）。接着控制器提供时钟脉冲，目标设备从上一写周期中地址指针所设置的寄存器开始“读出”寄存器内容。与写操作一样，地址指针会自动递增，从而可以一次读取多个寄存器。
+
+下图显示了一个没有响应的 I2C 目标设备。注意在第 9 个时钟脉冲时 SDA 线上没有“ACK”。目标设备本应将 SDA 拉低。
+
+<Image src={import('./_assets/i2c-waveform-with-nak-saleae-logic-analyser.png')} width="800">没有响应的 I2C 目标设备，第 9 个时钟脉冲上没有 ACK。</Image>
+
+## I2C 总线卡死
+
+微控制器与目标设备之间的 I2C 通信有可能失去同步，导致总线挂起。如果在读阶段目标设备正将 SDA 拉低时，微控制器被复位（或噪声破坏了线路），目标设备会无限期地继续将 SDA 拉低，并阻止控制器发出任何起始控制。最简单的修复方法是在有外部复位方式（例如单独的复位线或切断其电源）时复位目标设备。
+
+如果无法做到这一点，另一种恢复总线的方法是执行以下操作，正如 Philips Semiconductors 在 *I2C Manual* 中所述[^phillips-semiconductors-an10216-i2c-manual]：
+
+1. 将 SCL 和 SDA 线切换为 GPIO，以手动控制它们。
+1. 在 SCL 线上发送 9 个时钟脉冲。这会使目标设备继续移出它认为是失败读操作一部分的数据。
+1. 等待目标设备释放对 SDA 线的控制。
+1. 不要让主微控制器将 SDA 拉低。这会使微控制器对该字节回 NAK。
+1. 目标设备随后进入 IDLE 状态。
+1. 控制器再发送 STOP 命令以初始化 I2C 总线。
+
+这些步骤应在每次微控制器复位时、I2C 总线外设初始化之前执行。
+
+Nordic TWI/TWIM 外设驱动包含一个名为 `TWI_DEFAULT_CONFIG_CLR_BUS_INIT` 的宏，可在初始化期间启用“总线清除”过程[^nordic-semi-twi-twim-peripheral-driver-config]。
+
+Forward Computing and Control Pty. Ltd. 的 Matthew Ford 为 Arduino 项目编写了一个 `I2C_ClearBus()` 方法，可确保 I2C 总线在启动时处于空闲状态[^forward-computing-and-control-i2c-clear-bus]。可从 https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html 下载。
+
+I2C 总线挂起问题在 https://github.com/esp8266/Arduino/issues/1025 中有详细讨论。
+
+## 原型设计
+
+在原型设计时，如果可以选择，并且选择 SPI 或 UART 相对于 I2C 没有其他明显优势/劣势，我会尽量使用 SPI 或 UART，因为它们通常更容易调试。I2C 比较困难，因为数据线由控制器和目标设备共享（难以判断是谁在发送），而且传输线是上拉的（因此很难/不可能区分是器件在驱动线路还是线路处于三态）。
+
+## 微控制器/SBC 支持
+
+**I2C 是一种非常流行的协议，大多数微控制器都支持它**。微控制器 I2C 支持的一些例子包括 TI MSP430 增强型通用串行通信接口（eUSCI）、[PSoC 3、4 和 5LP I2C 拖放模块](/programming/microcontrollers/psoc/components#i2c)（集成式和硬件架构版本），以及 Atmel Atmega TWI 外设。
+
+许多 SBC（单板计算机）也支持 I2C。流行的 Raspberry Pi SBC 有一个 I2C 外设，通过 PCB 上的排针引出[^pinout-rpi]。
+
+### I2C 可编程模拟和数字噪声滤波器
+
+一些微控制器为其 I2C 外设提供可编程模拟和/或数字噪声滤波器。
+
+同时提供模拟和数字滤波器的微控制器示例是 STMicroelectronics 的 STM32F0 系列。
+
+### SCL 尖峰滤波器
+
+I2C 规范要求 I2C 器件忽略 SCL 线上持续时间小于 50ns 的任何高电平信号。该规范并未被普遍实现，通常是因为在大多数情况下它不影响工作。不过，[I3C 通信协议](/electronics/communication-protocols/i3c-communication-protocol/) 在其部分*高数据速率*（HDR）模式中使用了这一特性，使带有尖峰滤波器的 I2C 目标设备能够在两个 I3C 器件之间进行 HDR 传输时共存于总线上。
+
+## I2C 的替代方案
+
+I2C 的一个流行替代方案也用于板内通信，即 [SPI 总线](/electronics/communication-protocols/spi-communication-protocol/)。[I3C](/electronics/communication-protocols/i3c-communication-protocol/) 使用范围较小，但在波特率、功能和功耗方面是对 I2C 的改进。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^pinout-rpi]: Philip Howard. _I2C - Inter Integrated Circuit_. pinout.xyz. 检索于 2021-11-23，来自 https://pinout.xyz/pinout/i2c。
+[^elec-se-hdmi-and-i2c]: "Turbo J"（2014 年 8 月 4 日）。_HDMI and I2C_. StackExchange: Electrical Engineering。检索于 2021-11-24，来自 https://electronics.stackexchange.com/questions/123957/hdmi-and-i-2-c。
+[^ken-shirriff-vga-i2c]: Ken Shirriff. _Reading a VGA monitor's configuration data with I2C and a PocketBeagle_. 检索于 2021-11-24，来自 http://www.righto.com/2018/03/reading-vga-monitors-configuration-data.html。
+[^patent-i2c]: US Philips Corp（1981 年 11 月 2 日）。_Two-wire bus-system comprising a clock wire and a data wire for interconnecting a number of stations_. 检索于 2021-11-24，来自 https://patents.google.com/patent/US4689740A/en。
+[^i2c-bus-ufm]: I2C BUS. _Ultra Fast Mode UFm_. 检索于 2021-11-24，来自 https://www.i2c-bus.org/ultra-fast-mode-ufm/。
+[^ti-ads1100-adc]: Texas Instruments（原 Burr-Brown）（2003）。_ADS1100: Self-Calibrating, 16-Bit Analog-to-Digital Converter_ [数据手册]。检索于 2022-01-07，来自 https://www.ti.com/symlink/ads1100.pdf。
+[^ti-ina226-power-mon]: Texas Instruments（2011 年 6 月）。_INA226 High-Side or Low-Side Measurement, Bi-Directional Current and Power Monitor with I2C Compatible Interface_ [数据手册]。检索于 2022-01-07，来自 https://www.ti.com/lit/ds/symlink/ina226.pdf。
+[^nordic-semi-twi-twim-peripheral-driver-config]: Nordic Semiconductor. _TWI/TWIM peripheral driver - legacy layer configuration_ [文档]。检索于 2023-09-12，来自 https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v15.0.0%2Fgroup__nrf__drv__twi__config.html。
+[^forward-computing-and-control-i2c-clear-bus]: Matthew Ford（2022 年 11 月 12 日）。_Reliable Startup for I2C Battery Backed RTC. Why theArduino Wire library is not enough._ [文章]。Forward Computing and Control Pty. Ltd. 检索于 2023-09-12，来自 https://www.forward.com.au/pfod/ArduinoProgramming/I2C_ClearBus/index.html。
+[^phillips-semiconductors-an10216-i2c-manual]: Philips Semiconductors（现 NXP）。_AN10216-01 - I2C Manual_. 检索于 2023-09-12，来自 https://www.nxp.com/docs/en/application-note/AN10216.pdf。
+[^nxp-um10204-i2c-bus-specification]: NXP Semiconductors（2021 年 10 月 1 日）。_UM10204 - I2C-bus specification and user manual - Rev. 7.0_ [用户手册]。检索于 2026-06-09，来自 https://www.nxp.com/docs/en/user-guide/UM10204.pdf。

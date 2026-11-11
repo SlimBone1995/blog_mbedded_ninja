@@ -1,0 +1,78 @@
+---
+authors: [gbmhunter]
+date: 2024-09-17
+description: GNU 链接器（ld）是一个将目标文件和库组合成可执行文件的程序。
+lastUpdated: 2024-09-17
+tags: [ld, linkers, GCC, C, C++]
+title: GNU 链接脚本
+type: page
+sourcePath: programming/compilers/gcc/gnu-linker-scripts/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:dc708d8eb95584e1b624ec25b39fb2f9338b3816cd56169cf14bd330cadd35eb
+sourceUrl: https://blog.mbedded.ninja/programming/compilers/gcc/gnu-linker-scripts/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+链接脚本使用 `.ld` 文件扩展名。
+
+## 入口点
+
+程序的入口点可以通过几种不同方式指定[^gnu-linker-command-language]：
+
+1. 使用 `ENTRY` 命令。
+1. `start` 符号的值。
+1. `.text` 节第一个字节的地址。
+1. 地址 `0`。
+
+例如，如果使用 `ENTRY()` 命令：
+
+```txt
+ENTRY(reset_handler)
+```
+
+## 内存布局
+
+可以使用 `MEMORY` 命令描述目标系统中内存“块”的大小和位置。链接器将根据这些信息把请求的节放入正确的内存块，并在任何块溢出时产生错误。
+
+一个 `.ld` 文件只能包含一条 `MEMORY` 命令。在命令内部，可以定义任意数量的内存块。语法为[^gnu-linker-command-language]：
+
+```txt
+MEMORY
+{
+  name1 (attr) : ORIGIN = origin1, LENGTH = length1
+  ...
+}
+```
+
+* `name1` 是内存块的名称，链接器内部用它来引用该区域。
+* `attr` 是内存块的属性列表。支持的属性包括：
+  * `r` 表示只读。
+  * `w` 表示可读写节。
+  * `x` 表示可执行节。
+  * `a` 表示可分配节。
+  * `i` 表示已初始化节。
+  * `l` 与 `i` 相同。
+* `origin1` 是内存块的起始地址。
+* `length1` 是内存块的大小（以字节为单位）。
+
+## 节
+
+下面的示例创建一个包含三个节 `.text`、`.data` 和 `.bss` 的输出文件。它从所有输入文件中取出对应的节（`.text` 放入 `.text`）并放入输出文件：
+
+```txt
+SECTIONS { 
+  .text : { *(.text) }
+  .data : { *(.data) } 
+  .bss :  { *(.bss)  *(COMMON) } 
+}
+```
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^gnu-linker-command-language]: GNU。_Manuals > ld v2.9.1. > Command Language_。检索于 2024-09-17，来自 https://ftp.gnu.org/old-gnu/Manuals/ld-2.9.1/html_chapter/ld_3.html。

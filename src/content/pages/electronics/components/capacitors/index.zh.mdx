@@ -1,0 +1,1265 @@
+---
+authors: [gbmhunter]
+date: 2011-09-05
+description: 电容器简介——电路设计中的一种基础元件。介绍其不同类型、特性、用途以及相关方程。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-06-06
+tags: [capacitor, cap, components, schematic symbols, circuit, ceramic, electrolytics, tantalums, packages, film, feedthrough, decoupling, MFC, X5R, X7R, C0G, NP0, singing capacitors, piezoelectric, Class I, Class II, Class III, audible noise, dielectrics, bending flex, FT-CAP, capacitance multipliers]
+title: 电容器
+type: page
+sourcePath: electronics/components/capacitors/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:2cc2f2871ba009ece32e922ceba5f3576c74ceac41d221ec9053d84c8d5676ed
+sourceUrl: https://blog.mbedded.ninja/electronics/components/capacitors/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+import CapacitorCharge from 'src/components/tools/capacitor-charge/CapacitorCharge.jsx';
+
+import CapacitorEnergy from 'src/components/tools/capacitor-energy/CapacitorEnergy.jsx';
+
+import CapacitorImpedance from 'src/components/tools/capacitor-impedance/CapacitorImpedance.jsx';
+
+import ParallelCapacitance from 'src/components/tools/parallel-capacitance/ParallelCapacitance.jsx';
+
+import SeriesCapacitance from 'src/components/tools/series-capacitance/SeriesCapacitance.jsx';
+
+电容器是一种无源电子元件，在两个导电表面之间储存电荷。导电表面（极板）通常靠得很近，中间夹有电介质，以便在给定尺寸下最大化电容量。它们是常用元件，与电阻器一起构成电路板上最常用的两类元件。电容器尺寸范围很广，从水箱大小的电容，到小型 SMD 电容器，再到由 PCB 走线形成的电容。
+
+**电容器的机械等效物是弹簧。** 电容越大，弹簧越硬。这里使用的是[力-电压](http://lpsa.swarthmore.edu/Analogs/ElectricalMechanicalAnalogs.html)机械类比。
+
+## 原理图符号
+
+下图展示了各种类型电容器的常用原理图符号：
+
+<Image src={import('./_assets/capacitor-symbols.png')} width="500px">各种类型电容器所使用的原理图符号。</Image>
+
+这些符号只涵盖你在原理图中会看到的主要类型。特殊电容器还有其他符号，例如[穿心电容](#feedthrough-capacitors)和微调电容。
+
+## 用途
+
+电容器的一些常见用途包括：
+
+- 模拟滤波
+- 储能（超级电容）
+- 电荷泵（升压，或自举电容）
+- 大功率能源（例如为线圈炮和轨道炮供电）
+- 振荡器（与电阻器和/或电感器配合）
+- 触摸/接近传感器和屏幕
+- 距离测量（例如数字卡尺中使用的技术）
+
+**前馈电容**是指在低压差线性稳压器（low-dropout regulator）的 VOUT 和 ADJ 引脚之间放置的电容，用于改善稳定性。
+
+## 类型
+
+### 陶瓷
+
+- 范围：1pF - 100uF
+- 极性：无
+- 典型标记：对于大型陶瓷电容，以 pF 为单位的数值加乘数（类似电阻器）。小型陶瓷片式电容无标记。
+- 用途：
+  - 通用（价格便宜）
+  - RF 电路
+  - 滤波电路
+
+陶瓷电容器因其电介质所用的微小陶瓷圆片而得名。1nF 以上的容值通常由堆叠陶瓷板制成，称为“多层独石电容”。
+
+#### 类别和陶瓷温度代码
+
+陶瓷电容器由两大类电介质制成，这会影响电容器的温度稳定性。_1 类_ 陶瓷电容器具有高稳定性和低损耗，适合谐振电路应用。_2 类_ 陶瓷电容器具有高体积效率（相同尺寸下电容量更大！），适合缓冲、旁路和耦合应用，这些场合通常对确切容值不那么苛刻。不过，它们受直流偏置效应影响显著。
+
+<Aside type="note">
+
+谈到 _1 类_ 陶瓷电容器的高稳定性时，我们通常指电容量在以下方面的稳定性：
+
+- 工作温度
+- 直流工作电压范围（电容量会随电容两端直流偏置电压的变化而变化！）
+- 电容器的寿命
+</Aside>
+
+**1 类：**
+
+1 类电容器主要使用锆酸钙作为电介质[^kemet-heres-what-makes-mlcc-dielectrics-different]，其介电常数在温度和直流偏置下都非常稳定。然而其介电常数（因而相对介电常数）远小于 2 类 MLCC 所用介电材料，因此电容量小得多（通常为 pF 到 nF）。
+
+下表列出 1 类陶瓷电容器的 EIA 温度代码：
+
+<table class="small">
+  <caption>
+
+1 类电容器 EIA 温度代码[^bib-ceramic-dielectric-types]。
+  </caption>
+  <thead>
+    <tr>
+      <th colspan="2">第一个字符</th>
+      <th colspan="2">第二个字符</th>
+      <th colspan="2">第三个字符</th>
+    </tr>
+    <tr>
+      <th>字母</th>
+      <th>有效数字</th>
+      <th>数字</th>
+      <th>乘数（10^X）</th>
+      <th>字母</th>
+      <th>容差（ppm/°C）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>  <td>C</td>  <td>0.0</td>    <td>0</td>  <td>-1</td>     <td>G</td>  <td>±30</td>    </tr>
+    <tr>  <td>B</td>  <td>0.3</td>    <td>1</td>  <td>-10</td>    <td>H</td>  <td>±60</td>    </tr>
+    <tr>  <td>L</td>  <td>0.8</td>    <td>2</td>  <td>-100</td>   <td>J</td>  <td>±120</td>   </tr>
+    <tr>  <td>A</td>  <td>0.9</td>    <td>3</td>  <td>-1000</td>  <td>K</td>  <td>±250</td>   </tr>
+    <tr>  <td>M</td>  <td>1.0</td>    <td>4</td>  <td>+1</td>     <td>L</td>  <td>±500</td>   </tr>
+    <tr>  <td>P</td>  <td>1.5</td>    <td>6</td>  <td>+10</td>    <td>M</td>  <td>±1000</td>  </tr>
+    <tr>  <td>R</td>  <td>2.2</td>    <td>7</td>  <td>+100</td>   <td>N</td>  <td>±2500</td>  </tr>
+    <tr>  <td>S</td>  <td>3.3</td>    <td>8</td>  <td>+1000</td>  <td></td>   <td></td>       </tr>
+    <tr>  <td>T</td>  <td>4.7</td>    <td>9</td>  <td>+10000</td> <td></td>   <td></td>       </tr>
+    <tr>  <td>V</td>  <td>5.6</td>    <td></td>   <td></td>       <td></td>   <td></td>       </tr>
+    <tr>  <td>U</td>  <td>7.5</td>    <td></td>   <td></td>       <td></td>   <td></td>       </tr>
+  </tbody>
+</table>
+
+_有效数字_ 指电容量随温度变化的有效数字，单位为 `ppm/°C`。乘数数字 `5` 被有意排除（虽然我也不知道为什么！）。
+
+`NP0` 与 `C0G` 指同一种材料，因此二者是同一回事。如下图所示，一些制造商和供应商将它们合称为 `C0G/NP0`。`NP0` 代表“negative positive 0”（负正零），指电容量随温度既没有正变化也没有负变化。
+
+<Image src={import('./_assets/c0g-np0-capacitor-temp-coeff-grouping-digikey.png')} width="500">与许多其他供应商一样，DigiKey 将 C0G 和 NP0 归为同一个温度系数。截图来自 https://www.digikey.com/product-detail/en/tdk-corporation/CGA4C2C0G1H392J060AA/445-6942-1-ND/2672960。</Image>
+
+**2 类：**
+
+下表列出基于 EIA RS-198 标准的 2 类温度代码：
+
+<table class="small">
+  <caption>
+
+2 类电容器 EIA 温度代码[^bib-ceramic-dielectric-types]。
+  </caption>
+  <thead>
+    <tr>
+      <th>第一个字符（较低温度字母）</th>
+      <th>第二个字符（较高温度字母）</th>
+      <th>第三个字符（电容量随温度的变化）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>X = -55°C（-67°F）</td>
+      <td>4 = +65°C（+149°F）</td>
+      <td>P = ±10%</td>
+    </tr>
+    <tr>
+      <td>Y = -30°C（-22°F）</td>
+      <td>5 = +85°C（185°F）</td>
+      <td>R = ±15%</td>
+    </tr>
+    <tr>
+      <td>Z = +10°C（+50°F）</td>
+      <td>6 = +105°C（221°F）</td>
+      <td>S = ±22%</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>7 = +125°C（257°F）</td>
+      <td>T = +22/-33%</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>8 = +150°C（302°F）</td>
+      <td>U = +22/-56%</td>
+    </tr>
+    <tr>
+      <td></td>
+      <td>9 = +200°C（392°F）</td>
+      <td>V = +22/-82%</td>
+    </tr>
+  </tbody>
+</table>
+
+上表中最常见的代码是 `X5R`、`X7R`、`Y5V` 和 `Z5U`。
+
+下表列出 JIS 标准中的代码。它们在工业中不常见，上述 EIA 代码要流行得多。
+
+<table>
+  <caption>
+
+电容器的两种主要 JIS 温度代码[^tdk-temp-characteristics-mlcc]。
+  </caption>
+  <thead>
+    <tr>
+      <th>符号</th>
+      <th>类别</th>
+      <th>温度范围</th>
+      <th>电容容差</th>
+    </tr>
+    </thead>
+  <tbody>
+    <tr>
+      <td>CH</td>
+      <td>1 类</td>
+      <td>-25°C 至 +85°C</td>
+      <td>±60ppm/°C</td>
+    </tr>
+    <tr>
+      <td>JB</td>
+      <td>2 类</td>
+      <td>-25°C 至 +85°C</td>
+      <td>±10%</td>
+    </tr>
+  </tbody>
+</table>
+
+TDK 还生产 JB（类似 `X5R`）和 CH（类似 `C0G`）两种代码。它们与上述代码类似，只是针对更小的温度范围进行了优化。
+
+#### 绝缘电阻
+
+军用 MLCC 的[绝缘电阻](#leakage-currents)限值为：
+
+- 在 $ +25^{\circ}C $ 下，IR > $ 10^{11}\Omega $ 或 $ 10^3 M\Omega \cdot uF $，取较小者。
+- 在 $ +125^{\circ}C $ 下，IR > $ 10^{10}\Omega $ 或 $ 10^2 M\Omega \cdot uF $，取较小者。
+
+商用 MLCC 的 IR 要求大约低两倍。
+
+#### 啸叫电容（可听噪声）
+
+**陶瓷电容器在特定频率下工作时会产生可听噪声。** 这是由于独石陶瓷电容器内部的电介质材料钛酸钡 $BaTiO_3$ 在电场作用下表现出压电和电致伸缩力的共同作用[^covaci-singing-mlccs-and-mitigation]。这会使电容器发生机械振动（位移量级为 1pm-1nm），从而产生声学噪声。这种噪声在开关模式电源和其他高频开关器件中很常见。钽电容和电解电容不会表现出这种效应，当不希望有这种噪声时可以用它们替代。
+
+<Image src={import('./_assets/murata-deformation-of-pcb-by-electrostrictive-phenomenon.jpg')} width="450">陶瓷片式电容中电致伸缩现象引起的 PCB 形变。图片来自 http://www.murata.com/products/capacitor/solution/naki.html。</Image>
+
+#### 柔韧性
+
+陶瓷电容器有时会经过测试并标定其可承受的最大_弯曲挠度_。一个例子是 [Kemet VW80808（FT-CAP）](https://content.kemet.com/datasheets/KEM_X7R_FT_VW_AUDI.pdf) 系列陶瓷电容器，可承受 5mm 弯曲。这些产品面向汽车应用（但不限于此）。之所以能达到较大的弯曲规格，是因为在电容器两端设计了柔性端接帽，阻止应力从 PCB 传递到脆弱的陶瓷电容本体。
+
+AVX 为其可承受更高弯曲挠度的陶瓷片式电容器系列创造了 _FLEXITERM_ 一词。下图展示了测量最大弯曲挠度的测试装置示意图。
+
+<Image src={import('./_assets/avx-flexiterm-test-for-ceramic-chip-caps.png')} width="500">展示用于测量带“FLEXITERM”端子的 AVX 片式电容器最大弯曲挠度的测试装置示意图[^bib-avx-auto-mlcc]。</Image>
+
+#### 直流偏置特性
+
+陶瓷 MLCC 电容器受直流偏置效应影响显著（电容量随施加电压而降低）。更多信息参见[直流偏置特性](#dc-bias-characteristic)一节。
+
+### 电解
+
+- 范围：100nF - 5000uF
+- 极性：有（但某些特殊型号没有）
+- 典型标记：由于尺寸较大，电容量通常以绝对值形式印在圆柱体上。
+- 用途：
+  - 电源大容量去耦
+  - 滤波
+  - 音频旁路电容
+
+电解电容器使用非常薄的电解沉积金属氧化膜（$Al_2 O_3$）作为电介质。它们具有很高的电容密度（嗯，那是在超级电容出现之前）。它们通常呈圆柱形，有通孔（轴向和径向）和表面贴装（surface-mount）类型。
+
+在过压条件下，电介质层可能被击穿出孔洞，电容器开始导通。好消息是，如果过压很快消失（例如只是浪涌或尖峰），电容器可以自愈。坏消息是，如果电容器温度足够高，电介质可能沸腾、产生蒸气，电容会爆炸。大多数电解电容外壳上都有一个特定的“薄弱点”，设计用于在过压情况下破裂。这可能发出相当大的爆响，如果你恰好在爆炸时凑近观察电路，可能会很危险。
+
+关于 SMD 电解电容器的常见尺寸代码和尺寸，参见 [SMD 电解电容器封装页面](/pcb-design/component-packages/smd-electrolytic-capacitor-packages)。
+
+#### 电解液泄漏
+
+电解电容器因长期使用后电解液泄漏和/或汽化而有些声名狼藉。泄漏或汽化速率随工作温度升高而急剧增加，通常导致电容量下降、等效串联电阻（ESR）增大[^bib-cadence-causes-of-elec-cap-degradation]。泄漏到 PCB 上的电解液会严重腐蚀相邻元件。这是由于氧化加剧，以及电解液使不同电位的走线和其他导电部件之间发生导通，从而引起化学侵蚀。
+
+_电容瘟疫_ 是 1999 年至 2007 年间的一段时期，当时**电解电容器的失效率高于预期**，原因是设计缺陷。其背景颇具戏剧性：问题始于 1999 年，日本 Rubycon 公司的一名科学家窃取了一份抄错的电容电解液配方，并交给其前雇主——中国的 Luminous Town Electric 公司。该错误配方又被窃取到台湾，结果生产出大量有缺陷的电容器。2002 年起，PC 主板等设备中鼓包和爆裂的电解电容器开始登上头条[^bib-passive-component-industry-electrolytic-failures]。
+
+<Aside type="note">
+
+我父亲有一台较旧的 Dell WL6000“无线扬声器系统”开始出故障。开机 20-40 分钟后，扬声器中会开始出现越来越大的噼啪声，很快使系统无法使用。打开主机后，我发现了典型的电解电容泄漏迹象，如下图所示。电解液从电容器中漏出，还腐蚀穿了相邻电阻器的引脚，使电阻器开路（电容器当时可能也已工作不良）。更换这两个元件后，噪声消失了！
+
+<Image src={import('./_assets/pcb-with-electrolyte-leakage-zoomed-out.jpg')} width="1000">Dell 音响系统中 PCB 的照片。高亮处是泄漏的电解电容器，它还腐蚀穿了相邻电阻器的引脚。</Image>
+
+下图是故障电解电容器的特写。你看不到被腐蚀的电阻器，因为它被橙色圆片状电容器和看似电感器的元件挡住了。
+
+<Image src={import('./_assets/pcb-with-electrolyte-leakage-zoomed-in.jpg')} width="800">故障电解电容器的特写。</Image>
+
+</Aside>
+
+### 钽
+
+- 范围：100nF-2mF（截至 2014 年 1 月，DigiKey 上为 47nF 至 10mF）
+- 极性：有（标记表示**正**极）
+- 典型标记：电容量通常直接印在电容器上
+- 用途
+  - 小型 PCB 上的电源滤波
+  - 医疗和航天设备
+
+钽电容器是电解电容器的一种特殊类型。但由于其特殊性能和广泛使用，它们与普通电解电容器分开归类。与普通电解电容相比，它们具有更低的等效串联电阻、更低的漏电流和更高的工作温度范围（最高 125°C）。下图展示了通孔钽电容器的示例。
+
+<Image src={import('./_assets/container-of-th-tantalum-caps.jpg')} width="700">通孔钽电容器。</Image>
+
+钽电容器有两种基本类型：较旧的_固体_钽电容器和较新的_湿式_钽电容器。
+
+#### 固体钽电容器
+
+顾名思义，_固体_钽电容器包含固体电解质。它们不易出现普通电解电容的电解液蒸发/干涸问题。这使它们能够在数年甚至数十年内保持额定电容量。
+
+#### 湿式钽电容器
+
+_湿式_ 钽电容器是较新的钽电容器形式，能量密度优于固体类型。价格高于固体钽电容器。湿式钽电容器具有一个有趣的特性：能够**自愈**并阻止击穿引起的漏电流[^bib-nasa-self-healing-tantalum]。湿式电解液能够在氧化层受损的位置提供氧并使其重新形成[^bib-wikipedia-tantalum-capacitor]。
+
+#### 结构
+
+钽电容器的核心是烧结钽金属（$Ta$）颗粒；电介质是在其表面生长的一层薄薄的五氧化二钽（$Ta_2 O_5$），如下图所示。
+
+<Image src={import('./_assets/cross-section-of-tantalum-capacitor.png')} width="500">SMD 钽电容器的横截面。</Image>
+
+#### 封装
+
+钽电容器同时有通孔和 SMD 封装。
+
+#### 价格
+
+钽电容器往往比任何其他常用电容器（电解、陶瓷）都贵，因此通常仅用于需要在狭小空间内提供大容量、低等效串联电阻的场合。
+
+#### 问题
+
+钽电容器最愚蠢的地方是：极性指示条纹位于**正**极一端旁边。这与几乎所有其他带条纹极性标记的东西相反——它们都指示哪一端是负极（想想电解电容、二极管等）。因此，使用它们时要非常小心警惕，因为很容易忘记这条规则！
+
+钽电容器比普通电解电容更容易受到反向电压和过压的影响。电压足够高时，电介质击穿，电容器开始导通。电流会产生大量热量，最妙的是，它可能在钽和二氧化锰之间引发**微型铝热**反应。
+
+由于其工作温度范围宽、稳定性好且价格高，它们常用于医疗和航天设备。
+
+### 薄膜电容器
+
+- 同义词/子系列：
+  - MKT
+  - MFC（金属化薄膜电容器）
+  - MPFC（金属化聚酯薄膜电容器）
+  - 功率（薄膜）电容器
+- 范围：1nF - 10uF
+- 极性：无
+- 电介质：聚酯、聚碳酸酯
+- 典型标记：由于尺寸较大，电容量通常以 `<number><number><multiplier><tolerance>` 皮法形式（例如 `105K` 等于 `10e^5pF` 等于 `1uF`），或者由于尺寸较大而将绝对值（例如 `0.1uF`）印在元件某处。
+- 用途：
+  - 电源
+  - 音频电路
+
+薄膜电容器是一类使用薄绝缘塑料薄膜作为电介质的电容器[^bib-wikipedia-film-capacitor]。它们对极性不敏感。薄膜可以**保持原样**，也可以**金属化**，从而成为金属化薄膜电容器[^bib-capacitorguide.com]。
+
+如何识别薄膜电容器？薄膜电容器通常有以下形式：
+
+灌封的矩形块，两根引线通常从同一侧引出（径向）。典型颜色为黄色、蓝色或白色。
+
+<div style={{ display: 'flex' }}>
+  <Image src={import('./_assets/yellow-potted-film-capacitor-alibaba.png')} width="200">一个黄色灌封薄膜电容器。图片来自 alibaba.com。</Image>
+  <Image src={import('./_assets/blue-potted-film-capacitor-hitano.png')} width="200">Hitano 的蓝色灌封薄膜电容器。</Image>
+</div>
+
+下图展示了一个薄膜电容器，其圆角红色外壳涂有环氧漆，引线从同一侧引出。
+
+<Image src={import('./_assets/red-radial-film-capacitor-photo-ecq-p1h822gz3-digikey.png')} width="300">一个红色径向薄膜电容器（Panasonic ECQ-P1H822GZ3）。图片来自 digikey.com。</Image>
+
+**金属化聚酯薄膜电容器**
+
+_金属化聚酯薄膜电容器_（MFC）用于需要长期稳定性且成本相对较低的场合。它们通常以亮黄色矩形块的外观来辨认。
+
+金属化薄膜电容器在发生过压事件时具有自愈效应，而陶瓷电容器等其他类型则没有。这使它们在大功率应用中更安全。下图展示了一个炸裂的 1uF 250VAC 金属化聚酯薄膜电容器：
+
+<Image src={import('./_assets/20191227-capacitor-blown-in-circuit.jpg')} width="800">我在妈妈的碎纸机里发现的一个损坏的 1uF（标记 105K）250VAC 金属化薄膜电容器（带裂纹的红色鼓包）。</Image>
+
+### 聚酯（绿电容）
+
+- 范围：1nF - 10uF
+- 极性：无
+- 电介质：聚酯、聚碳酸酯
+- 典型标记：以 pF 为单位的数值加乘数（类似电阻器）
+- 用途
+  - 通用电路
+
+聚酯电容器使用聚酯塑料薄膜作为电介质。它们的特性与圆片陶瓷电容器相似。它们有时被称为绿电容，因为外部有绿色塑料涂层用于保护。问题在于，并非所有聚酯电容都是绿色的！不少是棕色或其他颜色。
+
+### 超级电容器
+
+- 范围：10mF-1000F
+- 极性：有（标记表示负极）
+- 典型标记：电容量通常直接印在电容器上
+- 用途
+  - 低频电压纹波滤波，通常由大而低频的脉冲电流引起。
+  - 作为电池的储能替代方案。
+  - 与电池并联，为通常缺乏良好脉冲电流能力的电池化学体系（即内阻较大的体系）提供良好的脉冲电流能力。这是锂亚硫酰氯电池的常见做法。
+  - 为音响系统的低音提供额外支持（本质上是为低音“轰鸣”时提供低源阻抗能源）
+
+超级电容器实际上是电解电容器的一种特殊类型。
+
+它们的范围通常为 10mF 到 1000F（单个电容器）。将这类电容器堆叠起来，可以获得任意高的电容量。
+
+要注意，大型超级电容器（10F 及以上）的漏电流可能相当高（数百 uA 甚至 mA！）。更糟的是，有些数据手册甚至不提漏电流！超级电容器的等效串联电阻通常随电容量增大而减小。
+
+超级电容器有通孔和 SMD 封装。
+
+### 门钮电容器
+
+门钮（或桶形）电容器是陶瓷电容器的一种，因其外形类似门钮而得名。它们通常额定高压（kV 级），用于 RF 应用。它们具有低介质损耗和线性电容温度系数。通常用于 50kHz-100MHz 的频率范围。下图展示了一些高压门钮电容器的示例：
+
+<Image src={import('./_assets/door-knob-capacitors.jpg')} width="600">陶瓷高压“门钮”电容器。图片来自 www.trademe.co.nz。</Image>
+
+## 常见材料的相对介电常数
+
+_电介质_ 是绝缘体或导电性极差的材料，但能有效支撑电场[^britannica-dielectric]。当电介质置于电场中时，其中几乎没有电流流动，因为它们不允许电子移动（与金属不同）。然而，材料内部的正负电荷会发生微小位移，使电介质_极化_。极化会产生内部电场，从而降低电介质中的总电场（外部场与其内部场之和）[^wikipedia-dielectric]。就电容器而言，在电容器的两个极板之间放置电介质，会使电容量比真空时增大。
+
+任何材料允许的极化程度称为其介电常数，通常用一个称为_相对介电常数_的数值来表征。相对介电常数是材料介电常数与真空介电常数之比[^tutorials-point-difference-between-dielectric-constant-and-permittivity]。它也称为_介电常数_，尽管工程标准组织认为这一术语已过时并已弃用[^wikipedia-relative-permittivity]。下表列出常见材料的介电常数，按字母顺序排列。
+
+<table>
+  <caption>常见材料的相对介电常数。</caption>
+  <thead>
+    <tr>
+      <th style={{ width: '150px' }}>材料</th>
+      <th style={{ width: '150px' }}>相对介电常数（无单位）</th>
+      <th style={{ width: '400px' }}>备注</th>
+    </tr>
+  </thead>
+<tbody>
+<tr><td>真空</td>   <td>1</td>          <td>按定义为 1。</td></tr>
+<tr><td>空气</td>      <td>1.000590</td>   <td>取决于温度、压力和湿度。</td></tr>
+<tr><td>胶木</td> <td>4.4-5.4</td>    <td></td></tr>
+<tr><td>乙醇</td>  <td>24</td>         <td></td></tr>
+<tr>
+<td>酚醛树脂</td>
+<td>4.6-4.9</td>
+<td> </td>
+</tr>
+<tr>
+<td>玻璃</td>
+<td>7.6-8.0</td>
+<td>这是普通窗玻璃</td>
+</tr>
+<tr>
+<td>云母</td>
+<td>5.4</td>
+<td></td>
+</tr>
+<tr >
+<td >聚酯薄膜（Mylar）</td>
+<td >3.2</td>
+<td></td>
+</tr>
+<tr >
+<td >纸</td>
+<td >3.0</td>
+<td></td>
+</tr>
+<tr >
+<td >石蜡</td>
+<td >2.1</td>
+<td ></td>
+</tr>
+<tr >
+<td >有机玻璃</td>
+<td >2.8</td>
+<td ></td>
+</tr>
+<tr >
+<td >聚乙烯</td>
+<td >2.3</td>
+<td ></td>
+</tr>
+<tr >
+<td >聚苯乙烯</td>
+<td >2.6</td>
+<td ></td>
+</tr>
+<tr >
+<td >瓷</td>
+<td >5.1-5.9</td>
+<td ></td>
+</tr>
+<tr >
+<td >石英</td>
+<td >3.8</td>
+<td ></td>
+</tr>
+<tr >
+<td >橡胶</td>
+<td >2.8</td>
+<td >硬橡胶</td>
+</tr>
+<tr >
+<td >聚四氟乙烯（Teflon）</td>
+<td >2.1</td>
+<td ></td>
+</tr>
+<tr >
+<td >乙烯基</td>
+<td >2.8-4.5</td>
+<td ></td>
+</tr>
+<tr >
+<td >水</td>
+<td >76.5-80</td>
+<td >蒸馏水</td>
+</tr>
+</tbody>
+</table>
+
+空气的相对介电常数随湿度、压力和温度变化。
+
+## 电容器的串联和并联
+
+电容器串联和并联时的行为与电阻器和电感器的行为恰好相反。
+
+### 电容器并联
+
+并联电容器可以视为一个等效电容为下式的电容器：
+
+$$
+\begin{align}
+C_{total} = C_1 + C_2
+\end{align}
+$$
+
+也就是说，并联时*总等效电容等于各电容之和*。如下图所示。
+
+<Image src={import('./_assets/capacitors-in-parallel.webp')} width="600">两个电容器并联所得电容的示意图。</Image>
+
+*将电容器并联可增大电容量。* 并联电容器在电路设计中随处可见。一个典型例子是开关模式电源的大容量去耦，其输入端通常会并联多个大电容。
+
+与使用一个大电容相比，并联多个电容的优点之一是通常可以获得更低的等效串联电阻。
+
+使用下面的计算器求两个或多个并联电容器的总电容。每个输入支持公制前缀（例如 <code>10u</code>、<code>100n</code>、<code>4.7p</code>）。
+
+<ParallelCapacitance client:load />
+
+### 电容器串联
+
+串联的电容器可以视为一个电容为下式的电容器：
+
+$$
+\begin{align}
+C_{total} = \frac{1}{\frac{1}{C_1} + \frac{1}{C_2}}
+\end{align}
+$$
+
+或：
+
+$$
+\begin{align}
+C_{total} = \frac{C_1 C_2}{C_1 + C_2}
+\end{align}
+$$
+
+通常更容易记住以下形式：
+
+$$
+\begin{align}
+\frac{1}{C_{total}} = \frac{1}{C_1} + \frac{1}{C_2}
+\end{align}
+$$
+
+如下图所示。
+
+<Image src={import('./_assets/capacitors-in-series.webp')} width="800">两个串联电容器的等效电容示意图。</Image>
+
+注意总等效电容小于串联链中的任何一个电容器。*将电容器串联会减小电容量。***串联电容器的行为与并联电阻器相同。**
+
+使用下面的计算器求两个或多个串联电容器的总电容。每个输入支持公制前缀（例如 <code>10u</code>、<code>100n</code>、<code>4.7p</code>）。
+
+<SeriesCapacitance client:load />
+
+串联电容器的一个优点是每个电容器只承受总施加电压的一部分，因此可以施加高于任何单个电容器最大额定电压的电压。不过，必须注意确保电容器不会积累*电荷不平衡*，否则可能导致某个电容器承受超过其应分担份额的电压而爆裂！可以在每个电容器两端连接一个高阻值电阻（例如 $1M\Omega$）构成均衡电路。这会使任何不平衡积累的电荷通过电阻耗散，代价是增加电路的漏电流（记住，电容器本身也有内部漏电流）。这类似于电池单体电荷均衡电路的工作原理。
+
+## 电荷
+
+电容器极板上储存的电荷与电压和电容的关系为：
+
+$$
+\begin{align}
+Q = CV
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$Q$ = 极板中储存的电荷（库仑）<br/>
+$C$ = 电容（法拉）<br/>
+$V$ = 电压（伏特）<br/></p>
+
+### 电容电荷计算器
+
+使用下面的计算器，在已知电荷、电容或电压中任意两个量的情况下求解 $Q = CV$。输入支持公制前缀（例如 `5u`、`4.7n`、`100`）。
+
+<CapacitorCharge client:load />
+
+## 能量
+
+电容器中储存的能量为：
+
+$$
+\begin{align}
+E = \frac{1}{2}CV^2
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$E$ = 电容器中储存的能量（焦耳）<br/>
+$C$ = 电容（法拉）<br/>
+$V$ = 电容器两端的电压（伏特）<br/></p>
+
+如方程所示，电容器储存的能量与电容器的电容量和电压都有关。一个典型的 100nF、6.5V 电容器可储存 2.11uJ。不多吧！如果你真的考虑用电容器储能，就必须考虑超级电容器，其典型值为 100F 和 2.5V（截至 2011 年）。这可提供 313J 能量，足以用于为某些东西供电。
+
+### 电容能量计算器
+
+使用下面的计算器，在已知能量、电容或电压中任意两个量的情况下求解 $E = \frac{1}{2}CV^2$。输入支持公制前缀（例如 `2.11u`、`100n`、`6.5`）。
+
+<CapacitorEnergy client:load />
+
+## 力
+
+作用在电容器两个平行极板上的力为：
+
+$$
+\begin{align}
+F = \frac{\epsilon_0 AV^2}{2d^2}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$F$ = 作用在电容器每个平行极板上的向外力，单位牛顿<br/>
+$\epsilon_0$ = 真空介电常数<br/>
+$A$ = 两个极板的重叠面积，单位平方米<br/>
+$V$ = 电容器两端的电压，单位伏特<br/>
+$d$ = 两个极板之间的间距，单位米<br/></p>
+
+## 形状的电容
+
+不同形状的导体具有不同的电容。对于基本形状，有简单且众所周知的公式来计算其电容，包括平行板（传统电容器）、圆片和球体等形状。
+
+### 平行板电容
+
+两个平行极板的电容约为
+
+$$
+\begin{align}
+C = \epsilon_r \epsilon_0\frac{A}{d}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$\epsilon_0$ 是电常数（$8.854 \times 10^{-12}Fm^{-1}$）<br/>
+$\epsilon_r$ 是极板间材料的相对介电常数 [无单位]<br/>
+$A$ 是平行极板的重叠表面积 $[m^2]$<br/>
+$d$ 是极板之间的距离 $[m]$<br/></p>
+
+### 单个圆片的电容
+
+<Image src={import('./_assets/diagram-for-disc-capacitance-equation.svg')} width="320">圆片到无穷远电容公式的示意图。</Image>
+
+如上图所示，单个薄板在“无穷远”处（更实际地说，就是非常远）有接地时的电容为：
+
+$$
+\begin{align}
+C = 35.4 \times 10^{-12} \epsilon_r d
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$C$ = 电容（法拉）<br/>
+$\epsilon_r$ = 相对介电常数（真空为 1）<br/>
+$d$ = 薄板直径（米）<br/></p>
+
+### 球体电容
+
+<Image src={import('./_assets/diagram-for-sphere-capacitance-equation.svg')} width="320">球体到无穷远电容公式的示意图。</Image>
+
+如上图所示，单个球体同样在无穷远处有接地时的电容为[^bib-qs-study-capacitance-spherical]：
+
+$$
+\begin{align}
+C = 4\pi \epsilon_0 \epsilon_r r
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$C$ = 电容 [$F$]<br/>
+$\epsilon_0$ 是真空介电常数，约 $8.85 \times 10^{-12}Fm^{-1}$<br/>
+$\epsilon_r$ 是相对介电常数（真空为 $1$）<br/>
+$r$ 是球体半径 [$m$]<br/></p>
+
+### 同心圆柱电容
+
+<Image src={import('./_assets/diagram-for-coaxial-cylinders-capacitance-equation.png')} width="320">同轴圆柱电容公式的示意图。图片来自 http://www.capsense.com/capsense-wp.pdf。</Image>
+
+如上图所示，两个同心圆柱的电容为：
+
+$$
+\begin{align}
+C = \frac{2 \pi \epsilon_0 \epsilon_r}{\ln (\frac{b}{a})} L
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$a$ = 内圆柱半径 $[m]$<br/>
+$b$ = 外圆柱半径 $[m]$<br/>
+$L$ = 两个圆柱的长度 $[m]$<br/>
+其余变量如前所述<br/></p>
+
+## 等效串联电阻（ESR）
+
+陶瓷 SMD 电容器的等效串联电阻非常低。事实上，在某些应用中这可能是坏事（例如线性稳压器和 DC/DC 变换器的输入/输出稳定电容），此时要么使用钽电容，要么必须与电容器串联电阻。由于通常只需要毫欧级电阻，可以用尺寸合适的 PCB 走线来实现，通常将其蛇形布线到电容端子。
+
+电解电容器通常具有 0.1-5Ω 的较大等效串联电阻（也有特殊的低等效串联电阻型号，但仍无法与陶瓷电容相比）。
+
+由于等效串联电阻与电容器极板面积成比例，对于相似设计的电容器，等效串联电阻随电容量增大而减小。
+
+## 电抗和阻抗
+
+电容器对交流电呈现的阻碍称为其_电抗_ $X_C$。与电阻器不同，这种阻碍取决于频率：
+
+$$
+X_C = \frac{1}{2\pi f C}
+$$
+
+其中 $f$ 是信号频率，$C$ 是电容。由于 $f$ 在分母中，低频时电抗很大（电容器阻隔直流，$f = 0$ 时电抗无穷大），高频时电抗很小（可轻易通过高频交流）。正是这种频率依赖性使电容器可用于[去耦](#decoupling)和[市电线路滤波](#mains-line-filters)——它们对高频噪声呈现低阻抗，将其旁路到地。
+
+例如，一个 $1\unit{uF}$ 电容器在 $100\unit{kHz}$ 时的电抗为 $X_C = \frac{1}{2\pi \cdot 100\unit{kHz} \cdot 1\unit{uF}} = 1.6\unit{\Omega}$，而在 $1\unit{kHz}$ 时为 $159\unit{\Omega}$。
+
+### ESR 和 ESL
+
+上述公式适用于_理想_电容器。实际电容器还具有寄生元件。通常首先考虑的两个是[等效串联电阻](#equivalent-series-resistance-esr)（$\mathrm{ESR}$）和_等效串联电感_（ESL）（$\mathrm{ESL}$）——后者来自电容器的引线、电极和内部几何结构。它们被建模为与电容器串联的元件，如下所示：
+
+<Image src={import('./_assets/esr-esl-capacitor-schematic.webp')} width="500px">电容器模型加上 ESR 和 ESL（正如名称所示，二者均串联）的示意图。</Image>
+
+<Aside type="tip">
+有时 ESR 标记为 $R_S$，ESL 标记为 $L_S$（$S$ 表示_串联_）。
+</Aside>
+
+该模型下的阻抗为：
+
+$$
+Z = \mathrm{ESR} + j\left(2\pi f \cdot \mathrm{ESL} - \frac{1}{2\pi f C}\right)
+$$
+
+其幅值为[^rohm-bypass-capacitor-impedance]：
+
+$$
+|Z| = \sqrt{\mathrm{ESR}^2 + \left(2\pi f \cdot \mathrm{ESL} - \frac{1}{2\pi f C}\right)^2}
+$$
+
+这给出如下图所示特征性的“V 形”阻抗曲线：
+
+<Image src={import('./_assets/capacitor-impedance-vs-frequency.png')} width="800px">实际 1µF 陶瓷电容器的阻抗幅值（ESR = 20 mΩ，ESL = 0.8 nH）与频率的关系。容性区以 -20 dB/decade 下降，在自谐振频率（SRF）处降到 ESR 最低点，然后在感性区上升。理想电抗 $X_C$ 用虚线表示。</Image>
+
+共有三个区域：
+
+- **容性区（低频）：** $\frac{1}{2\pi f C}$ 项占主导，阻抗随频率以 $-20\unit{dB}$/decade 下降，与理想电抗相同。
+- **自谐振频率（SRF）：** 在某个特定频率处，感抗与容抗相互抵消（$2\pi f \cdot \mathrm{ESL} = \frac{1}{2\pi f C}$），只剩 $\mathrm{ESR}$。这是阻抗最低点，由下式给出：
+
+$$
+f_{\mathrm{SRF}} = \frac{1}{2\pi \sqrt{\mathrm{ESL} \cdot C}}
+$$
+
+- **感性区（高频）：** 高于 SRF 时，$2\pi f \cdot \mathrm{ESL}$ 项占主导，阻抗随频率_上升_——电容器表现得像电感！
+
+### 电容阻抗计算器
+
+使用下面的计算器计算给定频率下电容器的电抗和阻抗，并查看你自己数值下的 V 形曲线。输入电容和频率，可选输入寄生 ESR 和 ESL（理想电容器留空）：
+
+<CapacitorImpedance client:load />
+
+实际结论是：电容器只有在其自谐振频率_以下_才表现得像电容器。较小封装的 $\mathrm{ESL}$ 更低，因此 SRF 更高，这就是高频去耦使用小尺寸（例如 0402 或更小）陶瓷电容器的原因，也是常常将多个不同容值并联的原因——每个容值覆盖频谱的不同部分。
+
+### 并联不同容值的电容器
+
+单个电容器仅在其自谐振频率附近实现低阻抗。一种广泛使用的去耦技术（你常在高频 IC 的电源引脚旁看到）是将多个不同容值的电容器并联——一个大电容覆盖低频，逐渐减小的电容覆盖更高频率——从而在任意给定频率下，网络中总有某个元件呈现低阻抗。
+
+并联电容器的组合方式与任何并联阻抗相同（它们的导纳相加）：
+
+$$
+Z_{parallel} = \frac{1}{\sum_i \frac{1}{Z_i}}
+$$
+
+下表列出了一系列 X5R/X7R SMD MLCC 的典型值。
+
+| 电容 | 封装 | ESR | ESL | 自谐振频率 |
+|---|---|---|---|---|
+| 10µF | 0805 | 2mΩ | 0.9nH | ≈1.7MHz |
+| 1µF | 0603 | 8mΩ | 0.6nH | ≈6.5MHz |
+| 100nF | 0402 | 30mΩ | 0.5nH | ≈22MHz |
+| 10nF | 0402 | 80mΩ | 0.5nH | ≈71MHz |
+
+将四个全部并联，得到如下图所示的组合阻抗：
+
+<Image src={import('./_assets/parallel-capacitor-impedance-vs-frequency.png')} width="800px">$10\unit{\mu F}$、$1\unit{\mu F}$、$100\unit{nF}$ 和 $10\unit{nF}$ MLCC 并联后的阻抗（粗红线），与各电容器单独阻抗（虚线）的对比。每个电容器在各自自谐振频率附近占主导，组合后在约 $1\unit{MHz}$ 到超过 $100\unit{MHz}$ 的宽频带内保持低阻抗（数十 mΩ）。</Image>
+
+组合曲线大致遵循各单独曲线的_下包络_——有效阻抗在远比任何单个电容器所能达到的更宽频率范围内保持低值。
+
+<Aside type="caution">
+并联不同容值并非没有代价。在每对自谐振频率之间的频带内，较大电容器已呈感性，而较小电容器仍呈容性，形成并联 LC 谐振回路。这会产生**反谐振峰**，使组合阻抗回升，甚至可能超过单个电容器的阻抗（例如上图中约 $4\unit{MHz}$ 处的隆起高于单独的 $10\unit{\mu F}$ 电容）。这与并联 LC 回路在谐振时阻抗升至（理想情况下）无穷大是同一现象。因此，将容值分散到多个数量级，实际上可能不如使用多个_相同_容值的电容器——它们的自谐振频率重合，从而在不引入反谐振的情况下降低阻抗[^rohm-bypass-capacitor-impedance]。
+</Aside>
+
+## 漏电流
+
+所有类型的电容器都存在漏电流。漏电流是建立氧化层所需能量、电介质缺陷、隧道效应和交叉电流引起的电损耗之和。它们通常与电容量成比例增加。我们可以将漏电流归结为两个主要因素：吸收电流 $I_{abs}$ 和本征漏电流 $I_{il}$。
+
+$$
+\begin{align}
+I_{leakage} = I_{abs} + I_{il}
+\end{align}
+$$
+
+吸收电流源于电子在金属/陶瓷界面处的量子隧穿！吸收电流 $I_{abs}$ 随时间减小，温度依赖性较弱；而本征漏电流 $I_{il}$ 随时间保持恒定，但随温度呈指数增长。
+
+当电容器上的电压降低（例如被短路）时，会流过解吸电流（去极化）。这些电流实际上可以给先前已放电的电容器重新充电，有时可达危险电压（试验线圈炮/轨道炮的人可能会遇到这个问题）！
+
+在相当长时间内承受相对恒定电压的电容器，其吸收电流通常远小于近期未充电的电容器。这是由于一种称为“自愈”的现象：带电的电容器会修复电解液中的缺陷。未充电的电解电容器可能因“溶解”而削弱电解液——即在没有电荷时电介质被破坏。
+
+通过电容器的漏电流可以建模为与实际电容并联的电阻，如下所示：
+
+<Image src={import('./_assets/capacitor-with-parasitic-series-resistance-leakage-current.png')} width="300px">电容器示意图，展示了所有实际电容器中都存在的寄生并联电阻，它会产生漏电流。</Image>
+
+### 漏电流如何标定
+
+对于电解电容，最大漏电流通常以电容量来表示。
+
+$$
+\begin{align}
+I_{leakage} = xC
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$ I_{leakage} $ = 漏电流，通常以 mA 为单位（这取决于制造商及其常数选择）<br/>
+$ x $ = 固定常数（例如 0.5）<br/>
+$ C $ = 电容器的电容，单位同样由制造商选择<br/></p>
+
+<Aside type="tip">
+以这种方式标定时，电流*完全与电压无关*。1 至 100F 范围的电解超级电容的漏电流通常为 0.5C（mA），其中 C 是以法拉为单位的额定电容。
+</Aside>
+
+MLCC 电容器的漏电流通过**绝缘电阻**来标定。要计算漏电流，只需按如下方式使用欧姆定律：
+
+$$
+\begin{align}
+I_{leakage} = \frac{V}{R_{insulation}}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$ V $ = 电容器两端的电压<br/>
+$ R_{insulation} $ = 电容器数据手册中标定的绝缘电阻<br/></p>
+
+<Aside type="tip">
+以这种方式标定漏电流时，*它取决于电压*。
+</Aside>
+
+陶瓷电容器标定有初始最小绝缘电阻（例如 $500M\Omega$），以及整个寿命期内较低的最小电阻（例如 $50M\Omega$）。
+
+### 漏电流为何重要
+
+在设计长寿命电池供电电路时，漏电流成为需要考虑的重要参数。对于由内阻较高的一次电池（例如锂亚硫酰氯电池，LiSOCl2）供电的电路尤其如此，因为可能需要大容量（>100uF）电容器来在高脉冲电流情况下提供能量。这些电容器可能具有显著的漏电流。
+
+### 测量电容器的漏电流
+
+由于涉及的电流/总能量很小，你无法用普通万用表真正测量电容器的漏电流。一种方法是使用专用的高阻计，通常称为兆欧表或绝缘电阻测试仪。
+
+## 直流偏置特性
+
+_直流偏置特性_ 衡量电容器的**电容随施加直流电压的变化**。某些类型的电容器（例如 [MLCC 电容器](#ceramic)）的电容会随直流电压升高而显著降低。
+
+好消息是，这可以被利用来制作压控振荡器（VCO）等器件：电容是谐振电路的一部分，通过改变电容器上的电压来改变电容，从而改变谐振频率。[二极管](/electronics/components/diodes) 也具有这一特性，可用于通过调制高频波形来产生 FM 无线电信号。
+
+坏消息是，在希望电容保持恒定的场合，这也会产生不利影响。**电容下降会影响运算放大器（op-amp）增益、滤波器截止频率、RC 振荡器时间常数以及去耦电容的噪声抑制能力**。这实际上可能是一个非常重要的问题，尤其是对于小[封装](/pcb-design/component-packages/)尺寸的陶瓷电容器（例如 0603 和 0805 SMD 片式电容器）。Maxim Integrated 的 [Temperature and Voltage Variation of Ceramic Capacitors, or Why Your 4.7uF Capacitor Becomes a 0.33uF Capacitor](http://www.maximintegrated.com/app-notes/index.mvp/id/5527) 对此效应有很好的解释。下图来自 Maxim 的页面，仅作为示例说明在正常工作条件下电容可能变化多大！
+
+<Image src={import('./_assets/graph-of-temperature-variation-of-ceramic-chip-4-7uf-capacitors.png')} width="800">一组 4.7uF 陶瓷片式电容器的电容变化（相对于电压）曲线。图片来自 http://www.maximintegrated.com/app-notes/index.mvp/id/5527。</Image>
+
+举例说明这种变化：Murata（GRT188R60J226ME13）的 22uF 6.3V X5R 0603 电容器在 0V 时为 22uF。在 6.3V 时降至仅 3.6uF，减少 84%[^murata-sim-surfing-tool-mlcc]！
+
+需要注意的是，**陶瓷片式电容器封装越小，直流偏置问题越严重**。下图展示了 4 个除封装外几乎完全相同的电容器的电容变化差异。
+
+<Image src={import('./_assets/dc-bias-capacitance-derating-graph-from-murata.webp')} width="600">展示封装尺寸如何改变直流偏置行为的曲线。所有 4 个电容器均来自同一制造商，除封装尺寸外额定值（电容、电压、电介质）相同。曲线由 Murata 的 SimSurfing 工具生成[^murata-sim-surfing-tool-mlcc]。</Image>
+
+较小封装受直流偏置问题影响更严重的一种可能解释是：较小封装中电介质上的电场更强（相同电压加在更小的极板间距上 = 更大的电场），导致电介质的介电常数出现更多非线性[^eevblog-is-ceramic-capacitor-package-relevant]。
+
+## 去耦
+
+电容器常用于去耦，如下图所示。
+
+<Image src={import('./_assets/decoupling-caps-schematic-example-on-r-pi-pcb.png')} width="400">IC 去耦电容的使用示例。原理图来自 Raspberry-Pi PCB。图片来自 http://www.raspberrypi.org/wp-content/uploads/2012/04/Raspberry-Pi-Schematics-R1.0.pdf。</Image>
+
+## 市电线路滤波器
+
+用于市电线路滤波的电容器通常按“XY”体系标定。
+
+标为 X 的电容器被认为适合连接在两条市电交流线之间（线对线）。无论它们失效开路还是短路，都不会构成风险。标为 Y 的电容器被认为适合连接在火线与零线之间。如果这些电容器失效短路，确实会构成风险，因为这会使地（以及机壳）带电。
+
+它们还带有一个数字，表示其脉冲测试额定值，如下表所示。
+
+<table>
+  <thead>
+    <tr>
+      <th>分类</th>
+      <th>脉冲电压（V）</th>
+    </tr>
+  </thead>
+<tbody >
+<tr>
+<td>X1</td>
+<td>4,000</td>
+</tr>
+<tr>
+<td>X2</td>
+<td>2,500</td>
+</tr>
+<tr>
+<td>Y1</td>
+<td>8,000</td>
+</tr>
+<tr>
+<td>Y2</td>
+<td>5,000</td>
+</tr>
+</tbody>
+</table>
+
+## 介质吸收
+
+电容器有一个奇怪且鲜为人知的特性：在某些条件下放置时，它们似乎能“创造”能量并自行充电。这对高压电容器（例如旧式油浸纸电容器）尤其危险，它们会自行充电，然后电击任何不幸靠得太近的人。
+
+这称为介质吸收，因为它本质上是电介质的一种特性：如果电容器被快速放电然后保持开路，电介质会保留一部分电荷。电压回升可达电容器原始电压的 10%。
+
+## 电荷泵（自举）
+
+电荷泵（也常称为**自举**）是一种利用电容器产生高于电源电压的方法。典型的电荷泵电路有两个电容和两个二极管，并需要振荡输入。
+
+它常用作一种简单方式，在高边驱动应用中驱动 n 掺杂硅开关（例如 N 沟道 MOSFET 或 IGBT）的栅极。虽然使用 P 沟道作为高边驱动不需要这种升压，但在大多数情况下仍首选 N 沟道 MOSFET，因为其导通电阻和价格更低。使用电容器为 N 沟道 MOSFET 栅极充电时，必须确保电容器储存足够的电荷以转移到 MOSFET 栅极，同时将电压提升到足以使导通电阻低至所需水平。一个通用经验法则是：电容器储存的电荷应比 MOSFET 数据手册中给出的栅极电荷多 100 倍。电容器储存的电荷可用以下公式计算：
+
+$$
+\begin{align}
+Q = CV
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$Q$ 是电荷（库仑）<br/>
+$C$ 是电容（法拉）<br/>
+$V$ 是电压（伏特）<br/></p>
+
+不过，如果你真的想优化电荷泵电容，这条规则并不够。Fairchild Semiconductor 的应用笔记（application note）[Design And Application Guide Of Bootstrap Circuit For High-Voltage Gate-Drive IC](http://www.fairchildsemi.com/an/AN/AN-6076.pdf) 对自举电容及周边电路进行了深入分析。
+
+下图展示了一个用于从 +5V PWM 信号产生 -5V 的电荷泵电路。
+
+<Image src={import('./_assets/charge-pump-based-negative-voltage-gen-schematic.png')} width="800">该原理图展示了一个用于从 +5V PWM 信号产生 -5V 的电荷泵电路。</Image>
+
+更多信息参见[电子元件->电源调节器->电荷泵页面](/electronics/components/power-regulators/charge-pumps/)。
+
+## 穿心电容
+
+穿心（feedthrough/feedthru）电容是特殊的三端电容器（有时有四个连接），用于**抑制****RF 噪声**。它们也以更通用的名称_EMI 抑制滤波器_或_三端电容器_而为人所知。下图是 3 端 0603 穿心电容的渲染图：
+
+<Image src={import('./_assets/feedthrough-capacitor-3d-render-0603-1608-3-connections.jpg')} width="350">0603 尺寸、带 3 个连接的穿心电容的 3D 渲染图。图片来自 www.digikey.com。</Image>
+
+与标准的对地去耦电容相比，其优势是**更低的寄生串联电感**，为 RF 噪声到地提供更低阻抗的路径。
+
+### 原理图符号
+
+<Image src={import('./_assets/feedthrough-capacitor-schematic-symbol-3-connection.png')} width="400">3 端穿心电容的原理图符号。</Image>
+
+### 元件封装
+
+许多适合 PCB 的较小穿心电容采用[片式封装](/pcb-design/component-packages/chip-eia-component-packages)，例如 0603 或 0402 尺寸。它们与普通电容器的区别在于封装具有三个或四个端子，而不是标准的两个。
+
+### 用途
+
+当需要良好的 RF 性能时，穿心电容常用于 [RC、LC、π 型和 T 型滤波器](/electronics/circuit-design/analogue-filters)。
+
+## 电容倍增器
+
+_电容倍增器_ 是使用 BJT 晶体管等有源元件对电容进行“倍增”，以产生大得多的有效电容的电路。它们适用于：
+
+- 变压器/整流器式 DC PSU 电压轨滤波。
+- 为重型负载提供低通滤波，此时仅用标准 RC 滤波器会在电阻上产生过大压降（或功耗）。
+- A 类音频放大器的电源滤波。
+
+它们不适合在负载本身经历高 di/dt（电流随时间的变化率）时支撑电压轨。会汲取高峰值电流的负载包括开关电磁铁和 H 桥。在这方面它们并不比普通电容器更好，因为它们并不储存更多能量。
+
+下图展示了一个由 1 个电阻、1 个电容和 1 个 NPN BJT 晶体管构成的简单电容倍增器：
+
+<Image src={import('./_assets/capacitance-multiplier-simple.svg')} width="500">由单个电阻、电容和 NPN BJT 晶体管构成的简单电容倍增器。有效电容约为 C1 的电容乘以晶体管的电流增益 B。</Image>
+
+BJT 配置为射极跟随器（共集电极）。输出电压始终比电容器两端电压低 $0.7V$。当负载在 $V_{OUT}$ 处汲取电流时，并非全部电流都加载 RC 滤波器，只有比例 $\frac{1}{\beta + 1}$ 通过基极从 RC 滤波器汲取，其余部分通过集电极直接从 $V_{IN}$ 提供。电路所见的有效电容为 C1 的电容乘以晶体管的电流增益 $\beta + 1$：
+
+$$
+\begin{align}
+\label{eq:eff-cap}
+C_{eff} = (\beta + 1)\ C1
+\end{align}
+$$
+
+通常 $\beta >> 1$，因此可简化为：
+
+$$
+\begin{align}
+C_{eff} = \beta\ C1
+\end{align}
+$$
+
+电容倍增器的截止频率为：
+
+$$
+\begin{align}
+\label{eq:cap-mult-rc-cutoff}
+f_c = \frac{1}{2\pi R1 C1}
+\end{align}
+$$
+
+<Aside type="caution">
+尽管该电路称为电容倍增器，但在计算截止频率时，必须使用真实电容值，而不是有效电容！因此我认为这个电路的名称有些误导，因为转折频率与普通 RC 低通滤波器完全相同。真正改变的是滤波器的电流能力，因为现在大部分电流流经 $Q1$，而不是 $R1$。也许叫_缓冲 RC 滤波器_比_电容倍增器_更合适？
+</Aside>
+
+空载时的稳态输出电压为：
+
+$$
+\begin{align}
+V_{OUT} = V_{IN} - 0.7V
+\end{align}
+$$
+
+我们可以将电阻改为电阻分压器来改进上述设计。
+
+<Image src={import('./_assets/capacitance-multiplier-resistor-divider.svg')} width="500">与单电阻版本相比具有更好滤波性能的电容倍增器。</Image>
+
+加入 $R2$ 会降低施加到晶体管基极的电压，从而降低输出电压。由于现在晶体管上的压降更大，当输入电压跌落时，电路能提供比之前更好的滤波。
+
+（空载时的）稳态输出电压为：
+
+$$
+\begin{align}
+V_{OUT} = \frac{R2}{R1 + R2} V_{IN} - 0.7V
+\end{align}
+$$
+
+两电阻电容倍增器的截止频率公式相同，但等效电阻为 $R1$ 与 $R2$ 并联：
+
+$$
+\begin{align}
+f_c &= \frac{1}{2\pi (R1 || R2) C1} \nonumber \\
+    &= \frac{R1 + R2}{2\pi R1 R2 C1}
+\end{align}
+$$
+
+“有效电容”与单电阻版本完全相同（但请记住，不要用它来计算截止频率）。
+
+<Aside type="example">
+
+我们来走一遍电容倍增器电路的设计过程，然后用 KiCad/ngspice 仿真，看看其频率响应。
+
+设计标准：
+
+- 输入 12VDC
+- 假设电源噪声很大，电压波动最大为 1Vp2p，频率成分从 50Hz（市电纹波）到 100kHz。
+- 截止频率 10Hz（相当低）
+- 相对较低的负载电阻 $100\Omega$（可以更低，但需要更小的电阻/更大的电容）
+
+由于噪声波动可达 $1V_{p2p}$，我们希望 *BJT 晶体管上的压降大于 $1V_{p2p}$，以便即使输入存在纹波，输入电压也始终大于输出电压*。我们以空载时标称 $10V$ 输出为目标。
+
+$$
+\begin{align}
+V_{OUT} = 10V
+\end{align}
+$$
+
+这按如下方式（基本电阻分压器方程）约束 $R1$ 与 $R2$ 的比值：
+
+$$
+\begin{align}
+\frac{R1}{R2} = \frac{V_{IN} - V_{OUT}}{V_{OUT}}
+\end{align}
+$$
+
+我们将使用历史悠久、久经考验的 2N2222 NPN 晶体管，原因嘛，只是我有它的仿真模型（功耗应该不会高到需要更强壮的器件，下面会详细说明）。2N2222 的正向电流增益（$\beta$）仿真值为 $200$。
+
+我们的负载电阻为 $100\Omega$。在 $10V$ 时，电流为 $100mA$。我们需要确保该电流不会在 $R1$ 上造成显著的额外压降，否则会使输出电压跌落。我们允许在 $100mA$ 时有 $100mV$ 的压降（即 $V_{OUT} = 9.9V$）。
+
+负载上的 $100mA$ 会使流经 $R1$ 的电流小 $\beta + 1$ 倍：
+
+$$
+\begin{align}
+I_{R1} &= \frac{1}{\beta + 1} I_{load} \nonumber \\
+       &= \frac{1}{200 + 1} * 100mA \nonumber \\
+       &= 498uA
+\end{align}
+$$
+
+<Aside type="tip">
+$I_{R1}$ 实际上会更大，因为还有通过 $R2$ 流向地的电流。但用于计算这个数值是可以的。
+</Aside>
+
+现在可以求出使压降不超过 $100mV$ 的 $R1$ 值：
+
+$$
+\begin{align}
+R1 &= \frac{V_{R1}}{I_{R1}} \nonumber \\
+   &= \frac{100mV}{498uA} \nonumber \\
+   &= 200\Omega
+\end{align}
+$$
+
+然后利用约束 $R1$ 与 $R2$ 比值的方程，可得 $R2$ 必须为：
+
+$$
+\begin{align}
+R2 &= R1 \frac{V_{OUT}}{V_{IN} - V_{OUT}} \nonumber \\
+   &= 200\Omega \frac{10V}{12V - 10V} \nonumber \\
+   &= 1k\Omega
+\end{align}
+$$
+
+现在已求出 $R1$ 和 $R2$，$C1$ 由截止频率方程确定：
+
+$$
+\begin{align}
+C1 &= \frac{R1 + R2}{2\pi R1 R2 f_c} \nonumber \\
+   &= \frac{200\Omega + 1k\Omega}{2\pi*200\Omega*1k\Omega*10Hz} \nonumber  \\
+   &= 95uF \nonumber \\
+   &= 100uF\ \text{(E12 series)}
+\end{align}
+$$
+
+现在可以画出完成的原理图：
+
+<Image src={import('./_assets/capacitance-multiplier-sim/schematic.png')} width="800">我们正在设计的电容倍增器的可仿真原理图。</Image>
+
+使用 ngspice 运行交流分析，得到如下图所示的频率响应（波特图）。
+
+<Image src={import('./_assets/capacitance-multiplier-sim/out.png')} width="800">上述电容倍增器电路的仿真频率响应。</Image>
+
+看“直流”增益，其值为 $-1.75dB$。在 $12V$ 输入电压下，这对应输出电压 $12V \cdot 10^{\frac{-1.75}{20}} = 9.8V$，接近我们目标的 $9.9V$。
+
+截止频率应在此基础上再低 $-3dB$，即 $-1.75dB - 3dB = -4.75dB$。横向再向下读取，确实得到约 $10Hz$ 的截止频率。阻带滚降与标准 RC 低通滤波器相同，为 $-20dB/decade$。
+
+<Aside type="caution">
+注意晶体管功耗！在我们的例子中，$100mA$ 流过压降为 $2.1V$ 的 2N2222。这产生 $210mW$，对 2N2222（旧式 TO-18 金属壳封装）来说应该没问题。但电容倍增器通常用于大电流场合（数安培甚至更大），此时必须仔细关注晶体管功耗。可能需要大晶体管和/或散热。也可以减小压降，但这会导致滤波能力变差（即裕量更小）。
+</Aside>
+
+电容倍增器不一定用 BJT 晶体管构建，也可以使用 MOSFET 或运算放大器作为有源元件。不过，由于成本、功耗能力和简单性，大多数情况下仍使用 BJT。
+
+</Aside>
+
+## 修复电解电容器
+
+电解电容器老化后会干涸并停止正常工作（例如电容量下降和/或最大介质耐压降低）。许多资料称，可以通过将电压缓慢升至满额定电压来修复电解电容器。其目的是修复氧化铝电介质层。
+
+<Image src={import('./_assets/circuit-schematic-showing-how-to-repair-an-electrolytic-capacitor.png')} width="300">展示如何修复/重整旧电解电容器的原理图。电容器上的电压应缓慢升至额定电压。</Image>
+
+可以使用设置为额定电压的电源，并将一个大功率（例如 5W）30kΩ 电阻与电容器串联来实现，如上图所示。连接电路并测量电容器两端电压。电压应从 0V 开始，并随流过电容器的电流减小而按反指数上升。等待电容器两端电压升至额定电压的 90% 以上后再断开电路，如下图所示。如果电压稳定在满额定电压的 90% 以下，则该电容器已损坏，可以丢弃。
+
+<Image src={import('./_assets/capacitor-voltage-graph-while-charging-through-resistor-for-reforming.png')} width="400">电解电容器通过电阻充电以重整氧化铝的曲线。图中曲线部分来自 http://www.antonine-education.co.uk/Pages/Electronics_2/Timing_Subsystems/RC_Networks/further_page_2.htm。</Image>
+
+## 给电容器充电时的能量损耗
+
+当从固定电压源（例如电池或电源）为电容器充电时，会出现一个有趣的现象。假设是现实情况，电压源与电容器之间总存在一定电阻。将电容器充电到电压源电压 $V_{cc}$ 时，通过该电阻耗散的能量**恰好等于**电容器中储存的能量。该电阻**多大或多小都无关紧要**！这个电阻可以只是电容器的等效串联电阻，也可以是为限制浪涌电流而串联的专用电阻。
+
+下图展示了一个示例原理图。
+
+<Image src={import('./_assets/energy-loss-while-charging-a-capacitor-schematic.webp')} width="600">为电容器充电时基本电路的原理图，高亮了串联电阻中损耗的能量。</Image>
+
+这种相当显著且固定的能量损耗，对低功耗电路（例如电池供电）中的电容充电，以及为限制电容器浪涌电流而选择电阻（包括 NTC 热敏电阻）都有影响，通常这是电源或电机驱动器前端的一部分。
+
+<Aside type="tip">
+幸运的是，串联电阻中损耗一半能量只适用于从固定电压源、无其他元件的情况下为电容器充电。如果使用可变电压源或同时利用电感为电容充电，可以显著降低能量损耗！
+</Aside>
+
+### 证明
+
+让我们从基础开始。
+
+我们知道电路中的总能量是功率对时间的积分：
+
+$$
+\begin{align}
+E_{in} = \int{P_{in} \cdot dt}
+\end{align}
+$$
+
+使用电功率的基本方程 $P = VI$，可以写成：
+
+$$
+\begin{align}
+P_{in} = V_{in} \cdot I_{in}
+\end{align}
+$$
+
+将功率方程代入积分方程，得到用电压和电流表示的能量方程：
+
+$$
+\begin{align}
+E_{in} = \int{  V_{in} I_{in} \cdot dt }
+\end{align}
+$$
+
+如果假设 $V_{in}$ 是不随时间变化的固定直流电压源，可以将其移到积分外：
+
+$$
+\begin{align}
+E_{in} = V_{in} \int{  I_{in} \cdot dt }
+\end{align}
+$$
+
+现在使用积分形式的电荷方程 $Q = \int{I \cdot dt}$，可以写成：
+
+$$
+\begin{align}
+Q_{in} = \int{I_{in} \cdot dt}
+\end{align}
+$$
+
+我们可以将电荷方程代入能量方程：
+
+$$
+\begin{align}
+E_{in} = V_{in} Q_{in}
+\end{align}
+$$
+
+假设电容已充满到 $V_{in}$（好吧，这需要无限长时间，但现实一点，我们说 99.9% 即视为充满），并使用电容器能量的基本公式（$E = \frac{1}{2}CV^2$），可以写成：
+
+$$
+\begin{align}
+E_{cap} = \frac{1}{2}CV_{in}^2
+\end{align}
+$$
+
+现在，电荷方程中提到的所有输入电荷 $Q_{in}$ 都到达了电容器，因为电阻和电容共享同一电流。电容器能量方程可以用电荷（使用 $Q=CV$）重写为：
+
+$$
+\begin{align}
+E_{cap} = \frac{1}{2} V_{in} Q_{in}
+\end{align}
+$$
+
+现在我们有电压源释放能量的方程，以及给予电容器的能量方程。两者相减即得充电期间损耗在电阻上的能量：
+
+$$
+\begin{align} 
+E_{res} &= E_{in} - E_{cap} \nonumber \\
+        &= V_{in} Q_{in} - \frac{1}{2} V_{in} Q_{in} \nonumber \\
+        &= \frac{1}{2} V_{in} Q_{in}
+\end{align}
+$$
+
+哇，等一下，这与电容器中的能量相同！
+
+这意味着，从固定直流源为电容器充电时，以热量形式耗散的能量与储存在电容器中的能量一样多。电阻是多少无关紧要（它可以只是导线的电阻和电容器的等效串联电阻（ESR））。
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^bib-capacitorguide.com]: http://www.capacitorguide.com/film-capacitor/。
+[^bib-wikipedia-film-capacitor]: Wikipedia（2023 年 6 月 19 日）。_Film capacitor_ [网页]。检索于 2023-07-11，来自 https://en.wikipedia.org/wiki/Film_capacitor。
+[^bib-ceramic-dielectric-types]: https://www.electronics-notes.com/articles/electronic_components/capacitors/ceramic-dielectric-types-c0g-x7r-z5u-y5v.php。
+[^bib-qs-study-capacitance-spherical]: QS Study。_Capacitance of a Spherical Conductor_。检索于 2021-09-17，来自 https://qsstudy.com/physics/capacitance-spherical-conductor。
+[^bib-avx-auto-mlcc]: AVX。_Automotive MLCC_ [数据手册]。检索于 2022-02-01，来自 https://datasheets.avx.com/AutoMLCC.pdf。
+[^bib-cadence-causes-of-elec-cap-degradation]: Cadence。_The Causes of Electrolytic Capacitor Degradation_。检索于 2023-06-05，来自 https://resources.pcb.cadence.com/blog/2022-the-causes-of-electrolytic-capacitor-degradation。
+[^bib-nasa-self-healing-tantalum]: Alexander Teverovsky。_Breakdown and Self-healing in Tantalum Capacitors_。Jacobs Technology Inc. 检索于 2023-06-05，来自 https://ntrs.nasa.gov/api/citations/20205008339/downloads/Breakdown%20and%20Self-healing%20DEI%20rev%20A1.pdf。
+[^bib-wikipedia-tantalum-capacitor]: Wikipedia（2023 年 4 月 11 日）。_Tantalum capacitor_。检索于 2023-06-05，来自 https://en.wikipedia.org/wiki/Tantalum_capacitor。
+[^bib-passive-component-industry-electrolytic-failures]: Passive Component Industry（2002 年 9 月）。_Low-ESR Aluminum Electrolytic Failures Linked to Taiwanese Raw Material Problems_。检索于 2023-06-05，来自 https://web.archive.org/web/20160303234525/http://old.passivecomponentmagazine.com/files/archives/2002/PCI_02_05Sept-Oct.pdf。
+[^murata-sim-surfing-tool-mlcc]: Murata。_SimSurfing_ [在线设计支持软件]。检索于 2023-07-11，来自 https://ds.murata.co.jp/simsurfing/mlcc.html?lcid=en-us。
+[^covaci-singing-mlccs-and-mitigation]: Covaci C, Gontean A（2022 年 5 月 19 日）。_"Singing" Multilayer Ceramic Capacitors and Mitigation Methods - A Review_。Sensors (Basel). 22(10):3869. doi: 10.3390/s22103869. PMID: 35632278; PMCID: PMC9147252。检索于 2023-07-12，来自 https://www.ncbi.nlm.nih.gov/pmc/articles/PMC9147252/。
+[^britannica-dielectric]: Britannica（2023 年 6 月 13 日）。_Dielectric_ [百科条目]。检索于 2023-07-12，来自 https://www.britannica.com/science/dielectric。
+[^wikipedia-dielectric]: Wikipedia（2023 年 6 月 9 日）。_Dielectric_ [百科条目]。检索于 2023-07-12，来自 https://en.wikipedia.org/wiki/Dielectric。
+[^eevblog-is-ceramic-capacitor-package-relevant]: EEVblog。_Is ceramic capacitor package relevant?_ [论坛帖]。检索于 2023-07-12，来自 https://www.eevblog.com/forum/projects/is-ceramic-capacitor-package-relevant/。
+[^tdk-temp-characteristics-mlcc]: Trevor Crow（2014 年 1 月）。_Temperature Characteristics of Multilayer Ceramic Capacitors_ [PDF]。TDK。检索于 2023-07-12，来自 https://file.elecfans.com/web1/M00/20/AD/oYYBAFmkxDGAAYIpAAb6nD4zLi0492.pdf。
+[^kemet-heres-what-makes-mlcc-dielectrics-different]: （2019 年 4 月 4 日）。_Here’s What Makes MLCC Dielectrics Different_ [文章]。检索于 2023-07-13，来自 https://www.kemet.com/en/us/technical-resources/heres-what-makes-mlcc-dielectrics-different.html。
+[^tutorials-point-difference-between-dielectric-constant-and-permittivity]: Vineet Nanda（2023-04-18）。_Difference Between Dielectric Constant and Permittivity_ [文章]。TutorialsPoint。检索于 2023-07-13，来自 https://www.tutorialspoint.com/difference-between-dielectric-constant-and-permittivity。
+[^wikipedia-relative-permittivity]: Wikipedia（2023 年 4 月 19 日）。_Relative permittivity_ [百科条目]。检索于 2023-07-13，来自 https://en.wikipedia.org/wiki/Relative_permittivity。
+[^rohm-bypass-capacitor-impedance]: ROHM Co., Ltd.（2020 年 9 月）。_Impedance Characteristics of Bypass Capacitor_ [应用笔记（application note）]。检索于 2026-06-05，来自 https://fscdn.rohm.com/en/products/databook/applinote/common/bypass_capacitor_impedance_characteristics_an-e.pdf。
+
+
+

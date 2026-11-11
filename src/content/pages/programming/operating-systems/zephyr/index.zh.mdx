@@ -1,0 +1,1446 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: Zephyr 是面向嵌入式系统的开源实时操作系统、系统/外设 API 和构建系统。本页涵盖安装、API 用法等内容。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-06-29
+tags: [programming, operating systems, OSes, RTOS, Zephyr, Zephyr SDK, west, Python, CMake, HAL, bit field, reset reason, shell, module, workqueues, threads, non-volatile storage, NVS, install, toolchain, ARM, Linux, workspace, west, application, polling API, logging, C, device tree, DTS, Bluetooth, I2S, UART, SPI, I2C, GPIO, PWM, ADC, DAC, QEMU, simulation, stack canaries]
+title: Zephyr
+type: page
+sourcePath: programming/operating-systems/zephyr/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:f1eb8d40ba24bb115e54b13e69a4ad93e525d0091115bb4b0a36dc14511c8169
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 概述
+
+_Zephyr_ 是**实时操作系统（real-time operating system）、外设/系统 API 框架和构建系统**的结合体，专为微控制器等资源受限设备设计。它隶属于 Linux Foundation。
+
+<Image src={import('./_assets/zephyr-project-logo.webp')} width="500px">Zephyr 项目标志。</Image>
+
+Zephyr 为固件开发者提供了丰富的开箱即用操作系统和外设功能生态，这些功能在各 MCU 厂商之间保持一致（例如你可以在 [STM32](/programming/microcontrollers/stm32/) 和 nRF53 MCU 上使用相同的 UART API）。它还提供了名为 `west` 的集成构建系统。
+
+有人批评 Zephyr 过于复杂。一个例子是，Zephyr 通过 Kconfig（一种最初为配置 Linux 内核而设计的配置语言[^kernel-org-kconfig-language]）和设备树增加了多层额外配置能力。现在，固件行为可以通过 Kconfig 设置、设备树设置、预处理器宏和运行时 API 调用共同控制。Kconfig 以层级方式组织，依赖关系和覆盖设置可能使你很难以确定 MCU 的实际配置方式。
+
+另一个问题是，Zephyr 设备树非常“静态”，是为静态硬件配置设计的。这对大多数基础固件项目来说没问题，但一些高级项目可能需要动态硬件配置。例如，你可能希望同一固件支持不同的硬件配置，并需要根据从闪存读取的版本号在运行时以不同方式配置引脚/外设。Zephyr 的 API 无法“反初始化”外设，通常只能绕过 API 直接操作原始硬件寄存器来实现。例如，你想把一个 ADC 输入重新配置为 GPIO 引脚。
+
+[主仓库位于 GitHub](https://github.com/zephyrproject-rtos/zephyr)。
+
+Zephyr 提供协作式和抢占式调度。
+
+使用 [CMake](/programming/build-systems-and-package-managers/cmake) 构建环境。
+
+Zephyr 跨平台，支持 Linux、Windows 和 macOS（即你可以在这些系统中的任意一个交叉编译项目并烧录嵌入式设备）。你也可以为 Linux 编译 Zephyr，这有助于测试和调试。
+
+Zephyr 也是 [PlatformIO](/programming/integrated-development-environments-ides/platform-io) 构建系统和 IDE 支持的平台。
+
+## 子页面
+
+<ChildPages />
+
+## 硬件抽象层
+
+Zephyr 支持的部分 HAL 示例（安装在 `<project root dir>/modules/hal/` 下）：
+
+- ST
+- STM32
+- NXP
+- Atmel
+- Microchip
+
+## 支持的板卡
+
+完整的 Zephyr 平台支持开发板列表见 https://docs.zephyrproject.org/latest/boards/index.html#boards。
+
+### 原生模拟器（native_sim）
+
+`native_sim` 允许你构建在类 POSIX 操作系统（例如 Linux）上运行的 Zephyr 应用。
+
+<Aside type="note">
+`native_sim` 是旧版 `native_posix` Zephyr 板卡的继任者。只要可能，就应改用 `native_sim`。
+</Aside>
+
+要为 POSIX 构建，请用 `-b` 选项把 `native_sim` 作为构建目标传给 west，例如：
+
+```bash
+west build -b native_sim samples/hello_world
+```
+
+然后可以这样运行构建好的应用：
+
+```bash
+west build -t run
+```
+
+可执行文件会启动并持续运行，直到你用 `Ctrl+C` 终止它。注意，不能通过在代码中从 `main()` 返回或调用 `exit()` 来终止程序。如果确实想退出，可以改为调用 `nsi_exit()`，并提供一个 `int` 状态码，该状态码会像从 `main()` 返回一样被返回。例如：
+
+```c
+void my_function(void) {
+    // ...
+    // This will cause the Zephyr native_sim executable to correctly exit
+    nsi_exit(0);
+}
+```
+
+如果需要从中返回的代码还要支持其他板卡，可以使用预处理器宏 `CONFIG_ARCH_POSIX` 有条件地包含该调用：
+
+```c
+void my_function(void) {
+    // ...
+#ifdef CONFIG_ARCH_POSIX
+    nsi_exit(0);
+#endif
+}
+```
+
+我没能找到 Zephyr 在哪个头文件中声明了这个函数，因此如果想消除函数未定义的编译器警告，请自行声明它（在你使用它的位置之前、`.c` 文件中，或你自己的头文件中）：
+
+```c
+// Declaration of the function provided by Zephyr. Couldn't find the header file where it's declared,
+// so it's declared here.
+void nsi_exit(int status);
+```
+
+`native_sim` 板卡支持以下 API（包括但不限于）：
+
+- GPIO（模拟）
+- 看门狗
+- 定时器
+
+## 编程
+
+`west` 内置了通过 `west flash` 为多种 MCU 编程的支持。可以使用 `--runner` 选项指定要使用的编程器。例如，使用 JLink 编程器：
+
+```bash
+west flash --runner jlink
+```
+
+目标板未上电时（在为 Nordic Semiconductor nRF52840 编程时），我得到以下错误：
+
+```txt
+FATAL ERROR: command exited with status 1: /opt/SEGGER/JLink_V794i/JLinkExe -nogui 1 -if swd -speed 4000 -device nrf52840_xxaa -CommanderScript /tmp/tmp48nqgzxijlink/runner.jlink -nogui 1
+```
+
+有时你要编程的 MCU 可能无法被 JLink 识别（如果使用 `--runner jlink` 选项）。你可能会看到下面弹出的窗口。我在使用 JLink v7.94i 从 nRF9161 DK 为较新的 [nRF9151 SoC](/programming/microcontrollers/nordic/nrf91/) 编程时遇到了这种情况（估计是 JLink v7.94i 版本不够新，不支持 nRF9151）。
+
+<Image src={import('./_assets/j-link-unknown-device-nrf9151-pop-up.webp')} width="700px">使用尚不能识别 nRF9151 的 JLink 版本为该芯片编程时，JLink 弹出的“Unknown device”窗口。</Image>
+
+如果发生这种情况，并且你知道某个可识别的器件可以正常工作，可以点击 OK，随后会弹出一个模态框，让你选择器件。不过，在开发期间反复这样做很快就会让人厌烦。相反，可以使用 `--device` 选项指定 SoC。在上面的例子中，我知道伪装成 `nRF9160` 可以正常工作，因此可以使用：
+
+```bash
+west flash --runner jlink --device nrf9160
+```
+
+## 设备树
+
+Zephyr 借用了由 Linux 推广的设备树概念，用于描述固件所运行的硬件。设备树是计算机可读的文本文件，具有层级结构。
+
+### 术语
+
+```txt
+/dts-v1/;
+
+/ {
+    a-node {
+        a-subnode-node-label: a-sub-node {
+            a-property = <3>;
+        };
+    };
+};
+```
+
+`a-node` 是一个节点。它是为容器自由选择的标识符。`a-sub-node` 是一个子节点。它同样是自由选择的标识符。
+
+### 基本示例
+
+```txt
+/dts-v1/;
+
+/ {
+    soc {
+        uart0: serial@12340000 {
+            ...
+        };
+    };
+};
+```
+
+### 获取节点
+
+在 C 中，可以使用以下方法从设备树获取节点：
+
+**按路径**
+
+使用 `DT_PATH()` 通过从根节点开始的完整路径获取节点。例如 `DT_PATH(soc, serial_12340000)`。注意，设备树中的非字母数字字符会被转换为 `_`，包括连字符和 @ 符号。
+
+命名节点时不要使用驼峰命名法，因为 `DT_PATH()` 无法处理这种名称。
+
+```txt
+/ {
+    mySoc { // Bad! DT_PATH() won't like this
+        serial@12340000 {
+            ...
+        };
+    };
+
+    mysoc { // Good!
+        serial@12340000 {
+            ...
+        };
+    };
+};
+```
+
+**按节点标签**
+
+使用 `DT_NODELABEL()`，例如 `DT_NODELABEL(uart0)`。
+
+### 编译后的完整设备树
+
+执行构建时，最终合并的设备树会生成到 `build/zephyr/zephyr.dts`。该文件有助于调试设备树问题。
+
+### 消除虚假的重复单元地址警告
+
+构建 Zephyr 项目时，有时会出现“重复单元地址”（duplicate unit-address）警告，这些是误报。它们由 `dtc`（设备树编译器）发出。例如，[nRF52](/programming/microcontrollers/nordic/nrf52/) SoC 就会出现这种情况，因为不同的 Zephyr“外设”确实共享同一内存地址。
+
+例如，在为使用 nRF52 SoC 的自定义板卡构建时，我得到了以下警告：
+
+```text
+/home/gbmhunter/project/app/build/zephyr/zephyr.dts:54.25-59.5: Warning (unique_unit_address_if_enabled): /soc/clock@40000000: duplicate unit-address (also used in node /soc/power@40000000)
+```
+
+要消除该警告，可以在板卡目录中创建名为 `pre_dt_board.cmake` 的文件，并添加以下内容：
+
+```cmake
+list(APPEND EXTRA_DTC_FLAGS "-Wno-unique_unit_address_if_enabled")
+```
+
+事实上，nRF 正是将这一行加入他们的开发板文件来消除该警告。[^nordic-dev-zone-custom-board-duplicate-unit-address-warning]
+
+### 完整示例
+
+设备树示例（用于 STM32F070RB 开发板）：
+
+```text
+/*
+ * Copyright (c) 2018 qianfan Zhao
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f0/stm32f070Xb.dtsi>
+#include "arduino_r3_connector.dtsi"
+
+/ {
+  model = "STMicroelectronics NUCLEO-F070RB board";
+  compatible = "st,stm32f070rb-nucleo", "st,stm32f070";
+
+  chosen {
+    zephyr,console = &usart2;
+    zephyr,shell-uart = &usart2;
+    zephyr,sram = &sram0;
+    zephyr,flash = &flash0;
+  };
+
+  leds {
+    compatible = "gpio-leds";
+    green_led_2: led_2 {
+      gpios = <&gpioa 5 GPIO_ACTIVE_HIGH>;
+      label = "User LD2";
+    };
+  };
+
+  gpio_keys {
+    compatible = "gpio-keys";
+    user_button: button {
+      label = "User";
+      gpios = <&gpioc 13 GPIO_ACTIVE_LOW>;
+    };
+  };
+
+  aliases {
+    led0 = &green_led_2;
+    sw0 = &user_button;
+  };
+};
+
+&usart1 {
+  current-speed = <115200>;
+  status = "okay";
+};
+
+&usart2 {
+  current-speed = <115200>;
+  status = "okay";
+};
+
+&i2c1 {
+  status = "okay";
+  clock-frequency = <I2C_BITRATE_FAST>;
+};
+
+&i2c2 {
+  status = "okay";
+  clock-frequency = <I2C_BITRATE_FAST>;
+};
+
+&spi1 {
+  status = "okay";
+};
+
+&spi2 {
+  status = "okay";
+};
+
+&iwdg {
+  status = "okay";
+};
+```
+
+## 系统/操作系统功能
+
+### 时间
+
+系统运行时间可以用 `k_uptime_get()` 读取，它返回一个 `int64_t`，表示系统启动以来的毫秒数。
+
+如果需要更高精度，可以以 tick 或周期（cycle）为单位测量时间。
+
+周期是你所能获得的最快时钟。可以使用 `k_cycle_get_32()` 获取系统硬件时钟的 `uint32_t` 值。然后可以使用 `k_cyc_to_us_floor64()` 等函数将其转换为等价的微秒数：
+
+```c
+uint64_t currentTime_us = k_cyc_to_us_floor64(k_cycle_get_32());
+```
+
+尽管我在 Zephyr 文档中没有找到明确说明，但看起来即使微控制器处于睡眠状态，使用周期进行时间测量也是安全的。我猜测 Zephyr 会在系统唤醒时更新周期计数，以补偿睡眠时长。
+
+要注意 `k_cycle_get_32()` 返回的 32 位值。在较快时钟下，它可能很快就会溢出。如果你只关心两个时间点之间的时长，幸运的是，用较小的无符号数减去较大的无符号数，其运算结果仍然会给出正确的时长；当然，直到较晚的时间点追上并越过先前时间点所在的同一个 `uint32_t` 值时，情况就不再如此。
+
+### 睡眠
+
+可以使用 `k_sleep(timeout_t timeout)` 函数让当前线程睡眠。该函数通常与 `K_MSEC()`、`K_SECONDS()` 等超时宏配合使用来创建超时：
+
+```c
+// Sleep current thread for 1 second
+k_sleep(K_MSEC(1000));
+```
+
+所有 `K_MSEC()` 风格的宏都按相对时间睡眠。如果希望睡眠到某个绝对时间，一种选择是使用 `k_uptime_get()` 函数计算需要睡眠的相对时长：
+
+```c++
+/**
+ * Sleep until the system time is equal to or greater than the target time.
+ * This is useful in testing when we want to sleep until a specific absolute time,
+ * rather than a relative time as per k_sleep(K_MSEC(...)).
+ */
+void sleepUntilSystemTime(int64_t targetTimeMs)
+{
+    int64_t currentTimeMs = k_uptime_get();
+    int64_t remainingTimeMs = targetTimeMs - currentTimeMs;
+    
+    if (remainingTimeMs > 0) {
+        k_sleep(K_MSEC(remainingTimeMs));
+    }
+}
+```
+
+
+### 定时器
+
+Zephyr _定时器_ 是一种操作系统原语：你可以启动它，让它在特定时长后超时。如果提供回调，就可以在未来固定时长之后以一次性（单次）或连续方式运行某些操作。如果不提供回调，仍然可以从应用检查定时器状态。
+
+使用定时器无需向 `prj.conf` 添加任何内容。首先需要包含以下定义定时器 API 的头文件：
+
+```c
+#include <zephyr/kernel.h>
+```
+
+创建定时器对象并初始化：
+
+```c
+struct k_timer myTimer;
+
+void MyHandlerFn(struct k_timer * timer)
+{
+    LOG_DBG("Hello!");
+}
+
+// Initialize it with an expiry function, but no stop function
+k_timer_init(&myTimer, &MyHandlerFn, NULL);
+```
+
+`expiryFn` 和 `stopFn` 都是可选的；如果定时器到期或停止时不希望调用任何内容，可以将它们设为 `NULL`。
+
+<Aside type="caution">
+注意，作为 `expiryFn` 传入的函数会在系统中断上下文中执行。因此必须小心，不要在到期函数中阻塞、占用过多处理时间，或调用非中断安全的函数。
+
+`stopFn` 在停止定时器的线程上下文中被调用。因此，如果在中断中停止定时器，需要确保停止函数是中断安全的。
+</Aside>
+
+然后可以用 `void k_timer_start(struct k_timer * timer, k_timeout_t duration, k_timeout_t period)` 启动定时器。
+
+```c
+// Start the timer 
+k_timer_start(&myTimer, K_MSEC(1000), K_NO_WAIT);
+```
+
+
+`duration` 是定时器首次到期前的时间。`period` 是首次到期之后每次到期之间的时间。`period` 可设为 `K_NO_WAIT` 或 `K_FOREVER`，使定时器只到期一次（单次）。
+
+下面是一个基本示例：
+
+```c
+#include <stdio.h>
+#include <zephyr/kernel.h>
+
+extern void MyExpiryFn(struct k_timer * timerId) {
+    printf("Timer expired!\n");
+}
+
+int main(void) {
+    struct k_timer myTimer;
+    printf("Creating timer to expire every 1s...\n");
+    k_timer_init(&myTimer, MyExpiryFn, NULL);
+    k_timer_start(&myTimer, K_MSEC(1000), K_MSEC(1000));
+
+    while (1) {
+        k_msleep(1000);
+    }
+    return 0;
+}
+```
+
+<Image src={import('./_assets/timers-basic-example-output.png')} width="400px">运行上面的定时器示例代码，可以看到到期函数每秒执行一次。</Image>
+
+
+可以[在此](https://docs.zephyrproject.org/latest/kernel/services/timing/timers.html)阅读 Zephyr 定时器的官方文档。
+
+### 线程
+
+Zephyr _线程_ 是一种内核对象，可用于异步于其他线程执行代码。线程既可以协作式运行（线程持续运行直到主动放弃控制权），也可以抢占式运行（当内核决定运行其他内容时，线程会被内核中断）。
+
+可以用以下代码创建并启动一个基本线程：
+
+```c
+#define PRIORITY   (5)
+#define STACK_SIZE (500)
+
+// Statically define the thread stack. See below for how to dynamically allocate the stack using K_KERNEL_STACK_MEMBER()
+K_THREAD_STACK_DEFINE(myThreadStack, STACK_SIZE);
+
+void MyThreadFn(void *, void *, void *)
+{
+    LOG_INF("Thread started!");
+    while(1) {
+        k_msleep(1000);
+    }
+}
+
+int main() {
+    // Dynamically create thread
+    struct k_thread myThread;
+    k_tid_t myTid = k_thread_create(
+        &myThread, myThreadStack,
+        K_THREAD_STACK_SIZEOF(myThreadStack),
+        MyThreadFn,
+        NULL, NULL, NULL, // User data you can pass to your thread function if desired
+        PRIORITY, 0, K_NO_WAIT);
+
+    // Wait for thread to finish (which won't happen because we never return from the
+    // thread function)
+    k_thread_join(myTid, K_FOREVER);
+}
+```
+
+<Aside type="tip">
+请记住，线程栈与通用的“栈”是不同的对象（Zephyr 也为用户提供了用于一般 FILO 功能的栈）。
+</Aside>
+
+确保在与 `K_THREAD_STACK_DEFINE()` 宏相同的文件中调用 `K_THREAD_STACK_SIZEOF()`。如果把栈传入另一个文件并在那里调用 `K_THREAD_STACK_SIZEOF()`，你会得到错误的大小（我这样做时得到 `-60`）。因此，必须同时把栈和大小传入其他文件中的函数（就像处理基本 C 数组一样）。
+
+
+#### 动态线程栈分配
+
+你会注意到，在上面的示例中，虽然线程是在运行时创建的，但栈是在编译时用 `K_THREAD_STACK_DEFINE()` 静态定义的。如果你想以“面向对象”的方式编写代码，静态定义栈并不方便。幸运的是，Zephyr 允许使用宏 `K_KERNEL_STACK_MEMBER(sym, size)` 将栈指定为结构体成员。[^zephyr-docs-thread-stack-apis] 例如：
+
+```c
+typedef struct {
+    struct k_thread thread;
+    K_KERNEL_STACK_MEMBER(threadStack, 512);
+} MyModule;
+
+int main() {
+    MyModule myModule;
+    k_thread_create(&myModule.thread, myModule.threadStack, K_THREAD_STACK_SIZEOF(myModule.threadStack), MyThreadFn, NULL, NULL, NULL, 5, 0, K_NO_WAIT);
+}
+```
+
+这为我们提供了更大的灵活性，因为可以把栈嵌入另一个结构体，并按需创建多个实例。不过，它并不是真正的动态分配，因为栈大小（在上面的示例中为 512 字节）仍必须在编译时确定。
+
+截至 2025 年 6 月，Zephyr 确实通过 `k_thread_stack_alloc()` 提供了对真正动态栈分配的实验性支持。不过，我没能在 `native_sim` 板卡（Linux）上运行的基本示例中让它工作。该函数的签名如下：
+
+```c
+k_thread_stack_t* k_thread_stack_alloc(size_t size, int flags);
+```
+
+用法设想如下：
+
+```c
+#include <zephyr/kernel.h>
+
+int main() {
+    // Dynamically allocate a stack. Still experimental, did not work for me!
+    k_thread_stack_t* myStack = k_thread_stack_alloc(1024, 0);
+    __ASSERT_NO_MSG(myStack);
+    k_thread_create(&myThread, myStack, 1024, MyThreadFn, NULL, NULL, NULL, 5, 0, K_NO_WAIT);
+}
+```
+
+`k_thread_stack_alloc()` 依赖在 `prj.conf` 中设置若干配置选项。你很可能需要：
+
+- `CONFIG_DYNAMIC_THREAD=y`
+- `CONFIG_DYNAMIC_THREAD_PREFER_ALLOC=y`（如果希望 `k_thread_stack_alloc()` 使用 `k_malloc()`）
+
+使用完毕后记得用 `k_thread_stack_free()` 释放栈。
+
+### 工作队列
+
+Zephyr _工作队列_ 类似线程，但包含一些额外功能，主要是一个“队列”，你可以向其中添加工作，由线程完成。
+
+提交到工作队列的是一个函数指针。当线程处理队列中的该项时，就会运行该函数。这与你通常创建线程的方式非常相似，只不过嵌入式系统中的线程函数通常被设计为永不返回（即设计为在固件启动时创建并持续运行）。
+
+下面的 C 代码展示了使用 `K_WORK_DEFINE()` 宏静态定义一个基本工作对象，然后在 `main()` 中使用 `k_work_submit()` 提交工作。当工作队列线程处理该工作时，程序会记录 "Hello" 消息。注意，`k_work_submit()` 把工作提交到特殊的系统工作队列（下文将说明）。
+
+```c
+static void myWorkQueueHandler(struct k_work * work)
+{
+    LOG_INF("Hello from the work thread!");
+}
+
+K_WORK_DEFINE(my_work_queue, &myWorkQueueHandler);
+
+int main()
+{
+    int rc = k_work_submit(&my_work_queue); // Submits work to the system workqueue, myWorkQueueHandler() will get called soon from a different thread...
+    // Allow any of the positive return codes but don't allow errors
+    __ASSERT_NO_MSG(rc >= 0);
+
+    return 0;
+}
+```
+
+#### 系统工作队列
+
+内核定义了一个标准化的“系统工作队列”供你使用。建议默认使用该系统工作队列，只有在需要多个工作队列任务并行运行时（例如某个任务可能阻塞或耗时很长），才创建额外的工作队列。原因是每个新工作队列都需要一个栈，而典型栈大小可能为 2kB 或更多。创建大量工作队列会迅速消耗剩余的可用 RAM[^zephyr-docs-workqueue]。
+
+可以使用 `k_work_submit()` 函数把工作提交到系统工作队列。如果要把工作提交到自己创建的队列，请使用更通用的 `k_work_submit_to_queue()`（这种情况下还必须传入指向该队列的指针）。
+
+#### 创建自己的工作队列
+
+如果无法只使用系统工作队列，而想创建自己的工作队列，可以使用 `k_work_queue_init()` 和 `k_work_queue_start()` 函数。必须先创建栈对象，再创建工作队列，并把栈对象传入。
+
+下面的代码示例展示了具体做法：
+
+```c
+#define STACK_SIZE 512 // Stack size of work queue
+#define PRIORITY 5 // Priority of work queue
+
+K_THREAD_STACK_DEFINE(myStackArea, STACK_SIZE);
+
+struct k_work_q myWorkQueue;
+
+k_work_queue_init(&myWorkQueue);
+
+k_work_queue_start(&myWorkQueue,
+                   myStackArea,
+                   K_THREAD_STACK_SIZEOF(myStackArea),
+                   PRIORITY,
+                   NULL);
+```
+
+### 互斥锁
+
+Zephyr 互斥锁是一种内核原语，**通过确保互斥访问，让多个线程能够安全地访问共享资源**。它提供与大多数其他操作系统中互斥锁相同的功能。
+
+首先需要定义并初始化互斥锁：
+
+```c
+struct k_mutex myMutex;
+
+int rc = k_mutex_init(&myMutex);
+__ASSERT_NO_MSG(rc == 0);
+```
+
+如果希望以文件级作用域静态声明互斥锁，可以不用上面的方式，直接使用 `K_MUTEX_DEFINE(myMutex);`。它大概会声明该结构体，并设置启动时运行的初始化函数。
+
+然后可以这样加锁：
+
+```c
+int rc = k_mutex_lock(&myMutex, K_FOREVER);
+__ASSERT_NO_MSG(rc == 0);
+```
+
+这是一个**阻塞调用，会让当前线程睡眠，直到互斥锁被解锁**并可供该线程加锁。`K_FOREVER` 表示无限期等待互斥锁解锁。一般来说，我不建议使用 `K_FOREVER`，而应指定一个时间限制合理的超时，以便超时时说明确实出了问题。然后记录错误！这对调试很有用，因为忘记解锁互斥锁是常见错误（尤其是在有许多退出点的函数中）。如果没有超时，忘记解锁时应用会挂起，而且得不到有用的调试信息。有了超时，就能得到一条有用的日志，指出哪个互斥锁加锁失败以及失败位置。
+
+```c
+int rc = k_mutex_lock(&myMutex, K_MSEC(1000));
+if (rc != 0)
+{
+    LOG_ERR("Failed to lock myMutex.");
+    // ...  do appropriate action here
+    // If not being able to lock should be considered a fatal error in your firmware, you 
+    // could replace this if() with an assert: __ASSERT_NO_MSG(rc == 0)
+}
+```
+
+有时你会希望在经过一段时间后做点有用的事，或者放弃并尝试其他操作。这完全取决于具体应用！
+
+然后这样解锁互斥锁：
+
+```c
+k_mutex_unlock(&myMutex);
+```
+
+<Aside type="caution">
+不得解锁一个尚未加锁的互斥锁，并且必须记住：在其他线程再次锁定该互斥锁之前，解锁次数要与加锁次数相同。在具有多个退出点的函数中解锁时要小心。[C++](/programming/languages/c-plus-plus/)（以及许多其他语言）的一项有用功能是能把互斥锁变成对象，并保证无论函数以何种方式退出，其析构函数都会在函数退出时被调用（你无需自己解锁！）。遗憾的是，C 没有这一功能。
+</Aside>
+
+Zephyr **互斥锁支持 _可重入加锁_[^zephyr-docs-mutexes]**。这意味着一个线程可以多次锁定同一互斥锁而不会发生自死锁。同一线程必须解锁相同次数后，其他线程才能使用该互斥锁。这种模式的一个常见用法是：有一个可通过 API 访问的共享资源。可以在 API 函数内部锁定互斥锁，从而保证每个 API 调用都是独占的，同时又允许调用方访问该互斥锁，以便在需要把多个 API 调用串联成一次“原子”操作时自行加锁。
+
+<Aside type="caution">
+不应在中断中[^zephyr-docs-mutexes]使用互斥锁对象。中断中的加锁和解锁均不受支持。如果希望从中断进行跨线程通信，请改用信号量。
+</Aside>
+
+Zephyr 互斥锁还支持 _优先级继承_。如果更高优先级的线程开始等待某互斥锁，Zephyr 内核会提升当前持有该互斥锁的线程的优先级。如果一个线程一次只锁定一个互斥锁，这种方法效果很好。如果锁定了多个互斥锁，且没有按拥有者线程优先级被提升的逆序解锁，就会出现不理想的行为。当多个不同优先级的线程之间使用多个互斥锁时，建议一次只锁定一个互斥锁。
+
+### 断言
+
+Zephyr 支持标准 C 库的 `assert()` 函数，如果你愿意，还提供了更强大的断言宏。
+
+`__ASSERT()` 能够同时指定条件和消息。当仅凭条件不足以理解出了什么问题时，消息有助于提供有用的说明。例如，如果检查 `x` 是否小于等于 3，那么断言失败时，可以在消息中包含 `x` 的值：
+
+`__ASSERT(x <= 3, "x must be equal to or less than 3. x: %u.", x);`
+
+这在调试时很有帮助。`x` 是只比 3 大 1（即 `4`），还是像 1000 这样离谱的值？这可以告诉你失败的原因。
+
+如果不想提供消息，可以使用 `__ASSERT_NO_MSG()`。当条件本身足以提供有用的调试信息时，这很有用。通常在检查布尔值或非空指针时就是这种情况。例如：
+
+```c
+__ASSERT_NO_MSG(heaterIsOn);
+__ASSERT_NO_MSG(thePointerYouPassedIn);
+```
+
+<Aside type="note">
+不必写成 `__ASSERT_NO_MSG(thePointerYouPassedIn != NULL)`，因为 C/C++ 保证：只有当指针不为 `NULL` 时，检查指针的“真值”才会返回 `true`。
+</Aside>
+
+### 信号量
+
+Zephyr 提供传统的计数信号量。
+
+可以这样创建信号量：
+
+```c
+struct k_sem mySem;
+k_sem_init(&mySem, 0, 1);
+
+// OR
+K_SEM_DEFINE(mySem, 0, 1);
+```
+
+信号量可与轮询 API 一起使用，以同时等待多个条件。
+
+### 轮询 API
+
+Zephyr 的 _轮询 API_ 允许你同时等待（阻塞）多个事件，例如阻塞等待两个或多个信号量之一可用，或者等到信号量可用或 FIFO 中有数据。
+
+首先需要在 `prj.conf` 中添加以下内容以启用轮询 API：
+
+```text
+CONFIG_POLL=y
+```
+
+然后就可以通过标准的 `#include <zephyr/kernel.h>` 使用该 API。在调用 `k_poll()` 等待事件之前，必须声明一个 `k_poll_event` 数组并初始化。
+
+```c
+struct k_poll_event myEvents[2];
+k_poll_event_init(&myEvents[0],
+                  K_POLL_TYPE_SEM_AVAILABLE,
+                  K_POLL_MODE_NOTIFY_ONLY,
+                  &mySem);
+
+k_poll_event_init(&myEvents[1],
+                  K_POLL_TYPE_FIFO_DATA_AVAILABLE,
+                  K_POLL_MODE_NOTIFY_ONLY,
+                  &myFifo);
+
+```
+
+然后可以调用 `k_poll()` 等待其中一个或多个事件发生：
+
+```c
+k_poll(myEvents, 2, K_FOREVER); // This will block until 1 or more events occur
+```
+
+<Aside type="caution">
+调用 `k_poll()` 时并不会取走信号量。`k_poll()` 返回后，必须检查哪个事件（例如信号量）可用，然后将其取走。但并不**保证该信号量仍然可用**，因为另一个线程可能抢占当前线程并先将其取走。你要么必须处理信号量无法取走的情况，要么把应用设计成保证其可用（一种方法是确保调用 `k_poll()` 的线程是唯一取走该信号量的线程）。
+</Aside>
+
+#### 完整可运行示例
+
+下面是完整可运行的示例：
+
+```c
+#include <stdio.h>
+
+#include <zephyr/kernel.h>
+
+struct k_sem mySem1;
+struct k_sem mySem2;
+
+void MyThreadFn(void * v1, void * v2, void * v3) {
+    printf("THREAD: Thread started.\n");
+
+    struct k_poll_event events[2];
+    k_poll_event_init(&events[0],
+                      K_POLL_TYPE_SEM_AVAILABLE,
+                      K_POLL_MODE_NOTIFY_ONLY,
+                      &mySem1);
+    k_poll_event_init(&events[1],
+                      K_POLL_TYPE_SEM_AVAILABLE,
+                      K_POLL_MODE_NOTIFY_ONLY,
+                      &mySem2);
+    
+    while(1) {
+        printk("THREAD: Waiting on k_poll()...\n");
+        int rc = k_poll(events, 2, K_FOREVER);
+        if (rc != 0)
+        {
+            // Handle error. If a finite time was provided to k_poll()
+            // we would also need to check for -EAGAIN returned, which indicates
+            // a timeout
+        }
+
+        if (events[0].state == K_POLL_STATE_SEM_AVAILABLE) {
+            printk("THREAD: Semaphore 1 available.\n");
+            k_sem_take(events[0].sem, K_NO_WAIT); // Careful! If this thread was preempted, we might not actually be able to take the semaphore
+        } else if (events[1].state == K_POLL_STATE_SEM_AVAILABLE) {
+            printk("THREAD: Semaphore 2 available.\n");
+            k_sem_take(events[1].sem, K_NO_WAIT);
+        }
+
+        // Because we are going to check again, we need to clear the state!
+        events[0].state = K_POLL_STATE_NOT_READY;
+        events[1].state = K_POLL_STATE_NOT_READY;
+    }
+}
+
+K_THREAD_STACK_DEFINE(myStack, 500);
+struct k_thread my_thread_data;
+
+int main(void) {
+    // printf("Creating timer to expire every 1s...\n");
+    
+    // Initialize semaphores
+    k_sem_init(&mySem1, 0, 1);
+    k_sem_init(&mySem2, 0, 1);
+
+    // Create thread
+    k_thread_create(&my_thread_data, myStack,
+                    K_THREAD_STACK_SIZEOF(myStack),
+                    MyThreadFn,
+                    NULL, NULL, NULL,
+                    5, 0, K_NO_WAIT);
+
+    k_msleep(1000);
+    // Give semaphore, this should wake up the thread
+    printf("MAIN: Giving semaphore 1...\n");
+    k_sem_give(&mySem1);
+
+    k_msleep(1000);
+    // Give semaphore, this should wake up the thread
+    printf("MAIN: Giving semaphore 2...\n");
+    k_sem_give(&mySem2);
+
+    return 0;
+}
+```
+
+输出为：
+
+
+<Image src={import('./_assets/semaphore-working-example-stdout.png')} width="800px">上面完整可运行的轮询 API 示例的输出，展示了线程如何阻塞在两个不同的信号量上。</Image>
+
+### 内存分配
+
+Zephyr 提供 `k_malloc()` 和 `k_free()`，用于对共享堆内存块进行动态内存分配。要使用它们（并使其被定义），需要在 `prj.conf` 中添加以下内容：
+
+```python title="prj.conf"
+# Required for k_malloc()
+CONFIG_HEAP_MEM_POOL_SIZE=1024
+```
+
+### 原子变量
+
+Zephyr 提供原子变量 API，让你以原子方式操作简单整数（32 位架构上为 32 位整数，64 位架构上为 64 位整数）。这意味着该 API 是线程安全且中断安全的，无需使用互斥锁。对于不需要互斥锁全部能力的简单变量操作，它们是不错的选择。相对于互斥锁的优势在于通常更快，因为它们利用处理器天然原子的特定指令（例如写入与架构字长相同大小的变量），无需操作系统级锁。包含 `#include <zephyr/sys/atomic.h>` 即可使用原子 API。
+
+使用 `atomic_set(atomic_t* target, atomic_val_t value)` 设置原子变量的值。例如：
+
+```c
+atomic_t myAtomic;
+atomic_set(&myAtomic, 10);
+```
+
+另一个有用的函数是 `atomic_inc(atomic_t* target)`，它将原子变量的值加 1。
+
+```c
+atomic_t myAtomic;
+atomic_inc(&myAtomic);
+```
+
+也可以使用 `atomic_dec(atomic_t* target)` 将原子变量的值减 1。
+
+可以使用 `atomic_clear(atomic_t* target)` 清除原子变量的值。它还会返回变量的先前值，这在实现一个在中断中递增、在线程中读取的计数器时很有用。例如：
+
+```c
+atomic_t myCounter;
+// Both read the value and clear it at the same time
+atomic_val_t prevValue = atomic_clear(&myCounter);
+```
+
+原子操作保证在所有目标架构上实现完整的内存屏障。[^zephyr-docs-atomic-services]
+
+## 基本的 Zephyr 固件应用是什么样的？
+
+下面的示例展示了 `Blinky` 示例项目的 `main.c`（唯一的 `.c` 文件）：
+
+```c
+#include <zephyr.h>
+#include <device.h>
+#include <devicetree.h>
+#include <drivers/gpio.h>
+
+/* 1000 msec = 1 sec */
+#define SLEEP_TIME_MS   1000
+
+/* The devicetree node identifier for the "led0" alias. */
+#define LED0_NODE DT_ALIAS(led0)
+
+#if DT_NODE_HAS_STATUS(LED0_NODE, okay)
+#define LED0	DT_GPIO_LABEL(LED0_NODE, gpios)
+#define PIN	DT_GPIO_PIN(LED0_NODE, gpios)
+#define FLAGS	DT_GPIO_FLAGS(LED0_NODE, gpios)
+#else
+/* A build error here means your board isn't set up to blink an LED. */
+#error "Unsupported board: led0 devicetree alias is not defined"
+#define LED0	""
+#define PIN	0
+#define FLAGS	0
+#endif
+
+void main(void)
+{
+  const struct device *dev;
+  bool led_is_on = true;
+  int ret;
+
+  dev = device_get_binding(LED0);
+  if (dev == NULL) {
+    return;
+  }
+
+  ret = gpio_pin_configure(dev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
+  if (ret < 0) {
+    return;
+  }
+
+  while (1) {
+    gpio_pin_set(dev, PIN, (int)led_is_on);
+    led_is_on = !led_is_on;
+    k_msleep(SLEEP_TIME_MS);
+  }
+}
+```
+
+## 模拟 Zephyr 应用
+
+模拟 Zephyr 应用有两种选择：
+
+1. **原生**：Zephyr 支持原生目标（“板卡”）。它会生成一个直接在主机上运行的可执行文件。
+1. **QEMU**：Zephyr 支持 `qemu_x86` 和 `qemu_cortex_m3` 目标，可在 QEMU 内运行应用。这种情况下，应用按与真实目标相同的架构构建，但在主机上的 QEMU 虚拟机内运行。
+
+在模拟 Zephyr 外设方面，[Javad Rahamipetroudi 的“Using emulators and fake devices in Zephyr”](https://mind.be/using-emulators-and-fake-devices-in-zephyr/) 博文值得一读[^mind-using-emulators-and-fake-devices-in-zephyr]。
+
+## Zephyr 与 C++
+
+Zephyr 对 [C++](/programming/languages/c-plus-plus/) 的支持相当不错。它的所有头文件都包裹在 `extern C` 中，便于你在 C++ 中调用。
+
+Zephyr 不支持以下 C++ 特性：
+
+- **不支持通过 `new` 或 `delete` 进行动态内存分配。** 嵌入式领域的动态内存分配是一个有争议的话题，但拥有它还是不错的，尤其是如果你只允许在初始化阶段进行动态分配。
+- **不支持 RTTI（运行时类型信息）。** 这对嵌入式开发来说不算大问题，因为它通常本来就被禁用。
+- **不支持异常。** 这对嵌入式开发来说不算大问题，因为它通常本来就被禁用。
+
+在 `prj.conf` 中添加以下内容即可启用 C++ 编译支持：
+
+```python title="prj.conf"
+CONFIG_CPP=y
+```
+
+然后可以把 `main.c` 改为 `main.cpp`。记得同时更新 `CMakeLists.txt` 文件中的路径！不过，你仍会缺少大量 C++ 标准库内容（例如 `std::functional`）。要使其可用，请在 `prj.conf` 中添加：
+
+```python title="prj.conf"
+# Adds the full C++ standard library
+CONFIG_REQUIRES_FULL_LIBCPP=y
+```
+
+我注意到仅包含完整 C++ 标准库并不会显著增加 RAM 或闪存占用，因此你只需为实际使用的内容付出代价。
+
+现在应该可以编译包含 C++ 代码的 Zephyr 应用了。
+
+## 调试
+
+可以使用 `addr2line` 可执行文件把内存地址解码回源代码文件和行号。`addr2line` 应由工具链作为编译器可执行文件套件的一部分提供。例如，在 Zephyr 中使用 Nordic 工具链：
+
+```shell
+c:\ncs\toolchains\31f4403e35\opt\zephyr-sdk\arm-zephyr-eabi\bin\arm-zephyr-eabi-addr2line.exe -e .\app\build\zephyr\zephyr.elf -a 0x0
+```
+
+输出大致如下：
+
+```
+0x00000000
+C:/my-project/zephyr/subsys/debug/thread_analyzer.c:75
+```
+
+## 减少 Zephyr 的闪存和 RAM 占用
+
+基于 Zephyr 的应用可能变得很大，部分原因是它开箱即提供了强大的功能。仅是在代码中到处使用日志，就会显著增加闪存占用，因为每次调用都会把日志消息（在运行时替换发生之前）作为字符串字面量保存在 ROM 中。这很容易占用许多 kB 空间。如果之前没有使用浮点打印，这个调用还会引入浮点格式化功能。类似地，所有 `ASSERT()` 风格的宏都会把断言的文件名和行号作为字符串字面量保存在 ROM 中。不过这些信息即使在生产环境中也非常有用，因此在禁用之前请仔细考虑。
+
+可以在 `prj.conf` 中设置 `CONFIG_SIZE_OPTIMIZATIONS=y` 以减小闪存占用。它的作用之一是设置编译器标志 `-Os`，告诉编译器针对大小而非速度或调试能力进行优化。
+
+在我参与的某个项目中，仅通过在 `prj.conf` 中设置 `CONFIG_SIZE_OPTIMIZATIONS=y`，闪存占用就从 421kB 降至 330kB！
+
+可以用 `-t ram_report` 执行 `west` 命令，让 Zephyr 生成 RAM 使用表并打印到终端。
+
+<Image src={import('./_assets/zephyr-ram-report-output-screenshot.png')} width="500px">`west build -t ram_report` 命令输出的截图。</Image>
+
+puncover 可用于通过 Web GUI 可视化内存使用情况。在项目的 [Python](/programming/languages/python/) 虚拟环境中安装 puncover：
+
+```shell
+# Activate python environment if needed, then
+pip install puncover
+```
+
+然后对 west 执行一次干净构建（它会检测到 puncover 并为其添加一个目标）：
+
+```shell
+west build -c
+```
+
+然后通过调用 `west` 并指定目标来运行 puncover：
+
+```
+west build -t puncover
+```
+
+如果在运行 puncover 时遇到错误 `ninja: error: unknown target 'puncover'`（如下所示），可能是因为没有进行干净重建。安装 puncover 后必须进行一次干净重建。这是必要的，因为 CMake 在构建过程中会查找 puncover 可执行文件。如果找不到，就不会为它创建目标。
+
+<Image src={import('./_assets/puncover-build-error.png')} width="500px">安装 puncover 后未进行干净构建时可能出现的构建错误截图。</Image>
+
+你还可以考虑减小项目中可能存在的某些默认栈大小：
+
+```python
+# Stack size of the main thread.
+# Defaults to 2048
+CONFIG_MAIN_STACK_SIZE=1024
+
+# Stack used for Zephyr initialization and interrupts
+# If you have a stack overflow before your code gets to main() you will
+# likely need to make this bigger
+# Defaults to 2048
+CONFIG_ISR_STACK_SIZE=1024
+
+# Stack size of the shell thread (if you are using a shell)
+# Defaults to 2048
+CONFIG_SHELL_STACK_SIZE=1024
+```
+
+## 测试
+
+模板测试项目位于 `zephyr/samples/subsys/testsuite/integration`。
+
+Twister 是 Zephyr 的测试运行工具。它是一个命令行工具，用于收集测试、构建测试应用并运行。访问它的最佳方式是通过 `west` 的子命令，即 `west twister`。
+
+Twister 会把构建输出转储到名为 `twister-out` 的目录中。如果 `twister-out` 已存在（即之前运行过 twister），它会把现有目录重命名为 `twister-out1`、`twister-out2` 等。构建输出的一部分是测试报告。这些是 JUnit 风格的 XML 报告，可被 GitHub Actions、GitLab、Jenkins 等 CI 工具读取。更多信息请参阅[为 Zephyr 项目设置 CI](#setting-up-ci-for-zephyr-projects) 一节。
+
+### 向应用添加原生单元测试
+
+假设你在 `~/zephyr-project/app/` 有一个工作区应用，并想使用 Zephyr 和 ztest 为其添加单元测试。我们将在 `native_sim` 板卡上运行测试，这样可以直接在主机上运行，无需真实硬件。
+
+在 `app` 下创建名为 `tests` 的目录，然后把 `~/zephyr-project/zephyr/samples/subsys/testsuite/integration` 中的所有文件复制到这个新的 `tests` 目录。
+
+`tests` 本身将是一个完整的 Zephyr 应用。项目目录结构应如下所示：
+
+```text
+<home>/
+├─── zephyr-project/
+│     ├── .west/
+│     ├── app/
+│     │    ├── CMakeLists.txt
+│     │    ├── prj.conf
+│     │    ├── src/
+│     │    |    ├── main.c
+|     |    |    ├── RgbLed.c
+|     |    |    └── RgbLed.h
+|     |    └── tests/
+|     |         ├── src/
+|     |         |    ├── main.c
+|     |         |    ├── SomeUnitTests.c
+|     |         |    └── SomeOtherUnitTests.c
+|     |         ├── CMakeLists.txt
+|     |         ├── prj.conf
+|     |         └── testcase.yaml
+│     ├── zephyr/
+│     ├── bootloader/
+│     ├── modules/
+│     └── ...
+```
+
+<Aside type="caution">
+当把 `app/src/` 中的源文件包含到测试应用时，务必不要将应用的 `main.c`（或定义 `int main()` 函数的其他文件）包含到测试的 `CMakeLists.txt` 文件中。测试应用定义了自己的 `main()` 来运行单元测试函数（这很合理，你不想正常运行应用，而是需要一个运行单元测试函数的新入口点）。如果包含应用的 `main()`，会得到 `multiple definition of main` 编译错误。
+</Aside>
+
+假设你当前位于 west 工作区根目录，可以使用以下命令运行测试。无需传入 `tests` 目录，`west twister` 会自动找到它，因此只需传入应用目录。
+
+```bash
+west twister -T app/
+```
+
+这应会构建模板中包含的示例测试。但我们真正想测试的是 `app/src/` 目录中的代码。为此需要做两件事：
+
+1. 构建测试应用时包含 `app/src` 中的源代码。
+1. 构建测试应用时把 `app/src` 目录添加为包含路径。
+
+为此，可以把 `tests/CMakeLists.txt` 修改为以下内容：
+
+```cmake
+cmake_minimum_required(VERSION 3.20.0)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(integration)
+
+# Include all source files in the main application
+# except main.c, which we will filter out
+FILE(GLOB appSources ../src/*.c)
+list(FILTER appSources EXCLUDE REGEX ".*main\\.c$")
+
+# Include all source files in the test application
+FILE(GLOB testAppSources src/*.c)
+target_sources(app PRIVATE ${testAppSources} ${appSources})
+
+# Add the main application directory to the include path
+target_include_directories(app PRIVATE "../src/")
+```
+
+现在，在测试的 `.c` 文件（`tests/src/*.c`）中，可以包含 `app/src/` 中的头文件并测试代码。
+
+编写测试时，仅使用 `west twister -T app/` 并不太实用，因为：
+
+1. 构建和运行测试耗时很长，而且输出隐藏在日志文件中，不会打印到终端。当你想写一些测试代码然后运行看看是否有效时，这会拖慢开发。
+1. IntelliSense 的效果不如在 Zephyr 应用中好。这是因为 `compile_commands.json` 不会在 `twister` 构建目录中创建，而且构建目录不断变化。
+
+更好的做法是仅在编写完测试后，才用 `west twister -T app/` 运行测试。编写测试期间，改用标准的 west build。可以这样做，因为 `test/` 目录本身就是一个自包含的 west 应用！
+
+首次使用（假设要构建在 `native_sim` 上运行的测试）：
+
+```shell
+west build -b native_sim ./<path_to_zephyr_app>/tests/ --pristine
+```
+
+之后就可以使用更快的：
+
+```shell
+west build -t run
+```
+
+如果不想使用快捷方式 `-t run`，也可以通过带命令行选项调用构建出的 `zephyr.exe`（是的，即使在 Linux 上也带 `.exe` 后缀）来运行特定测试。例如：
+
+```shell
+west build -b native_sim
+./build/zephyr/zephyr.exe -test="my_suite::my_test"
+```
+
+<Aside type="tip">
+可以用 `*` 代替测试名，以运行该套件中的所有测试，例如：
+
+```shell
+./build/zephyr/zephyr.exe -test="my_suite::*"
+```
+</Aside>
+
+可以对 ztest 的 `zephyr.exe` 使用命令行选项 `-list`，列出所有可运行的测试。开发时可以把上面两条命令用 `&&` 链接起来，形成一条快捷命令。
+
+也可以在 `-test` 选项中用逗号串联多个选择器，例如：
+
+```shell
+./build/zephyr/zephyr.exe -test="my_suite::my_test,my_suite2::my_test2"
+```
+
+Zephyr 的 `ztest` 框架提供标准的测试套件和测试设置。
+
+可以使用 `ZTEST_F(my_suite, my_test)` 定义测试，它会自动引入 setup 函数返回的 fixture，并将其命名为 `<suite_name>_fixture`（本例中即 `my_suite_fixture`）。
+
+```c
+#include <zephyr/ztest.h>
+
+// This name is important! Must be `<suite_name>_fixture`!
+struct my_suite_fixture {
+     uint32_t number;
+};
+
+static void *my_suite_setup(void)
+{
+    struct my_suite_fixture *fixture = malloc(sizeof(struct my_suite_fixture));
+    zassume_not_null(fixture, NULL);
+
+    // Initialize the fixture
+    fixture->number = 99;
+    return fixture;
+}
+
+static void my_suite_before(void *f)
+{
+    struct my_suite_fixture *fixture = (struct my_suite_fixture *)f;
+}
+
+static void my_suite_teardown(void *f)
+{
+    // Remember to free the memory allocated in the setup function!
+    free(f);
+}
+
+ZTEST_SUITE(my_suite, NULL, my_suite_setup, my_suite_before, NULL, my_suite_teardown);
+
+ZTEST_F(my_suite, test_feature_x)
+{
+    // Because we use `ZTEST_F()` we automatically get access to the `fixture` object 
+    zassert_equal(99, fixture->number);
+}
+```
+
+### 自定义入口点
+
+ztest 为测试提供默认入口点，但你也可以提供自己的入口点。如果需要在运行测试前设置一些全局状态，或更好地控制测试启动时机，这会很有用。只需定义一个名为 `test_main()` 的函数，然后像下面这样在其中调用 `ztest_run_all()`：
+
+```c++
+#include <zephyr/ztest.h>
+
+void test_main(void)
+{
+    // Run all tests once
+    ztest_run_all(NULL, false, 1, 1);
+}
+```
+
+`ztest_run_all()` 的签名如下：`const void *state, bool shuffle, int suite_iter, int case_iter`。`suite_iter` 是每个套件的运行次数，`case_iter` 是套件中每个测试的运行次数。将其设为大于 `1` 的值是捕获内存泄漏的好方法（所有测试都在同一个可执行程序中运行，因此内存泄漏问题会累积，并有望暴露出来）。`shuffle` 可设为 `true`，以随机化测试顺序；这有助于确保测试之间相互独立。
+
+### 清理
+
+许多固件应用被设计为在 MCU 上永久运行（当然，直到复位为止）。因此，你很少需要清理已创建的资源。但在测试环境中，通常需要为每个测试设置和拆除应用的部分内容。因此，你需要更加注重正确清理资源，否则可能导致内存泄漏、段错误或其他 bug。
+
+应当停止测试中启动的所有 Zephyr 定时器，因为如果把同一个结构体作为具有相同回调函数的新定时器复用，可能会出现段错误。
+
+```c
+ZTEST_F(my_suite, test_example)
+{
+    struct k_timer my_timer;
+    k_timer_init(&my_timer, my_timer_callback, NULL);
+    k_timer_start(&my_timer, K_SECONDS(1), K_SECONDS(1));
+
+    // Stop the timer. Perfectly fine to call even if the timer
+    // has already stopped.
+    k_timer_stop(&my_timer);
+}
+```
+
+## 为 Zephyr 项目设置 CI
+
+Zephyr 项目提供了一个适用于 CI 流水线的 [Docker](/programming/virtual-machines-and-containers/docker/) 容器。镜像可在 Docker Hub 的[这里](https://hub.docker.com/r/zephyrprojectrtos/ci)找到（它们也在 GitHub 的容器注册表中）。下面的截图展示了截至 2024 年 11 月可用的部分镜像。注意镜像相当大，其中一些约为 4GB！
+
+<Image src={import('./_assets/zephyr-docker-images-on-docker-hub.webp')} width="1000px">Docker Hub 上的 Zephyr Docker 镜像。[^dockerhub-zephyr-project-rtos]</Image>
+
+部分镜像包括：[^github-zephyrproject-rtos-docker-image]
+
+- **ci-base**：仅安装基础内容的最小镜像。未安装工具链。
+- **ci**：包含 Zephyr SDK、west 以及 CI 使用通常需要的其他内容。
+- **zephyr-build**：类似 `ci` 镜像，但安装了额外的开发工具。
+
+如果需要进一步自定义容器，可以编写自己的 Dockerfile 来扩展镜像。使用 `FROM zephyrprojectrtos/ci:v0.27.4`，然后添加自己的 `RUN` 命令。例如：
+
+```text
+FROM zephyrprojectrtos/ci:v0.27.4
+
+RUN echo "Do other things here!"
+```
+
+然后可以用 `docker build -t my-custom-zephyr-image .` 构建镜像，并将其上传到容器注册表，以便在 CI 流水线中用于构建/运行 Zephyr 应用。
+
+命令行工具 `west` 在容器内全局可用，因此无需创建 Python 虚拟环境并安装它。
+
+构建 Zephyr 应用时，你可能希望缓存通过 `west update` 命令安装的所有依赖，因为安装这些依赖可能耗时很长。大多数基于云的 CI 服务（例如 GitHub Actions、[GitLab](/programming/version-control-systems/gitlab/) Pipelines）允许在任务之间缓存文件/目录。我发现把所有依赖归入一个目录最便于缓存，因此你的 `.west/config` 文件可能如下所示：
+
+```text
+[zephyr]
+base = external/zephyr
+```
+
+Twister 生成标准的 [JUnit 风格 XML](https://www.ibm.com/docs/en/developer-for-zos/16.0?topic=formats-junit-xml-format) 测试报告。测试报告写入 `twister-out/twister_report.xml`。大多数 CI 服务都能解析这些测试报告。例如，GitLab 流水线支持添加 `reports: junit: ...` 字段，用于解析测试报告并在 UI 中显示结果。你的 `.gitlab-ci.yml` 文件可能如下所示：
+
+```yaml
+my_job:
+  script:
+    - west twister -T .
+  artifacts:
+      when: always
+      paths:
+        - $CI_PROJECT_DIR/twister-out/twister_report.xml
+      reports:
+        junit: $CI_PROJECT_DIR/twister-out/twister_report.xml
+```
+
+GitLab 会在合并请求中显示测试结果，如下所示。
+
+<Image src={import('./_assets/gitlab-test-summary-in-merge-request.webp')} width="600px">在 GitLab 合并请求中显示的 Zephyr twister 测试结果。</Image>
+
+## 分发 Zephyr 库
+
+示例见 https://github.com/coderkalyan/pubsub。
+
+## 常见错误
+
+### 找不到文件（Windows 上）
+
+如果运行 `west build` 时遇到类似以下错误：
+
+```text
+CMake Error at C:/Users/Geoffrey Hunter/temp/zephyrproject/zephyr/cmake/kconfig.cmake:206 (message):
+  File not found: C:/Users/Geoffrey
+```
+
+这是因为 Zephyr 项目目录路径中存在一个或多个空格。这不是短期内会修复的 bug，Zephyr 文档对此有明确说明：
+
+<Image src={import('./_assets/spaces-in-path-not-supported-zephyr-documentation-warning.png')} width="900px">Zephyr 文档中关于路径中不允许使用空格的警告。</Image>
+
+我历经艰辛才发现这一点，并费尽周折[重命名用户目录](https://superuser.com/questions/890812/how-to-rename-the-user-folder-in-windows-10)来解决问题。
+
+### No module named 'elftools'
+
+
+```text
+FAILED: zephyr/include/generated/kobj-types-enum.h zephyr/include/generated/otype-to-str.h zephyr/include/generated/otype-to-size.h
+cmd.exe /C "cd /D C:\Users\gbmhunter\temp\myproject\zephyr\build\zephyr && C:\Users\gbmhunter\AppData\Local\Programs\Python\Python38-32\python.exe C:/Users/gbmhunter/temp/myproject/zephyr/scripts/gen_kobject_list.py --kobj-types-output C:/Users/gbmhunter/temp/myproject/zephyr/build/zephyr/include/generated/kobj-types-enum.h --kobj-otype-output C:/Users/gbmhunter/temp/myproject/zephyr/build/zephyr/include/generated/otype-to-str.h --kobj-size-output C:/Users/gbmhunter/temp/myproject/zephyr/build/zephyr/include/generated/otype-to-size.h --include C:/Users/gbmhunter/temp/myproject/zephyr/build/zephyr/misc/generated/struct_tags.json "
+Traceback (most recent call last):
+  File "C:/Users/gbmhunter/temp/myproject/zephyr/scripts/gen_kobject_list.py", line 62, in <module>
+    import elftools
+ModuleNotFoundError: No module named 'elftools'
+```
+
+如果尚未安装 Zephyr 构建所需的 Python 模块，通常会出现 `No module named 'elftools'` 错误。安装所需模块：
+
+```cmd
+> pip3 install -r scripts/requirements.txt
+```
+
+### "__device_dts_ord_DT_N_NODELABEL_xxx_ORD" undeclared
+
+当设备树相关出错时，Zephyr 可能产生非常晦涩的错误消息，例如：
+
+```text
+C:/project/zephyr/include/zephyr/device.h:83:41: error: '__device_dts_ord_DT_N_NODELABEL_hs_0_ORD' 
+       undeclared (first use in this function)
+   83 | #define DEVICE_NAME_GET(dev_id) _CONCAT(__device_, dev_id)
+      |                                         ^~~~~~~~~
+```
+
+如果使用 VS Code 和 nRF Connect 扩展，有时可以通过在设置构建配置时将 Configuration 设为“Use build system default”来解决，如下所示：
+
+<Image src={import('./_assets/selecting-use-build-system-default-in-nrf-connect.png')} width="600px">选择 \"Use build system default\" 有时可以修复设备树错误。</Image>
+
+### "ERROR: Build directory xxx is for application yyy, but source directory zzz was specified"
+
+该错误：
+
+```text
+ERROR: Build directory xxx is for application yyy, but source directory zzz was specified;
+  please clean it, use --pristine, or use --build-dir to set another build directory
+```
+
+通常发生在你第一次尝试构建第二个项目时。默认情况下，`west` 会在当前构建的应用之外创建构建目录，位于 west 工作区目录正下方的 `build` 目录中（例如 `zephyr-project/build/`）。
+
+当你让 `west` 构建另一个项目时（例如你测试了 `samples/hello_world` 这样的示例，现在想构建自己的工作区应用），`west` 会尝试复用 `build`。但它会注意到上次构建的残留内容不属于同一个项目，于是给出这个错误。由于构建产物可以通过重新构建生成，通常可以安全地提供 `--pristine` 选项并覆盖原有内容（这相当于删除 `build` 目录后重新运行 `west`）。如果希望同时进行多个构建（也许因为从头重新构建耗时很长！），可以使用 `--build-dir` 选项指定不同的构建目录。
+
+### "By not providing "FindZephyr.cmake" in CMAKE_MODULE_PATH ..."
+
+如果遇到以下警告（随后会在构建过程更靠后的位置导致错误）：
+
+```text
+(.venv) geoff@geoffs-laptop:~/zephyr-project$ west build -b native_sim ./apps/hello-world/
+-- west build: generating a build system
+CMake Warning at CMakeLists.txt:3 (find_package):
+  By not providing "FindZephyr.cmake" in CMAKE_MODULE_PATH this project has
+  asked CMake to find a package configuration file provided by "Zephyr", but
+  CMake did not find one.
+
+  Could not find a package configuration file provided by "Zephyr" with any
+  of the following names:
+
+    ZephyrConfig.cmake
+    zephyr-config.cmake
+
+  Add the installation prefix of "Zephyr" to CMAKE_PREFIX_PATH or set
+  "Zephyr_DIR" to a directory containing one of the above files.  If "Zephyr"
+  provides a separate development package or SDK, be sure it has been
+  installed.
+```
+
+<Image src={import('./_assets/by-not-providing-find-zephyr-cmake.png')} width="700px">错误 \"By not providing \"FindZephyr.cmake\" in CMAKE_MODULE_PATH ...\" 的截图。</Image>
+
+这通常是由于忘记将 Zephyr 导出到 CMake 用户包注册表。在 west 工作区目录中运行以下命令：
+
+```bash
+west zephyr-export
+```
+
+### ModuleNotFoundError: No module named 'elftools'
+
+缺少 `elftools` 模块的错误是可能出现的常见错误：
+
+```text
+Traceback (most recent call last):
+  File "/home/geoff/zephyr-project/zephyr/scripts/build/gen_kobject_list.py", line 62, in <module>
+    import elftools
+ModuleNotFoundError: No module named 'elftools'
+```
+
+<Image src={import('./_assets/error-no-module-named-elftools.png')} width="700px">错误 \"No module named 'elftools'\" 的截图。</Image>
+
+如果你忘记把额外的 Zephyr 依赖安装到 Python 环境中（删除现有虚拟环境并重新创建时可能发生），就会出现这种情况。假设你已激活相关 Python 虚拟环境，可以运行以下命令修复：
+
+```shell
+pip install -r ./zephyr/scripts/requirements.txt
+```
+
+更新：`west` 命令（自 `v4.1.0` 起）现在可以为你安装额外的 Zephyr 依赖。在 west 工作区目录中运行以下命令：
+
+```bash
+west packages pip --install
+```
+
+### 打印浮点数结果显示为 `*float*`
+
+如果在任何 printf 风格函数（或日志宏）中使用 `%f` 打印浮点数时输出为 `*float*`，很可能需要在 `prj.conf` 中通过 `CONFIG_FPU=y` 启用浮点打印支持：
+
+```python
+CONFIG_FPU=y # Required for printing floating point numbers
+```
+
+### too few arguments in invocation of macro "Z_FOR_LOOP_1"
+
+在较旧的某些 Zephyr 版本中，使用 `LOG_INF()` 等宏且只提供一个参数（例如 `LOG_INF("Hello, world!")`）时，可能会遇到以下 IntelliSense 错误：
+
+```text
+too few arguments in invocation of macro "Z_FOR_LOOP_1" 
+```
+
+这是一个已知问题，已在新版本 Zephyr 中修复。编译本身正常，但 IntelliSense（例如带 Cpp Tools Extension Pack 的 VS Code）会混淆，并在宏下方显示红色波浪线。据我所知，除了升级到更新的 Zephyr 版本外没有其他解决方法。[^github-zephyr-too-few-arguments-in-invocation-of-macro]
+
+## 致命错误
+
+在 `prj.conf` 文件中添加以下内容，即可启用 Zephyr 的 GCC 栈金丝雀（stack canary）：
+
+```python
+CONFIG_ENTROPY_GENERATOR=y
+CONFIG_TEST_RANDOM_GENERATOR=y
+CONFIG_STACK_CANARIES=y
+```
+
+将 `CONFIG_STACK_CANARIES` 设为 `y` 会使编译器在每个函数栈帧末尾添加随机生成的金丝雀值。该值在函数退出时检查。如果金丝雀值被覆盖，编译器会调用 `__stack_chk_fail()`，其 Zephyr 实现会触发致命的栈溢出错误。[^zephyr-docs-fatal-errors]
+
+`CONFIG_ENTROPY_GENERATOR` 和 `CONFIG_TEST_RANDOM_GENERATOR` 是 `CONFIG_STACK_CANARIES` 的必需依赖项。使用栈金丝雀会带来轻微性能损失，但除非有特定的性能原因，否则我建议启用它们。
+
+下面的截图展示了 Zephyr 栈金丝雀的实际效果。我做了一个测试，决定通过分配一个大数组来撑爆栈：
+
+```c
+// Try and blow up the stack
+uint8_t myArray[2000];
+// Do something with it so it is not optimized out
+for (size_t i = 0; i < 2000; i++)
+{
+    myArray[i] = i;
+}
+LOG_INF("myArray[1000] = %d", myArray[1000]);
+```
+
+<Image src={import('./_assets/zephyr-stack-canaries-demo-showing-error-in-terminal.webp')} width="700px">Zephyr 栈金丝雀实际效果截图，展示了金丝雀检测到主线程中的栈溢出（从 shell/终端打印）。</Image>
+
+## 为 Zephyr 做贡献
+
+作为开源项目，Zephyr 欢迎社区贡献。Zephyr 在[这里](https://docs.zephyrproject.org/latest/contribute/guidelines.html#contribute-guidelines)提供了详细的贡献指南。
+
+开始修改的推荐方式是先将 [GitHub 上的 Zephyr 仓库](https://github.com/zephyrproject-rtos/zephyr) fork 到自己的 GitHub 账号。然后把 fork 后的仓库克隆到本地机器，并为你的修改创建一个新分支。修改完成后，提交并推送到你 fork 的仓库。然后在 fork 的仓库中创建 pull request（在 fork 的仓库中点击 "New pull request" 时，它会自动把 base 设为 Zephyr 仓库的 `main` 分支）。
+
+一项要求是在每条提交消息中添加 "Signed-off-by" 行。这是为了遵循开发者原创声明（Developer Certificate of Origin，DCO）流程。可以通过在 [`git`](/programming/version-control-systems/git/) `commit` 命令中添加 `-s` 选项来完成，例如：[^zephyr-docs-contribution-guidelines]
+
+```shell
+git commit -s
+```
+
+这会根据你配置的 git 用户名和电子邮件地址，自动把该行添加到提交消息中。例如：
+
+```text
+Commit message title.
+
+Commit message description.
+
+Signed-off-by: Foo Bar <foo.bar@example.com>
+```
+
+GitHub 上的 Zephyr 仓库有大量 CI 工作流，只有在这些工作流运行通过后，PR 才允许合并到 `main` 分支。下面的截图展示了这些 CI 工作流。
+
+<Image src={import('./_assets/zephyr-pr-github-ci-workflows-screenshot.webp')} width="600px">Zephyr PR GitHub CI 工作流截图。</Image>
+
+## 历史
+
+2016 年 2 月，Wind River（也就是开发 VxWorks 的公司，VxWorks 是安全关键系统领域领先的商用实时操作系统之一）把 Rocket OS 内核捐赠给 Linux Foundation，Zephyr 由此诞生。[^wikipedia-zephyr-operating-system] [^scalar-zephyr-operating-system] Rocket 仍作为 Zephyr 的商用版本并行存在。
+
+[Nordic](/programming/microcontrollers/nordic/) 选择从 nRF5 平台转向 Zephyr，作为其 nRF52、[nRF53](/programming/microcontrollers/nordic/nrf53/) 和 nRF91 MCU/SoC 系列官方支持的开发环境。对 nRF52 系列的 Zephyr 支持大约在 2020 年 4 月加入。[^nordic-semi-nrf52-zephyr-support-added]
+
+## 其他资源
+
+欢迎查看 [Zephyr Discord 频道](https://discord.com/channels/720317445772017664/)。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^zephyr-docs-workqueue]: Zephyr。_Docs / Latest -> Kernel -> Kernel Services -> Workqueue Threads_ [文档]。Zephyr Docs。检索于 2024-01-10，来自 https://docs.zephyrproject.org/latest/kernel/services/threads/workqueue.html。
+[^kernel-org-kconfig-language]: Kernel.org。_Kconfig Language_ [文档]。检索于 2024-10-12，来自 https://www.kernel.org/doc/html/next/kbuild/kconfig-language.html。
+[^zephyr-docs-mutexes]: Zephyr（2023 年 11 月 7 日）。_Mutexes_ [文档]。检索于 2024-02-14，来自 https://docs.zephyrproject.org/latest/kernel/services/synchronization/mutexes.html。
+[^scalar-zephyr-operating-system]: Scaler。_Scaler Topics - How does the Zephyr Operating System Work?_。检索于 2024-02-01，来自 https://www.scaler.com/topics/zephyr-operating-system/。
+[^wikipedia-zephyr-operating-system]: Wikipedia（2023 年 10 月 20 日）。_Zephyr (operating system)_。检索于 2024-02-21，来自 https://en.wikipedia.org/wiki/Zephyr_(operating_system)。
+[^nordic-semi-nrf52-zephyr-support-added]: Nordic Semiconductor（2020 年 4 月 2 日）。_Nordic Semiconductor now offering broad product line support for its short-range and cellular IoT devices on nRF Connect platform including a suite of development tools and open source nRF Connect SDK_ [博客文章]。检索于 2024-02-21，来自 https://www.nordicsemi.com/Nordic-news/2020/04/nordic-now-offering-support-for-its-shortrange-and-cellular-iot-devices-on-nrf-connect-platform。
+[^mind-using-emulators-and-fake-devices-in-zephyr]: Javad Rahamipetroudi（2024 年 5 月 22 日）。_Using emulators and fake devices in Zephyr_。检索于 2024-10-24，来自 https://mind.be/using-emulators-and-fake-devices-in-zephyr/。
+[^dockerhub-zephyr-project-rtos]: Docker Hub。_zephyrprojectrtos_ [用户页面]。检索于 2024-11-26，来自 https://hub.docker.com/u/zephyrprojectrtos。
+[^github-zephyrproject-rtos-docker-image]: GitHub。_zephyrproject-rtos/docker-image_ [仓库]。检索于 2024-11-26，来自 https://github.com/zephyrproject-rtos/docker-image。
+[^zephyr-docs-contribution-guidelines]: Zephyr（2024 年 12 月 26 日）。_Docs / Latest > Contributing to Zephyr > Contribution Guidelines_ [文档]。检索于 2025-01-14，来自 https://docs.zephyrproject.org/latest/contribute/guidelines.html。
+[^nordic-dev-zone-custom-board-duplicate-unit-address-warning]: Nordic Semiconductor DevZone。_Custom Board with nRF5340 produces build warning: Warning (unique_unit_address_if_enabled)_ [论坛帖子]。检索于 2025-01-22，来自 https://devzone.nordicsemi.com/f/nordic-q-a/96780/custom-board-with-nrf5340-produces-build-warning-warning-unique_unit_address_if_enabled
+[^zephyr-docs-thread-stack-apis]: Zephyr（2025 年 2 月 25 日）。_Thread Stack APIs_ [文档]。检索于 2025-02-25，来自 https://docs.zephyrproject.org/apidoc/latest/group__thread__stack__api.html。
+[^zephyr-docs-fatal-errors]: Zephyr（2025 年 3 月 17 日）。_Docs / Latest » Kernel » Kernel Services » Fatal Errors_ [文档]。检索于 2025-04-29，来自 https://docs.zephyrproject.org/latest/kernel/services/other/fatal.html。
+[^zephyr-docs-atomic-services]: Zephyr（2024 年 1 月 8 日）。_Docs / Latest » Kernel » Kernel Services » Atomic Services_ [文档]。检索于 2025-07-01，来自 https://docs.zephyrproject.org/latest/kernel/services/other/atomic.html。
+[^github-zephyr-too-few-arguments-in-invocation-of-macro]: GitHub。_zephyrproject-rtos/zephyr: too few arguments in invocation of macro "Z_FOR_LOOP_1" #62460_ [issue]。检索于 2026-02-18，来自 https://github.com/zephyrproject-rtos/zephyr/issues/62460。
+
+

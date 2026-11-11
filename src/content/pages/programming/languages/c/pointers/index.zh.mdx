@@ -1,0 +1,142 @@
+---
+authors: [gbmhunter]
+date: 2013-03-18
+lastUpdated: 2013-03-18
+tags: [programming, C]
+title: 指针
+type: page
+sourcePath: programming/languages/c/pointers/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:72cb46c455494ea4249ed5aa48f928b3d36ac1bef23589252ebb19f8ab65cf7e
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/pointers/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+指针是 C 编程中的核心概念，但对刚接触这门语言的人来说可能难以掌握。
+
+<Image src={import('./_assets/pointing-hand-icon.png')} width="300px"></Image>
+
+下面是我最喜欢的关于指针的问答：
+
+> 问：为什么 C 语言要使用指针？
+> 答：把家的地址告诉别人，比给每个人一份你家的复制品要容易。
+
+## 指针算术
+
+指针算术要记住的规则是：**指针每次递增的步长始终等于它所指向数据类型的大小**。
+
+下面的示例说明了这一点……
+
+```c
+// Both examples assume memory is address byte-wise, i.e. memory 0x00 is byte 0, memory 0x01 is byte 1 etc.
+
+// 16-bit EXAMPLE
+uint16_t * myPtr = (uint16_t*)0x00;
+myPtr++;
+// myPtr now equals 0x02!
+
+// 32-bit EXAMPLE
+uint32_t  my32BitPtr = (uint32_t)0x00;
+my32BitPtr++;
+
+// my32BitPtr now equals 0x04!
+```
+
+## 数组退化为指针
+
+考虑下面的数组：
+
+```c    
+uint8_t myArray[] = {1, 1, 2, 3, 5}
+```
+
+`&myArray` 是指向该数组的指针。它与 `myArray` 指向相同的内存地址，而后者会退化为指向其第一个元素的指针。但二者的类型不同。`myArray` 的类型是 `*uint8_t`，而 `&myArray` 的类型是 `myArray`。因此，`&myArray + 1` 指向数组末尾之后的地址，**而不是下一个元素**！
+
+## 关于指针的优秀文章
+
+[“前进到不能再前进，再后退”法。](http://www.unixwiz.net/techtips/reading-cdecl.html)
+
+[螺旋法。](http://c-faq.com/decl/spiral.anderson.html)
+
+## 指针的巧妙用法
+
+下面这段短代码：
+
+```c    
+while (*p++ = *q++);
+```
+
+等价于标准库函数 `strcpy(p, q)`！
+
+## 严格别名规则
+
+使用“巧妙”的指针强制转换技巧把内存解释为不同数据类型时要小心。
+
+摘自 C99 标准第 6.5 节：
+
+<blockquote>
+7. 对象的存储值只能由具有下列类型之一的左值表达式访问：
+ - 与该对象的有效类型兼容的类型；
+ - 与该对象的有效类型兼容的类型的限定版本；
+ - 与该对象的有效类型对应的有符号或无符号类型；
+ - 与该对象的有效类型的限定版本对应的有符号或无符号类型；
+ - 在其成员中包含上述类型之一的聚合或联合类型（包括递归地包含子聚合或所含联合的成员）；或
+ - 字符类型。
+</blockquote>
+
+历史上，打破这些规则通常不必过于担心。你可以通过指针强制转换，把同一份数据解释为不同类型，从而访问它的不同表示。然而，在开启优化的现代编译器中，这类代码可能导致致命错误：这些规则允许编译器假定指向不同类型的指针不会指向内存中的同一区域（或重叠区域）；一旦编译器作出这种假定，它就可能执行某些优化，而如果这些指针实际上确实指向同一内存区域，这些优化就会导致致命错误。
+
+## 函数指针
+
+函数指针是一种变量，它不存储数字，也不指向数字，而是指向函数。它们常用于回调例程和基于函数的状态机。函数指针也可以定义为一种类型。
+
+## 8051 上的函数指针
+
+在 8051 架构上，函数指针很危险。8051 的栈很小，因此传入间接调用函数的变量必须存放在寄存器中。这使参数最多只能有约 3 个。如果超过最大变量数，就会得到 “Indirect call: parameters do not fit into registers” 错误。为绕过这一限制，可以像下面这样使用 reentrant 关键字，它会在内存中为这些变量创建一个“栈”。
+
+```c    
+// Adding the reentrant keyword to allow function pointers with more than 3 variables on the 8051 architecture
+typedef uint8 (*functionPointer_t)(uint8 var1, uint8 var2, uint8 var3, uint8 var4) reentrant;
+```
+
+## 将 const 和 volatile 与指针一起使用
+
+当声明指向同时需要 `const` 或 `volatile` 限定对象的指针时，**很难确定限定符的顺序**。
+
+<blockquote>
+经验法则：始终把 const 和 volatile 限定符放在你想使其成为 const 或 volatile 的对象**之后**。
+</blockquote>
+
+例如，一个常量 `int`：
+
+```c   
+int const x;
+```
+
+指向常量 `int` 的指针：
+
+```c    
+int const * x;
+```
+
+指向 `int` 的常量指针：
+
+```c   
+int * const x;
+```
+
+指向常量 `int` 的常量指针：
+
+```c
+int const * const x;
+```
+
+`volatile` 关键字同理。例如，指向 `volatile int` 的 `const` 指针写作：
+
+```c    
+int volatile * const x;
+```
+
+这条规则在所有情况下都成立。它还使你可以通过从后往前读来轻松推断变量类型。例如，如果看到 `int volatile * const x`，你可以从后往前读来推断 `x` 的类型，即 `x` 是一个指向 `volatile int` 的 `const *`（指针）。

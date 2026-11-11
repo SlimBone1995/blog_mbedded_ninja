@@ -1,0 +1,247 @@
+---
+authors: [gbmhunter]
+date: 2015-03-24
+description: 降压变换器的控制方法、元件选择、方程、工作模式、原理图、示例及更多信息。
+lastUpdated: 2026-05-27
+tags: [electronics, components, power regulators, SMPS, buck converter, power electronics, inductor, capacitor, regulation, control methods, constant frequency, current-mode, SNVA555, PCM, peak current mode, CCM, constant current mode]
+title: 降压变换器（Buck Converter）
+type: page
+sourcePath: electronics/components/power-regulators/switch-mode-power-supplies-smps/buck-converters/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:095e315405f79bbadba84c764ff11437d05021d0f6c66aba21a5ca35fd9a1248
+sourceUrl: https://blog.mbedded.ninja/electronics/components/power-regulators/switch-mode-power-supplies-smps/buck-converters/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+import BuckConverter from 'src/components/tools/buck-converter/BuckConverter.jsx';
+import Mp4558 from 'src/components/tools/mp4558-design-tool/Mp4558.jsx';
+
+_降压变换器（buck converter）_ 是[开关模式电源](/electronics/components/power-regulators/switch-mode-power-supplies-smps/)（SMPS）的一种特定拓扑，使用开关元件、二极管（或第二个开关）、电感和电容，将输入电压转换为**更低**的输出电压。
+
+<Image src={import('./_assets/buck-converter-basic-schematic.svg')} width="600">降压变换器的基本原理图。SW1 通常是由控制逻辑（未画出）开关的 MOSFET。</Image>
+
+要了解有关降压变换器的 EMI/EMC 考虑事项，参见 [EMC 设计指南页面](/electronics/compliance/electromagnetic-compatibility-emc/emc-design-guidelines/)。
+
+## 降压变换器的工作原理
+
+降压变换器的输出电压完全由输入电压 $V_{IN}$ 和每个开关周期中开关处于导通状态的时间占比 $D$ 决定：
+
+$$
+\begin{align}
+V_{OUT} = DV_{IN}
+\end{align}
+$$
+
+$D$ 是占空比，取值范围为 $0$ 到 $1$。其定义为：
+
+$$
+\begin{align}
+D = \frac{t_{on}}{T}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$t_{on}$ 是开关的导通时间，单位为秒<br/>
+$T$ 是开关周期，单位为秒（$t_{on} + t_{off}$）<br/></p>
+
+<Aside type="note">
+这个表明 $V_{OUT}$ 仅取决于 $V_{IN}$ 和 $D$ 的简单方程，只有在所有元件均为理想元件（例如二极管无压降、电容无等效串联电阻（ESR）、电感无电阻）**且**电感处于连续导通状态（即电流从不降到 0）时才成立。现实中总存在寄生参数，但该方程仍是帮助理解其工作原理的良好一阶近似。
+</Aside>
+
+以下步骤展示了一种**直观理解降压变换器如何产生更低输出电压**的方法（并推导基本方程）：
+
+1. 在整个开关周期内，电感两端的平均电压必须为 0（换句话说，积分必须为 0，即伏秒积必须为 0）。如果不是这样，那么根据 $V = L \frac{di}{dt}$（电感的基本方程），**电感中的电流将无界增大或减小（即趋于无穷大）**。
+1. 当开关闭合（$t_{on}$）时，此阶段 $L1$ 两端的电压为 $V_{IN} - V_{OUT}$。
+1. 当开关断开（$t_{off}$）时，$D1$ 正向偏置；如果假设它是理想二极管（无正向压降），则此阶段 $L1$ 两端的电压为 $-V_{OUT}$。
+1. 整个开关周期上的平均值（或积分）必须为 0，因此：
+    $$
+    \begin{align}
+    (V_{IN} - V_{OUT})t_{on} - V_{OUT}t_{off} &= 0 \nonumber \\
+    V_{IN}t_{on} - V_{OUT}t_{on} - V_{OUT}t_{off} &= 0 \nonumber \\
+    V_{IN}t_{on} &= V_{OUT}(t_{on} + t_{off}) \nonumber \\
+    V_{OUT} &= \frac{t_{on}}{t_{on} + t_{off}} V_{IN} \nonumber \\
+            &= D V_{IN} \nonumber 
+    \end{align}
+    $$
+
+<Aside type="tip">
+这种利用“整个开关周期内电感平均电压必须为 0”的分析方法，也适用于其他开关拓扑。
+</Aside>
+
+开关闭合时，电流从输入流经电感到达输出，如下所示：
+
+<Image src={import('./_assets/buck-converter-schematic-current-path-ton.svg')} width="500px">开关**闭合**（$t_{on}$ 期间）时的电流路径。</Image>
+
+开关断开时，输入被断开。由于电感不愿电流发生变化，它会通过正向偏置 $D1$ 维持负载电流，如下所示：
+
+<Image src={import('./_assets/buck-converter-schematic-current-path-toff.svg')} width="500px">开关**断开**（$t_{off}$ 期间）时的电流路径。</Image>
+
+$C1$（也称为 $C_{OUT}$）用于减小输出/负载处的电压纹波。
+
+## 控制方法
+
+绝大多数情况下，你需要一个固定（稳压）且稳定的输出电压：它不随输入电压变化，也不会在负载电流增大时开始跌落。为此，仅以固定占空比驱动开关是不够的，需要更复杂的带反馈控制机制。最流行的两种是_电压模式控制_和_电流模式控制_，将在下一节介绍。
+
+<Aside type="tip">
+有关这些控制方法的通用信息（不限于降压变换器），参见 [SMPS 控制方法页面](/electronics/components/power-regulators/switch-mode-power-supplies-smps/control-methodologies/)。
+</Aside>
+
+### 电压模式控制
+
+_电压模式（VM）控制_ 是最简单的控制方法，大约起源于 20 世纪 70 年代[^bib-microsemi-v-i-mode]。其工作原理是取一部分输出电压与固定参考电压进行比较。两者之差称为误差电压，由_误差放大器_放大。该误差电压随后送入比较器，另一个输入是锯齿波信号（三角波形）。开关在锯齿波周期开始时导通，并在锯齿波超过误差电压时关断。通常使用 SR 锁存器来防止噪声导致每个周期多次触发。电压模式控制之所以得名，是因为占空比与控制电压成正比。
+
+<Image src={import('./_assets/voltage-mode-control-diagram.svg')} width="800">电压模式控制所使用的基本逻辑元件。</Image>
+
+### 电流模式控制（固定频率）
+
+_电流模式（CM）控制_ 是降压变换器非常常见的控制方法。
+
+与电压模式相比，它具有以下优点：
+
+- 外部频率补偿比电压模式更简单
+- 负载瞬态响应比电压模式更快。
+
+不过，一个很大的缺点是控制电路更复杂。近年来这一问题有所缓解，因为所有这些电路都集成到了廉价的硅 IC 中。
+
+峰值电流测量是“测量”平均输出电流的常用方法。
+
+跨导放大器（将输入电压转换为输出电流的放大器）用于将反馈引脚（通常标记为 _FB_）上的电压与内部参考电压进行比较。
+
+PCM：峰值电流模式
+
+有关电流模式控制理论的更多信息，参见 TI 的精彩文档 [SNVA555: Understanding and Applying Current-Mode Control Theory](https://www.ti.com.cn/cn/lit/an/snva555/snva555.pdf)。
+
+### 滞环控制
+
+滞环控制是指由比较器直接监测输出电压，而不经过误差放大器。当输出电压低于或超过某个值时，降压变换器的开关导通/关断。由于控制是通过测量输出电压中的纹波来实现的，这种方法也称为_纹波控制法_。
+
+控制开关有两种方式：
+
+1. 检测电压何时**低于**设定阈值，并将开关导通固定时间，或
+1. 检测电压何时**高于**设定阈值，并将开关关断固定时间
+
+滞环控制的优点是对瞬态电流变化响应极快，因为它直接监测输出电压且没有误差放大器。它也不需要任何补偿。这些优点使其适合为大功率 CPU 和 FPGA 快速变化的电流需求供电。
+
+## 计算降压变换器元件值
+
+### 电感选择
+
+可以使用以下方程为降压变换器选择电感。
+
+在降压变换器中，电感与输出串联，因此平均电感电流等于平均输出电流：
+
+$$
+\begin{align}
+I_L = I_{OUT}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$I_{OUT}$ 是降压变换器的输出电流（取你的最大值）<br/></p>
+
+然后，用下式计算所需的电感值：[^ti-slva477b-basic-calc-buck-power-stage]
+
+$$
+\begin{align}
+L = \frac{V_{OUT} (V_{IN} - V_{OUT})}{\Delta I_L \cdot f \cdot V_{IN}}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$V_{IN}$ 是降压变换器的输入电压<br/>
+$V_{OUT}$ 是降压变换器的输出电压<br/>
+$\Delta I_L$ = 电感中期望的纹波电流<br/>
+$f$ = 开关频率<br/></p>
+
+纹波电流通常选择为平均电流的 20-40%[^ti-slva477b-basic-calc-buck-power-stage]。如果选择 30%，则可用下式计算 $\Delta I_L$：
+
+$$
+\begin{align}
+\Delta I_L = 0.3I_L
+\end{align}
+$$
+
+<Aside type="caution">
+除了确保所选电感的电感量至少达到上述计算值之外，还要确保峰值电感电流小于电感的_饱和电流_（否则电感将停止在磁场中储存能量，不再表现得像电感），并且平均电流小于电感的_额定电流_（否则会过热）。
+</Aside>
+
+### 电容选择
+
+输出电容主要由允许的最大输出电压纹波决定。该纹波由电容器的电容量及其等效串联电阻决定。降压变换器的最小输出电容可用下式计算：[^ti-slva477b-basic-calc-buck-power-stage]
+
+$$
+\begin{align}
+C_{min} = \dfrac{\Delta I_L}{8 f \Delta V}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$\Delta I_L$ = 电感纹波电流（来自上文）<br/>
+$\Delta V$ = 期望的最大输出电压纹波<br/>
+$f$ = 开关频率<br/></p>
+
+由于电容的等效串联电阻，实际纹波会略大于此值。输出电容承载电感纹波电流，因此等效串联电阻会贡献额外的纹波电压：
+
+$$
+\begin{align}
+\Delta V_{ESR} = \Delta I_L R_{ESR}
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$R_{ESR}$ = 输出电容的寄生串联电阻<br/></p>
+
+总输出纹波是电容引起的纹波与等效串联电阻引起的纹波之和。
+
+<Aside type="note">
+这些方程假设负载恒定。负载瞬态（负载电流的波动）也会引起电压纹波。
+</Aside>
+
+## 降压变换器计算器
+
+使用下面的通用降压变换器设计辅助工具，根据电源/输出电压、二极管和开关压降、开关频率、输出电流以及可接受的电感纹波，计算占空比和所需电感量。
+
+<BuckConverter client:load />
+
+## MP4558 设计工具
+
+[MP4558](https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP4558/) 是 Monolithic Power Systems 的降压变换器 IC。下面的计算器直接应用其数据手册中的设计方程，针对你的目标输出电压、开关频率和负载，确定频率设定电阻、反馈分压器、电感和电容的取值。内部反馈参考电压为 $V_{FB} = 0.8\,V$。
+
+选择开关频率，将下反馈电阻（$R_2$）设为你实际想用的值（通常为 $10\,k\Omega$），工具会计算其余所有参数。
+
+<Mp4558 client:load />
+
+## 同步整流
+
+使用 P 沟道 MOSFET 进行同步整流时，变换器处于关断模式时其体二极管会正向偏置。这可能使**电源被耗尽**到输出端。更先进的降压变换器具有额外电路，可在器件未工作时断开该 P 沟道 MOSFET。
+
+## EMC
+
+就 EMC 而言，降压变换器的输入电流“热环路”是最需要关注的部分。更多信息参见 [EMC 设计指南页面](/electronics/compliance/electromagnetic-compatibility-emc/emc-design-guidelines/)。
+
+## 示例
+
+### 超小型（Nano）降压变换器
+
+Texas Instruments 于 2015 年发布了一系列非常小（3.5x3.5x1.8mm）的降压变换器模块。其最令人印象深刻的特点之一是模块内包含电感（仍需要外部电容）。LMZ20502 就是一个例子，它可提供高达 2A 的电流，输入电压范围为 2.7-5.5V，输出电压范围为 0.8-3.6V。
+
+<Image src={import('./_assets/photo-of-lmz20502-buck-converter.jpg')} width="300px">LMZ20502 降压变换器的照片。图片来自 http://www.digikey.co.nz/product-detail/en/LMZ20502SILT/296-38656-1-ND/。</Image>
+
+注意模块的大部分体积被片式电感占据（图中占据大部分画面的大块棕色物体）。封装尺寸如下图所示。
+
+<Image src={import('./_assets/microsip-component-package-dimensions.png')} width="500px">Texas Instruments“Nano”降压变换器所使用的 MicroSIP 元件封装尺寸。图片来自 http://www.ti.com/lit/ds/symlink/lmz20502.pdf。</Image>
+
+### XP Power JTF 隔离型 10-15W DC-DC 变换器
+
+XP Power 生产 JTF 系列隔离型 DC-DC 变换器，包括 JTF10（10W）、JTF12（12W）和 JTF15（15W）系列。下图是 JTF1524S05 的照片，其输入范围为 9 至 36 VDC，预置输出电压为有些奇怪的 5.1 VDC（我猜是为了给 Raspberry Pi 等高电流 USB 设备供电，因为标称 5 V 在 CPU 处可能造成较大的 I2R 压降）。
+
+<Image src={import('./_assets/xp-power-jtf-series-isolated-dc-dc-converter-module.webp')} width="500px">XP Power JTF1524S05 隔离型 DC-DC 变换器模块的照片。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^bib-microsemi-v-i-mode]: Maniktala, Sanjaya（2012）。_Voltage-Mode, Current-Mode (and Hysteretic Control)_。Microsemi。检索于 2021-08-22，来自 https://www.microsemi.com/document-portal/doc_view/124786-voltage-mode-current-mode-and-hysteretic-control。
+[^ti-slva477b-basic-calc-buck-power-stage]: Brigitte Hauke（2015 年 8 月）。_Basic Calculation of a Buck Converter's Power Stage_ [应用报告]。Texas Instruments。检索于 2023-06-20，来自 https://www.ti.com/lit/an/slva477b/slva477b.pdf。

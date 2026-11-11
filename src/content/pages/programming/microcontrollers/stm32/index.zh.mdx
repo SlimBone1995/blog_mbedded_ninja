@@ -1,0 +1,218 @@
+---
+authors: [gbmhunter]
+date: 2020-06-19
+description: 关于 STM32 系列微控制器的信息。
+lastUpdated: 2026-09-13
+tags: [programming, microcontrollers, STM32, STM32F0, STM32F1, STM32G0, STM32G4, STM32N6, Cortex-M0, Cortex-M0+, Cortex-M3, Cortex-M4F, Cortex-M55, ARM, STM32CubeIDE, Nucleo, STM32WLEx, LoRa, LoRaWAN, ST-LINK/V2, virtual COM ports, VCPs, STLINK-V3, STLINK-V3SET, isolation]
+title: STM32 微控制器
+type: page
+sourcePath: programming/microcontrollers/stm32/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:4052ed2f65c18f9dee17c4c5e2117ff87bba5b1722f13dc6e9c1121585ec6a42
+sourceUrl: https://blog.mbedded.ninja/programming/microcontrollers/stm32/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+`STM32` 是 STMicroelectronics 生产的 32 位 ARM Cortex-M 微控制器系列。
+
+所有 `STM32` 微控制器都受 ST 自家的 [STM32CubeIDE](/programming/integrated-development-environments-ides/stm32cubeide/) 支持。
+
+## 开发套件
+
+STM32 微控制器有一类非常流行的开发套件：STM32 _NUCLEO_。这些板卡配有 STM32 微控制器、带 [UART](/electronics/communication-protocols/uart-communication-protocol/) 的集成编程器，以及 Arduino 和 Morpho 两种排针（Morpho 是 ST 专有的排针布局，比业界标准的 Arduino 布局提供更多连接能力）。
+
+Nucleo 板载编程器/调试器 IC（即模拟 ST-LINK 的 IC）上的固件，可以使用 STM32CubeProgrammer 或独立的 STLinkUpgrade 工具更新，二者均可在 Windows、Linux 和 macOS 上运行。
+
+## 编程器
+
+如需深入了解 ST 自家的所有编程器，请参阅技术说明 [TN1235: Overview of ST-LINK derivatives](https://www.st.com/resource/en/technical_note/dm00290229-overview-of-stlink-derivatives-stmicroelectronics.pdf)。
+
+### ST-LINK/V1
+
+_ST-LINK/V1_ 已弃用。
+
+### ST-LINK/V2
+
+_ST-LINK/V2_ 是用于 STM8 和 STM32 系列微控制器的在线编程器和调试器。它支持 SWIM（Single Wire Interface Module，仅用于 STM8）[^st-swim]、SWD（Single Wire Debug）和 JTAG 编程协议。
+
+### ST-LINK/V2-ISOL
+
+_ST-LINK/V2-ISOL_ 的功能与 ST-LINK/V2 类似，但在 PC 和目标板之间增加了隔离。
+
+### STLINK-V3
+
+旨在取代 ST-LINK/V2 系列编程器。最初有三个版本：
+
+- **STLINK-V3SET**：带外壳的“标准”编程器。主模块板为 MB1441。可连接可选适配板以获得额外功能。[^st-um2448-stlink-v3set]
+- **STLINK-V3MINI**：微型编程器，以裸 PCB 形式提供。比 STLINK-V3SET 便宜得多。
+- **STLINK-V3MODS**：采用半孔边缘 PCB 模块的编程器，设计用于焊接到包含待编程微控制器的 PCB 上。
+
+ST 此后又增加了 STLINK-V3MINIE（取代 STLINK-V3MINI）和 STLINK-V3PWR（增加了可编程电源和功率测量功能）。
+
+它们都具有一个或多个虚拟串口（VCP）以及大容量存储设备模拟功能，可用于拖放式闪存编程。
+
+<Image src={import('./_assets/stlink-v3set-st-microelectronics-programmer-photo.png')} width="500px">STLINK-V3SET 编程器照片。图片来自 https://www.digikey.co.nz/product-detail/en/stmicroelectronics/STLINK-V3SET/497-18216-ND。</Image>
+
+**STDC14 连接器**
+
+`STDC14` 引脚定义/连接器是在 STLINK-V3 中引入的。它是一种 14 引脚、2x7、1.27mm 间距的排针式连接器。中间的 10 个引脚沿用标准的 10 引脚 ARM Cortex 编程连接器。一端的 2 个引脚增加 UART TX/RX，另一端的 2 个引脚保留。
+
+STDC14 连接器的引脚定义如下表所示。[^st-um2448-stlink-v3set]
+
+<table>
+  <thead>
+    <tr><th>引脚编号</th>  <th>说明</th>          <th>引脚编号</th>  <th>说明</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>1</td>        <td>保留</td>             <td>2</td>        <td>保留</td></tr>
+    <tr><td>3</td>        <td>T_VCC</td>                <td>4</td>        <td>T_JTMS/T_SWDIO</td></tr>
+    <tr><td>5</td>        <td>GND</td>                  <td>6</td>        <td>T_JCLK/T_SWCLK</td></tr>
+    <tr><td>7</td>        <td>GND</td>                  <td>8</td>        <td>T_JTDO/T_SWO</td></tr>
+    <tr><td>9</td>        <td>T_JRCLK/NC</td>           <td>10</td>       <td>T_JTDI/NC</td></tr>
+    <tr><td>11</td>       <td>GNDDetect</td>            <td>12</td>       <td>T_NRST</td></tr>
+    <tr><td>13</td>       <td>T_VCP_RX</td>             <td>14</td>       <td>T_VCP_TX</td></tr>
+  </tbody>
+</table>
+
+[TagConnect](/electronics/components/connectors/pogo-pins/) 的 [TC2070-IDC-050 或 TC2070-IDC-NL-050 线缆](https://www.tag-connect.com/debugger-cable-selection-installation-instructions/stlink-v3) 可与 STLINK-V3 及其 STDC14 连接器配合使用，实现无需连接器的探针式编程。[^tagconnect-stlink-v3]
+
+### NUCLEO 开发套件
+
+考虑到 ST-LINK 比 NUCLEO 开发套件更贵，直接购买 NUCLEO 开发套件并将其用作独立编程器在经济上更划算（套件提供引出编程引脚的排针，因此可以连接到板外微控制器）。你还能获得内置 UART 带来的额外好处（当板载编程器通过 USB 线缆连接到计算机时，它会模拟一个 COM 口），例如可用作调试 UART。ST-LINK/V2 没有这一功能（不过 STLINK-V3 系列有）。
+
+## STM32F0
+
+`STM32F0` 是“通用型” STM32 微控制器系列。该系列采用 48MHz ARM Cortex-M0 CPU 架构。
+
+[低功耗模式](/electronics/low-power-design/)：
+
+- 睡眠模式：仅停止 CPU。所有外设继续工作，并可唤醒 CPU。
+- 停止模式：一种使所有部件进入低功耗状态，但保留 SRAM 和寄存器内容的模式。
+- 待机模式：功耗最低的模式。所有部件停止，SRAM/寄存器内容丢失，但 RTC 域寄存器和待机电路除外。
+
+GPIO 能力：
+
+GPIO 可配置为以下输出之一：
+
+- 推挽
+- 开漏（open-drain）
+
+或配置为以下输入：
+
+- 高阻
+- 上拉
+- 下拉
+
+STM32F030 的参考原理图（仅电源、时钟和编程）：
+
+<Image src={import('./_assets/stm32f030-reference-schematic.png')} width="800px">STM32F030 微控制器的参考原理图。图片来自 https://www.st.com/resource/en/application_note/dm00089834-getting-started-with-stm32f030xx-and-stm32f070xx-series-hardware-development-stmicroelectronics.pdf。</Image>
+
+## STM32F1
+
+`STM32F1` 是“通用型” STM32 微控制器系列。该系列采用 [ARM Cortex-M3](/programming/cpu-architectures/arm-cortex-m3/) CPU 架构。
+
+需要注意以下几点：
+
+- 各端口末位数字相同的所有 GPIO 引脚（例如 `PA1`、`PB1`、`PC1`……）都连接到同一条外部中断（EXTI）线，且同一时间只能有一个引脚连接到该中断。将信号布线到 GPIO 引脚时要小心！（这适用于所有 STM32 系列，而不仅是 STM32F1。）
+- 外设分为两条 APB 总线。`APB1` 最高限制为 36MHz，因此在系统时钟运行于最高 72MHz 时，连接到 `APB1` 的外设以主时钟频率的一半运行，而连接到 `APB2` 的外设可以以完整主时钟频率运行。两条总线的预分频器均可配置。
+
+使用 STM32F1 微控制器开发时，你需要两份 PDF：你所使用具体型号的“数据手册”，以及更通用、篇幅大得多的[参考手册](https://www.st.com/resource/en/reference_manual/cd00171190-stm32f101xx-stm32f102xx-stm32f103xx-stm32f105xx-and-stm32f107xx-advanced-arm-based-32-bit-mcus-stmicroelectronics.pdf)。
+
+## STM32G
+
+`STM32G` 是“通用型” STM32 微控制器系列。该系列在 `G0` 上使用 64MHz ARM Cortex-M0+ CPU 架构（M0+ 实现与 M0 相同的 Armv6-M 指令集，但增加了 MPU 和向量表重定位等可选特性，并采用两级流水线而非 M0 的三级流水线），在 `G4` 上使用 Cortex-M4F[^wp-stm32]。
+
+### STM32G0
+
+- STM32G0x0：_超值系列_。最便宜的 STM32G0 微控制器，具有入门级模拟外设。
+- STM32G0x1：模拟功能比 STM32G0x0 更多。
+
+### STM32G4
+
+混合信号微控制器系列，同时包含 DSP 和 FPU 指令。该系列采用 ARM Cortex-M4F CPU 架构。它进一步细分为以下子系列：
+
+- STM32G4x1：_基础系列：_ 具有入门级模拟外设的通用微控制器。
+- STM32G4x3：_高性能系列：_ 具有最多模拟外设的通用微控制器。
+- STM32G4x4：_高分辨率系列：_ 具有高分辨率定时器、复杂波形生成器和事件处理器，适用于数字电源转换。
+
+## STM32H7
+
+STM32H7 是高性能 STM32 微控制器系列。它们运行在 32 位 Arm Cortex-M7 内核上，时钟速度最高可达 600 MHz。部分型号提供 64 kB 至 2 MB 的嵌入式闪存。[^st-stm32h7-series] 引脚数从 64 到 240 不等。
+
+STM32H7 系列进一步细分为以下产品线：[^st-stm32h7-series]
+
+- Bootflash 单核产品线（STM32H7R3/7S3、STM32H7R7/7S7）：600 MHz 内核，具有成本优化的 64 kB bootflash 和完整的外部存储器支持。
+- 双核产品线（STM32H747/757、STM32H745/755）：480 MHz 和 240 MHz 内核，最高 2 MB 闪存和 1 MB RAM。
+- 单核产品线（STM32H723/733、STM32H725/735、STM32H743/753、STM32H742、STM32H7A3/7B3）：550 MHz 内核，或 STOP 模式下典型电流 34 uA 的低功耗 280 MHz 内核。
+- 超值产品线（STM32H750、STM32H7B0、STM32H730）：高性价比产品线，具有 128 kB 闪存和最高 1 MB RAM。
+
+### STM32H743/753 设计指南
+
+STM32H742xI/G 和 STM32H743xI/G 器件包含最高 2 Mbyte 的内部闪存和最高 1 Mbyte 的 RAM（包括 192 Kbyte 的 TCM RAM、最高 864 Kbyte 的用户 SRAM 和 4 Kbyte 的备份 SRAM），
+
+[数据手册](https://www.st.com/resource/en/datasheet/stm32h743zi.pdf) 对于理解 STM32H743/753 器件的引脚定义和能力非常有价值。
+
+`VCAP` 引脚需要 2.2 uF X5R/X7R 陶瓷电容接地。
+
+该 MCU 包含两个 USB 外设：`OTG_HS1` 和 `OTG_HS2`：
+
+- `OTG_HS1`：全速和高速。具有用于高速操作的 ULPI（UTMI+ Low Pin Interface）（需要外部 PHY）。
+- `OTHG_HS2`：仅全速。
+
+两个外设都具有用于全速操作的内部 PHY（例如 D+ 和 D- 线直接连接到 MCU）。二者均可承担主机、外设和 OTG 角色。它们需要由连接到 HSE 振荡器的锁相环（phase-locked loop）产生的专用 48 MHz 时钟。
+
+启动模式：启动地址由 `BOOT` 引脚和 `BOOT_ADDx` 选项字节共同决定。二者结合，可使用从 0x0000 0000 到 0x3FFF FFFF 的任意启动内存地址。[^st-stm32h743-datasheet]
+
+STM32H743/753 具有内置 ROM 引导程序，可通过 USART、FDCAN、I2C、SPI 和 USB（仅 FS，不含 HS）重新编程闪存。[^st-stm32h743-datasheet]
+
+电源：[^st-stm32h743-datasheet]
+
+| 电源 | 电压范围 | 说明 |
+|--------|---------------|------------|
+| $V_{DD}$ | 1.62 至 3.6V | I/O 电源电压 |
+| $V_{DDLDO}$ | 1.62 至 3.6V | 为内部低压差线性稳压器（low-dropout regulator）提供 $V_{CORE}$ 的 I/O 电源电压 |
+| $V_{DDA}$ | 1.62 至 3.6V | `ADC`、`DAC`、`COMP` 和 `OPAMP` 外设的模拟电源电压。 |
+| $V_{DD33USB}$ | | |
+| $V_{DD50USB}$ | | |
+| $V_{BAT}$ | 1.2 至 3.6V | 当 $V_{DD}$ 不存在时，为 $V_{SW}$ 供电的电源。 |
+| $V_{CAP}$ | 1.0、1.1、1.2 或 1.35 V | $V_{CORE}$ 电源电压。具体电压取决于电压调节档位。 |
+
+## STM32N6
+
+STM32N6 是一系列带有专用边缘 AI 硬件加速的 STM32 MCU。它们具有运行于 800 MHz 的 ARM Cortex-M55，以及运行于 1 GHz、算力达 0.6 TOPS（每秒万亿次运算）的 NPU（神经网络处理单元）。该 NPU 是 ST 的 Neural-ART 加速器。[^st-stm32n6-series]
+
+STM32N6 通过内置的 [MIPI CSI-2](/electronics/communication-protocols/mipi-csi-communication-protocol/) 接口和 H264 硬件编码器直接支持图像处理流水线。[^st-stm32n6-series] 它具有十六线 SPI（XSPI）和 FMC 总线，用于与外部存储器快速通信。
+
+STM32N6 进一步细分为以下“产品线”：
+
+- STM32N6x7：_AI 产品线_：具有 NPU（Neural-ART 加速器）。标记为“带 AI 加速”。
+- STM32N6x5：_通用产品线_：不带 NPU。
+
+在这两个产品线中，部分型号具有硬件加密单元，部分则没有。
+
+STM32N6 有两个主要开发套件。功能全面的 STM32N6570-DK 包含摄像头、LCD 屏幕和触摸面板、USB、以太网、麦克风和 1 Gbit SPI 闪存。它采用 STM32N657X0H3Q MCU。
+
+另一个开发套件是 NUCLEO-N657X0-Q，其结构与 ST 的其他 Nucleo 开发套件类似。它包含 STM32N657X0 MCU，是测试 STM32N6 系列 MCU 的好方法。它包括用户按键和 LED、以太网、MIPI20 连接器、M.2 key A 串行存储连接器以及 [CAN FD](/electronics/communication-protocols/can-protocol/) 排针。[^st-nucleo-n657x0-q] 与 STM32N6570-DK 不同，它不附带摄像头和 LCD 触摸屏。
+
+<Image src={import('./_assets/nucleo-n657x0-q-dev-board-photo.webp')} width="300px">采用 STM32N6 MCU 的 NUCLEO-N657X0-Q 开发板照片。[^st-nucleo-n657x0-q]</Image>
+
+## STM32WLEx
+
+`STM32WLEx` 是一个“SoC”微控制器系列，在同一颗物理 IC 中集成了 `STM32L4` 级 ARM Cortex-M4 内核和亚 GHz 无线收发器（源自 Semtech SX126x）。该收发器支持 LoRa、(G)FSK、(G)MSK 和 BPSK 调制，ST 还提供了在其上运行的 [LoRaWAN](/electronics/communication-protocols/sub-ghz-ism-bands/) 协议栈。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^st-swim]: STMicroelectronics（2016 年 8 月）。_UM0470 User manual: STM8 SWIM communication protocol and debug module_ [用户手册]。检索于 2020-09-03，来自 https://www.st.com/resource/en/user_manual/cd00173911-stm8-swim-communication-protocol-and-debug-module-stmicroelectronics.pdf。
+[^wp-stm32]: Wikipedia（2021 年 8 月 31 日）。_STM32_ [wiki]。检索于 2022-01-12，来自 https://en.wikipedia.org/wiki/STM32。
+[^st-um2448-stlink-v3set]: STMicroelectronics（2021 年 12 月）。_UM2448 User manual: STLINK-V3SET debugger/programmer for STM8 and STM32_ [用户手册]。检索于 2022-08-09，来自 https://www.st.com/en/development-tools/stlink-v3set.html#documentation。
+[^tagconnect-stlink-v3]: TagConnect。_Tag-Connect Solutions for Debuggers & Programmers: ST-Link-V3 Cable Selection_ [网站]。检索于 2022-08-09，来自 https://www.tag-connect.com/debugger-cable-selection-installation-instructions/stlink-v3。
+[^st-stm32n6-series]: STMicroelectronics。_STM32N6 Series_ [产品页面]。检索于 2026-06-09，来自 https://www.st.com/en/microcontrollers-microprocessors/stm32n6-series.html。
+[^st-nucleo-n657x0-q]: STMicroelectronics。_NUCLEO-N657X0-Q - STM32 Nucleo-144 development board with STM32N657X0 MCU, SMPS, supports Arduino, and ST morpho connectivity_ [产品页面]。检索于 2026-06-09，来自 https://www.st.com/en/evaluation-tools/nucleo-n657x0-q.html。
+[^st-stm32h7-series]: STMicroelectronics。_STM32H7 Series - Arm Cortex-M7 and Cortex-M4 MCUs_ [产品页面]。检索于 2026-09-13，来自 https://www.st.com/en/microcontrollers-microprocessors/stm32h7-series.html。
+[^st-stm32h743-datasheet]: STMicroelectronics（2026 年 1 月）。_DS12110: STM32H742xI/G STM32H743xI/G - 32-bit Arm Cortex-M7 480MHz MCUs, up to 2MB flash, up to 1MB RAM, 46 com. and analog interfaces_ [数据手册]。检索于 2026-09-13，来自 https://www.st.com/resource/en/datasheet/stm32h743zi.pdf。

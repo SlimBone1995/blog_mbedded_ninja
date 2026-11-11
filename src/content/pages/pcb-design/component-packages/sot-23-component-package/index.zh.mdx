@@ -1,0 +1,204 @@
+---
+authors: [gbmhunter]
+date: 2015-04-06
+description: SOT-23 是一种常用的中等尺寸 SMD 封装，具有 3 到 8 个鸥翼引脚，广泛用于线性稳压器、BJT、MOSFET 和二极管等器件。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-01-21
+tags: [component packages, PCB design, RJ-3, RJ-5, RJ-6, RJ-8, SOT-23, SOT-23-3, SOT-23-5, SOT-23-6, Micro3, SC-59, SC-59A, SOT-346, SSOT3, SOT-753, SOT-457, SC-74A, TO-236AA, TO-236AB, JEDEC, JEITA, EIAJ, SMT3, SOT-26, SM8, Analog Devices]
+title: SOT-23 元件封装
+type: page
+sourcePath: pcb-design/component-packages/sot-23-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:845413813db6111774e79a26e651cf4c409c3cdae3a59e5903d9b451f943fff0
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/sot-23-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`SOT-23`（*Small Outline Transistor 23*）是 JEDEC 对一类非常流行的中等尺寸 SMD 封装的代码，这类封装具有 3 到 8 个鸥翼引脚。
+
+当表面贴装（surface-mount）元件刚开始流行时，`SOT-23` 被引入以取代常用的通孔 3 引脚 [TO-18](/pcb-design/component-packages/to-18-component-package/) 和 [TO-92](/pcb-design/component-packages/to-92-component-package/) 晶体管封装，因此 `SOT-23` 的第一个变体是 3 引脚版本（`SOT-23-3`，JEDEC 正式名称为 `TO-236AA`）[^mad-pcb-sot-23]。
+
+SOT-23 系列可能是变体名称最多、且都指向相同封装的封装系列（见下文各同义名称小节）。
+
+使用的引脚数不仅取决于所需的连接数，还取决于期望的热阻（大电流 `SOT-23` 器件可能会为同一网络使用多个引脚，以改善散热性能）。SparkFun 提供一款 [SOT-23 转 DIP 转接板](http://www.sparkfun.com/products/717)。
+
+3、5、6 引脚的 `SOT-23` 变体具有相同的 0.95mm 间距，并且都与 6 引脚封装兼容（这意味着 3 引脚和 5 引脚变体也可以使用 `SOT-23-6` 转接板）。`SOT-23-8` 采用更小的 0.65mm 间距，以便在不改变本体尺寸的情况下容纳封装上的所有引脚。
+
+JEDEC 在 MO-178 文件中正式规定了 `SOT-23` 封装（及其所有变体）的尺寸（封装代号为 `R-PDSO-G`）。注册后，你可以从 https://www.jedec.org/standards-documents/docs/mo-178-c 免费下载该文件。
+
+[SOT-23F 封装](/pcb-design/component-packages/sot-23f-component-package/) 与 `SOT-23` 密切相关，但采用平直引脚而非鸥翼引脚。
+
+所有 `SOT-23-x` 封装的本体尺寸为 1.30x2.92mm。计入引脚后的元件面积为 7.98mm²（2.9x2.75mm）。标准焊盘面积为 11.22mm²（3.3x3.4mm）。
+
+如果你以前稍微练习过表面贴装器件，手工焊接会很容易。使用红外或回流焊技术也很容易焊接。
+
+`R-PDSO-G` 是 SOT-23 所有变体的 JEDEC 封装代号[^jedec-mo-178-c]。
+
+## SOT-23-3
+
+`SOT-23-3` 是 `SOT-23` 系列中最常见的封装，有时就直接称为 `SOT-23`。下图展示了 Nisshinbo 的 SOT-23-3 封装三维渲染图。
+
+<Image src={import('./_assets/sot-23-3-3d-render-nisshinbo.png')} width="300px">Nisshinbo 的 SOT-23-3 元件封装三维渲染图[^nisshinbo-sot-23-3]。</Image>
+
+### 同义名称
+
+- `1-3G1G`：Toshiba 的封装代码[^toshiba-1ss398-diode]。
+- `2-3AB1A`：Toshiba 封装代码[^toshiba-sot-23]。
+- `318D-04`：onsemi 封装代码[^onsemi-m1ma151kt1-diode]。
+- `526AG`：Fairchild Semiconductor 的封装代码[^fairchild-semi-fdn304p-mosfet]。
+- `Micro3`：International Rectifier 封装代码[^international-rectifier-irlml6401pbf-mosfet]。
+- `MPAK`：NXP Semiconductors 的封装代码[^nxp-sot-346-smt-3-mpak]。
+- `RT-3`：Analog Devices 封装代码[^analog-devices-sot-23-3-rt-3-package-info]。
+- `S3`：Analog Devices 封装代码，似乎是 Linear Technology 存在时期的遗留代码[^analog-devices-s3-package]。
+- `SC-59`：JEITA EIAJ 代码[^rohm-2sb1590k-bjt]。
+- `SMT3`：Rohm Semiconductor 代码[^rohm-2sb1590k-bjt]，也是 NXP Semiconductors 的封装代码[^nxp-sot-346-smt-3-mpak]。
+- `SOT-23`：非正式 JEDEC 名称。如果没有附加数字，则假定 `SOT-23` 有 3 个引脚。
+- `SOT-23-3`：非正式 JEDEC 名称。
+- `SOT-346`：一些制造商认为 `SOT-23-3` 和 `SOT-346` 是不同封装，另一些则将两者混为一谈。我决定把它们合并在一起，因为在翻阅大量数据手册中的尺寸后，它们的数值通常重叠且非常相似，在大多数使用场景下可以视为等效。但我必须强调：务必查看数据手册！
+- `SSOT3`：Mouser 用于 Fairchild Semiconductor 器件的名称（大概是 `SuperSOT-3` 的缩写）[^mouser-fdn5632n-f085-mosfet]。
+- `SuperSOT-3`：Fairchild Semiconductor 的品牌名称[^fairchild-semi-fdn304p-mosfet]。
+- `TO-236AA`：正式 JEDEC 代码（见下方说明）。
+- `TO-236AB`：正式 JEDEC 代码（见下方说明）[^toshiba-sot-23]。
+- `TO-236MOD`：Toshiba 所称的 JEDEC 代码[^toshiba-1ss398-diode]。
+
+`TO-236AA` 和 `TO-236AB` 都是 `SOT-23-3` 封装的官方 JEDEC 名称。Wikipedia 上的一条图片评论[^wikipedia-inductiveload]称 `TO-236AB` 封装大约高 0.1mm。然而，通过比较制造商给出的封装尺寸很难验证这一说法，因为 0.1mm 完全在制造公差范围内。
+
+### 尺寸
+
+- 间距：0.95 mm（但由于中间引脚缺失，同一侧的引脚间距实际上是 1.9 mm）
+- 本体：宽 1.3mm，长 2.9mm，高 1.0mm
+- 本体 + 引脚：宽 2.5mm，长 2.9mm
+
+下图展示了 `SOT-23-3` 封装的尺寸：
+
+<Image src={import('./_assets/package-dimensions-sot23-3.gif')} width="500px">SOT-23-3 元件封装的尺寸。</Image>
+
+### 推荐焊盘图形（land pattern）
+
+下图展示了 NXP 为 `SOT-23-3` 封装推荐的焊盘图形。
+
+<Image src={import('./_assets/sot-23-3-recommend-land-pattern-nxp.png')} width="600px">NXP 为 SOT-23-3 封装推荐的焊盘图形[^nxp-sot-23-package-info]。</Image>
+
+### 常见用途
+
+由于只有 3 个引脚，`SOT-23-3` 用于大量低功耗、2–3 引脚的器件，例如线性稳压器（linear voltage regulator）、BJT、MOSFET 和二极管（有时包含两个二极管，共用阳极或阴极）。
+
+- 线性稳压器
+- BJT
+- MOSFET
+- 二极管（包括二极管阵列）
+
+### 相似封装
+
+`SOT-23-3` 封装与 [SOT-346 封装](/pcb-design/component-packages/sot-346-component-package/) 非常相似，许多制造商给出的这两种封装尺寸相互吻合，而且在很多情况下同一块 PCB 焊盘图形可同时适用于这两种封装。
+
+## SOT-23-5
+
+下图展示了 Direnc 的 `SOT-23-5` 封装三维渲染图。
+
+<Image src={import('./_assets/sot-23-5-3d-render-direnc.png')} width="300px">Direnc 的 SOT-23-5 封装三维渲染图[^direnc-tps70950dbvr]。</Image>
+
+### 同义名称
+
+- `RJ-5`：Analog Devices
+- `SC-74A`：JEITA
+- `SOT-753`
+- `SOT-25`：TopLine
+
+### 尺寸
+
+下图展示了 Bourns 的 `SOT-23-5` 封装尺寸。
+
+<Image src={import('./_assets/sot-23-5-dimensions-bourns.png')} width="700px">Bourns 的 SOT-23-5 封装尺寸[^bourns-sot23-5-package-info]。</Image>
+
+### 推荐焊盘图形
+
+下图展示了 Bourns 为 `SOT-23-5` 封装推荐的焊盘图形。
+
+<Image src={import('./_assets/sot-23-5-recommended-land-pattern-bourns.png')} width="600px">Bourns 为 SOT-23-5 封装推荐的焊盘图形。</Image>
+
+### 常见用途
+
+- 运算放大器（op-amp）
+- 线性稳压器
+
+## SOT-23-6
+
+下图展示了 `SOT-23-6` 元件封装的三维渲染图。
+
+<Image src={import('./_assets/component-package-sot-23-6-sc-74-sot-457-3d-render.jpg')} width="200px">SOT-23-6（SOT-457）元件封装的三维渲染图。</Image>
+
+### 同义名称
+
+- `IMT4`：Rohm
+- `RJ-6`：Analog Devices
+- `SC-74`：JEITA
+- `SMT6`：Rohm Semiconductor
+- `SOT-26`：TopLine 命名的 SOT-23-6
+- `SOT-457`：JEDEC
+
+### 非标准引脚编号
+
+<Aside type="caution">
+Rohm 的 `SOT-23-6` 封装（又称 `IMT4`、`SOT-457`、`SMT6`）采用非标准的顺时针引脚编号，从右上角引脚开始。
+</Aside>
+
+<Image src={import('./_assets/rohm-sot-457-imt4-sot-23-6-component-package-non-standard-clockwise-pin-numbering-annotated.png')} width="645px">Rohm SOT-23-6 元件封装（又称 SOT-457、IMT4），采用非标准引脚编号。</Image>
+
+### 尺寸
+
+`SOT-23-6` 的间距为 0.95mm。
+
+### 常见用途
+
+- [保护电路模块（protection circuit module，PCM）](/electronics/components/power-management-ics/pcms/)
+
+## SOT-23-8
+
+`SOT-23-8` 是 `SOT-23` 系列中具有 8 个引脚的封装。
+
+### 同义名称
+
+- `RJ-8`：Analog Devices
+- `SM8`：Diodes Incorporated
+- `SOT-28`：TopLine
+- `TS8`：Linear Technology（现 Analog Devices）[^analog-devices-ltc2954-on-off-controller-ds]
+
+### 尺寸
+
+SOT-23-8 的间距为 0.65mm，与该系列中其他所有封装使用的 0.95mm 间距不同。这样可以在不改变本体尺寸的情况下，在每侧容纳 4 个引脚。
+
+<Image src={import('./_assets/sot-23-8-component-package-dimensions-diodes-incorporated.png')} width="800px">SOT-23-8 元件封装的尺寸。图片来自 http://www.diodes.com/。</Image>
+
+### 推荐焊盘图形
+
+<Aside type="caution">
+与 `SOT-23-3`、`SOT-23-5` 和 `SOT-23-6` 的 0.95mm 间距相比，`SOT-23-8` 的间距更小，为 0.65mm。这是为了在每侧容纳 4 个引脚；最初的 `SOT-23` 设计（即 `SOT-23-3` 的同义名称）每侧最多只能容纳 3 个引脚。
+</Aside>
+
+<Image src={import('./_assets/sot-23-8-component-package-recommended-footprint-diodes-incorporated.png')} width="1000px">SOT-23-8 元件封装的推荐封装。图片来自 http://www.diodes.com/。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^jedec-mo-178-c]: [https://www.jedec.org/standards-documents/docs/mo-178-c](https://www.jedec.org/standards-documents/docs/mo-178-c)
+[^wikipedia-inductiveload]: [https://commons.wikimedia.org/wiki/File:TO-236AA_Front_Top.svg](https://commons.wikimedia.org/wiki/File:TO-236AA_Front_Top.svg)
+[^toshiba-sot-23]: Toshiba。_SOT23_ [封装信息]。检索于 2023-07-22，来自 https://toshiba.semicon-storage.com/ap-en/semiconductor/design-development/package/detail.SOT23.html。
+[^nisshinbo-sot-23-3]: Nisshinbo Micro Devices Inc.。_SOT-23-3_ [封装信息]。检索于 2023-07-22，来自 https://www.nisshinbo-microdevices.co.jp/en/design-support/package/sot-23-3.html。
+[^mad-pcb-sot-23]: MAD PCB。_SOT-23_。检索于 2023-07-22，来自 https://madpcb.com/glossary/sot-23/。
+[^analog-devices-sot-23-3-rt-3-package-info]: Analog Devices。_3-Lead Small Outline Transistor Package - SOT-23-3 (RT-3)_ [封装信息]。检索于 2023-07-22，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/sot-23-3-rt/rt_3.pdf。
+[^analog-devices-s3-package]: Analog Devices。_S3 Package - 3-Lead Plastic SOT-23 (Reference LTC DWG # 05-08-1631 Rev D)_ [封装信息]。检索于 2023-07-22，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/ltc-legacy-sot-23/sot3%2005-08-1631%20rev%20d.pdf。
+[^nxp-sot-23-package-info]: NXP（2017 年 1 月 9 日）。_SOT-23 - plastic, surface-mounted package; 3 terminals; 1.9 mm pitch; 2.9 mm x 1.3 mm x 1 mm body_ [封装信息]。检索于 2023-07-22，来自 https://www.nxp.com/docs/en/package-information/SOT23.pdf。
+[^bourns-sot23-5-package-info]: Bourns（2008 年 6 月）。_SOT23-5_ [封装信息]。检索于 2023-07-22，来自 https://www.bourns.com/docs/Product-Datasheets/sot23-5.pdf。
+[^direnc-tps70950dbvr]: Direnc。_TPS70950DBVR - SOT23-5 5V 150m Linear Voltage Regulator_ [产品页面]。检索于 2023-07-22，来自 https://www.direnc.net/tps70950dbvr-sot23-5-5v-150m-lineer-voltaj-regulator-en。
+[^international-rectifier-irlml6401pbf-mosfet]: International Rectifier（2014 年 4 月 28 日）。_IRLML6401PbF - HEXFET Power MOSFET_ [数据手册]。检索于 2023-07-22，来自 https://www.infineon.com/dgdl/Infineon-IRLML6401-DataSheet-v01_01-EN.pdf?fileId=5546d462533600a401535668b96d2634。
+[^rohm-2sb1590k-bjt]: Rohm Semiconductor。_2SB1590K - Low frequency amplifier_ [数据手册]。检索于 2023-07-23，来自 https://fscdn.rohm.com/en/products/databook/datasheet/discrete/transistor/bipolar/2sb1590kt146q-e.pdf。
+[^toshiba-1ss398-diode]: Toshiba（2001 年 6 月 7 日）。_1SS398 - Silicon Epitaxial Planar Diode_ [数据手册]。检索于 2023-07-23，来自 https://docs.rs-online.com/d0bb/0900766b80849698.pdf。
+[^nxp-sot-346-smt-3-mpak]: NXP。_SOT346: SMT3; MPAK_ [封装信息]。检索于 2023-07-22，来自 https://www.nxp.com/packages/SOT346。
+[^onsemi-m1ma151kt1-diode]: onsemi（2012 年 7 月）。_M1MA151KT1, M1MA152KT1 - Single Silicon Switching Diodes_ [数据手册]。检索于 2023-07-23，来自 https://www.onsemi.com/pdf/datasheet/m1ma151kt1-d.pdf。
+[^fairchild-semi-fdn304p-mosfet]: Fairchild Semiconductor（2000 年 6 月）。_FDN304P - P-Channel 1.8V Specified PowerTrench MOSFET_ [数据手册]。检索于 2023-07-24，来自 https://pdf.dzsc.com/FDN/FDN304P.pdf。
+[^mouser-fdn5632n-f085-mosfet]: Mouser。_FDN5632N-F085_ [产品页面]。检索于 2023-07-24，来自 https://www.mouser.com/ProductDetail/onsemi-Fairchild/FDN5632N-F085?qs=THZS4U49PK5JFq8XNv2RZA%3D%3D。
+[^analog-devices-ltc2954-on-off-controller-ds]: Analog Devices。_Pushbutton On/Off Controller with µP Interrupt_ [数据手册]。检索于 2024-08-28，来自 https://www.analog.com/media/en/technical-documentation/data-sheets/2954fb.pdf。
