@@ -1,0 +1,46 @@
+---
+authors: [gbmhunter]
+date: 2015-07-14
+lastUpdated: 2023-09-13
+title: 通用布线技巧
+type: page
+sourcePath: pcb-design/general-routing-tips/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:fdea003d8ce69b3a4897e3aa0d1890d390fc5ed2e53bafb880e8775266fa4280
+sourceUrl: https://blog.mbedded.ninja/pcb-design/general-routing-tips/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+下面介绍 PCB 布线技巧与窍门。
+
+<Image src={import('./screenshot-during-routing-a-track-on-pcb-in-altium.png')} width="321px">在 Altium 中为 PCB 走线布线时的截图。</Image>
+
+## 始终把原理图放在面前
+
+布线时必须把原理图放在面前。可以打印出来，或者如果有第二台显示器，就放在上面。
+
+有时从飞线中并不清楚元件应该放在哪里。一个典型例子是去耦电容。飞线只会显示一个引脚连到电源轨，另一个连到地。然而原理图（希望如此！）显示它与某个 IC 的电源输入相关，因此应放在该 IC 旁边。
+
+让原理图可见还能帮助你以合乎逻辑的方式放置元件。
+
+## 应力释放天线
+
+天线也可用于对应力敏感元件（如加速度计和陀螺仪）在焊接时进行应力释放。应力敏感元件封装上未使用的引脚也要像已使用引脚一样，从焊盘引出最小距离的走线，这样在使用回流焊或红外焊接时，所有焊盘上的焊锡同时熔化和凝固，从而降低元件所受应力。
+
+<Image src={import('./routed-accelrometer-footprint-showing-thermal-relief-on-not-connects-for-stress-relief.png')} width="800px">将加速度计元件封装上未使用的引脚引出到距 IC 最小距离处，以降低红外/回流焊时的应力。</Image>
+
+## 不期望的天线
+
+任何不用于无线电发射或应力释放的 PCB 天线都可能是**坏事**。它们由走线在空旷处终止造成，通常是在 PCB 布线时无意中产生的。
+
+## 为机械螺钉留出间距
+
+务必在机械螺钉孔周围为螺钉头留出铜（和元件）间距。如果螺钉头下方有铜走线（或平面），螺钉头可能咬穿阻焊层并造成以下后果：
+
+1. 使螺钉本身以及螺钉所连接的物体（例如金属外壳）与 PCB 上的某个网络电气连接。
+1. 将螺钉头下方的两条走线短路。
+1. 扯断 PCB 上的走线，使网络开路。
+
+<Image src={import('./pcb-damaged-by-screw-head.jpg')} width="500px">哎哟。如果 PCB 上没有为螺钉头留出间距，就可能发生这种情况。</Image>

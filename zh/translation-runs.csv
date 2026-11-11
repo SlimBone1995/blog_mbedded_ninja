@@ -1,0 +1,8 @@
+date,batch,agent,pages,tokens,duration_s,notes
+2026-11-11,Pilot,Electronics agent,6,273133,1115,
+2026-11-11,Pilot,PCB agent,4,94993,277,
+2026-11-11,Pilot,Programming agent,9,191445,729,
+2026-11-11,Pilot,I2C (main session),1,,,usage not captured separately
+2026-11-11,PCB batch 2,A,7,77268,209,
+2026-11-11,PCB batch 2,B,6,78774,205,
+2026-11-11,PCB batch 2,C,7,74769,186,

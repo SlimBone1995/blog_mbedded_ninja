@@ -1,0 +1,48 @@
+---
+authors: [gbmhunter]
+date: 2015-10-23
+lastUpdated: 2015-10-23
+tags: [PCB design, test points, SMD, PCBs, vias, clip]
+title: 测试点
+type: page
+sourcePath: pcb-design/testpoints/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:7128b7e85fd2614e9afd022d72ba542a365becd2bf2b7827d2bf7a6f74b5b146
+sourceUrl: https://blog.mbedded.ninja/pcb-design/testpoints/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+测试点本质上是 PCB 上可以连接万用表或示波器探头、查看电路工作状态（电压层面）的位置。对于原型 PCB，测试点几乎总是必要的；如果日后需要诊断故障板，在生产中同样必要。随着 SMD 元件的普遍使用，测试点变得越来越重要，因为元件宽度只有零点几毫米时很难探测。当年通孔元件盛行的时代，每个元件都是一个测试点！
+
+基于电流的测试点更难实现，因为必须提供断开/重新接通电路的方式（使用传统的串联万用表测电流方法时）。这通常用一个跳线或廉价开关实现。
+
+在 PCB 上添加测试点的一种常见而简便的方法是让一些过孔**不盖油**。这意味着它们不会被阻焊层覆盖，可以方便地探测。过孔的圆形也很容易卡住探头！下图显示了两个不盖油的过孔 A 和 B 被用作测试点。
+
+<Image src={import('./_assets/pcb-untented-vias-as-test-points.jpg')} width="500px">注意 PCB 上不盖油的过孔。在空间受限的设计中，它们可以用作测试点。</Image>
+
+## 专用测试点
+
+如果你想要更正式的测试点、能夹住东西的那种，许多制造商都生产专用测试点。尽管这些测试点设计为微型 SMD 测试点，制造商通常仍建议使用较大的焊盘。不要在这上面省钱，因为需要足够的焊盘面积，以免夹接测试线时把焊盘扯掉。提醒一句：这些看似简单的弯折金属片并不便宜！一些例子如下：
+
+<table>
+  <tbody>
+    <tr>
+      <td><Image src={import('./_assets/keystone-minature-smd-testpoint.jpg')} width="200px">Keystone 制造的微型 SMD 测试点。</Image></td>
+      <td>Keystone 微型 SMT 测试点</td>
+      <td>Element14 编号：385-8030</td>
+    </tr>
+    <tr>
+      <td><Image src={import('./_assets/harwin-smt-test-point.jpg')} width="160px">Harwin SMT 测试点</Image></td>
+      <td>Harwin SMT 测试点</td>
+      <td>Element14 编号：182-6282</td>
+    </tr>
+  </tbody>
+</table>
+
+## 用于计时的测试点
+
+连接到 MCU 或其他可编程器件的测试点可用于测量固件中特定部分的时序。
+
+<Image src={import('./_assets/real-life-example-of-using-test-point-pulses-to-indicate-firmware-events.webp')} width="500px">用测试点脉冲指示固件事件的实际案例。2 个短脉冲表示第一个事件，3 个短脉冲表示第二个事件。</Image>

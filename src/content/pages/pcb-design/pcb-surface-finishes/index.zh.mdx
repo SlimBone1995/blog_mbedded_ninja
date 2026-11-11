@@ -1,0 +1,104 @@
+---
+authors: [gbmhunter]
+date: 2015-10-06
+lastUpdated: 2015-10-06
+tags: [pcb design, surface finishes]
+title: PCB 表面处理
+type: page
+sourcePath: pcb-design/pcb-surface-finishes/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:4516962085fc0c506cedf3df34718b270bb85c9248841e46294be50280546847
+sourceUrl: https://blog.mbedded.ninja/pcb-design/pcb-surface-finishes/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+以下表面处理按价格/性能比由低到高排列。
+
+## 热风整平（HASL）
+
+HASL 是应用最广泛的表面处理之一。其工艺是把电路板浸入一锅熔融焊锡中，取出后再用一组“风刀”去除多余的焊锡。
+
+<Image src={import('./_assets/hasl-pcb-surface-finish-example.jpg')} width="463px">采用 HASL 表面处理的 PCB 示例。图片来源：http://www.pcbsourcing.com/。</Image>
+
+**优点：**
+
+- 便宜
+- 坚固
+- 可返工
+
+**缺点：**
+
+- 表面不平整
+- 对 PCB 造成热冲击（可靠性下降）
+- 堵塞（或部分堵塞）镀通孔
+
+HASL 曾经是大多数 PCB 事实上的标准表面处理。随着元件封装不断缩小，HASL 的局限开始造成严重问题。
+
+主要问题在于 HASL 形成的表面不平整。对于 0.5–0.8mm 间距的 QFN 和 BGA 元件，这种不规则的焊锡沉积会桥连焊盘并造成短路。
+
+把 PCB 浸入熔融焊锡池所带来的热冲击可能损伤微小的过孔和走线，甚至使过孔开裂。这可能导致电路板在室温下工作正常，但在 -10°C 时因过孔中的金属收缩而失效。
+
+## 化学浸锡（ISn）
+
+化学浸锡是
+
+<Image src={import('./_assets/example-of-immersion-tin-surface-finish-on-pcb.jpg')} width="890px">化学浸锡（ISn）PCB 表面处理示例。图片来源：http://www.standardpcb.com/。</Image>
+
+**优点**
+
+- 相对便宜，但比 HASL 贵
+- 表面平整
+- 无铅（符合 RoHS）
+- 可返工
+
+**缺点**
+
+- 保存期限短（3–6 个月）
+
+ISn 最大的问题是铜层与锡层会随时间缓慢相互扩散。这会产生“锡须”，并把 ISn PCB 的保存期限（焊接前）限制在约 3–6 个月。
+
+## 化学浸银（IAg）
+
+化学浸银是 ENIG 的良好替代方案。
+
+<Image src={import('./_assets/pcb-surface-finish-immersion-silver.jpg')} width="600px">化学浸银（IAg）PCB 表面处理示例。图片来源：http://www.rlcinnovation.com/。</Image>
+
+**优点**
+
+- 精确
+- 只需一道镀覆工序（相比 ENIG）
+
+**缺点**
+
+- 价格中等偏高
+- 手指油脂和溶剂会导致润湿问题
+- 在酸性和含硫环境中会被侵蚀
+
+镀有 IAg 的 PCB 在焊接前不得直接用手接触或用溶剂清洗，因为手指油脂和溶剂会导致润湿问题。
+
+## 化学镀镍浸金（ENIG）
+
+随着元件封装间距不断缩小、RoHS 法规日益普及，ENIG 正变得越来越流行。
+
+<Image src={import('./_assets/example-of-immersion-gold-pcb-surface-finish.jpg')} width="1557px">化学浸金 PCB 表面处理示例。图片来源：http://www.standardpcb.com/。</Image>
+
+**优点**
+
+- 保存期限很长
+- 适合金手指
+- 适合射频屏蔽连接
+
+**缺点**
+
+- 比化学浸银贵
+- 需要两道镀覆工序（先镀镍，再镀金）
+
+## 浸镀与化学镀
+
+浸镀依靠 PCB 铜表面与溶液中的贵金属发生化学置换反应。回想一下中学化学：把铁钉放入硫酸铜溶液，过一会儿铁钉表面就会覆上一层铜。
+
+浸镀层非常薄（表面一旦被覆盖，反应即停止），附着力也不佳。
+
+化学镀采用自催化镀覆。

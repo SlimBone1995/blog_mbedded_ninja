@@ -1,0 +1,93 @@
+---
+authors: [gbmhunter]
+date: 2014-11-04
+lastUpdated: 2014-11-04
+title: IMS（绝缘金属基板）PCB
+type: page
+sourcePath: pcb-design/ims-insulated-metal-substrate-pcbs/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:660444e02f580c297fafea89dc2aebfef05811c70361b39c566e5702b8c5035a
+sourceUrl: https://blog.mbedded.ninja/pcb-design/ims-insulated-metal-substrate-pcbs/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+绝缘金属基板（insulated metallic substrate，IMS）PCB 使用金属材料作为厚基板或内层，以改善 PCB 的热性能和机械性能。它们也称为铝基板、覆铝板、金属覆铜板（MCPCB）或导热 PCB（呃……这个名称不好，所有 PCB 的导热性都相当不错）。相比标准 FR-4，可实现 **3–10 倍**的热性能提升。
+
+<Image src={import('./_assets/ims-pcb-aluminium-side-on-photo.png')} width="346px">铝基 IMS PCB 的侧面照片。</Image>
+
+通常使用铝作为基板（导电层仍使用铜），因为成本低；但在更昂贵/更高功率密度的设计中会使用铜，因为铜的导热性更优。铜的热膨胀系数也更低，当需要降低元件焊点应力时也会使用铜。
+
+## 用途
+
+- 大功率应用
+- 存在较大机械负载的场合
+- 需要高尺寸稳定性的场合
+- 有阻燃要求/限制的场合
+- 需要额外电磁屏蔽的场合
+
+IMS PCB 更高的导热性可实现更高的组装密度（相同电流下可使用更细的铜走线！）、更长的工作时间以及更可靠的器件（降低热应力并提高 MTBF）。
+
+IMS PCB 用于功率 LED PCB、电机驱动器、焊接机、固态继电器（SSR）、功率变换电路等。
+
+<Image src={import('./_assets/ims-pcb-copper-clad-top-down-photo.png')} width="281px">用于大功率 LED 的 IMS PCB 俯视照片。</Image>
+
+此外还有直接键合铜（direct bonded copper，DBC）基板和活性金属钎焊（active metal braze，AMB）基板。
+
+有时使用 IMS PCB 可以省去散热器！
+
+## 导热系数
+
+作为对比，以下是各种 PCB 材料的导热系数。注意单位为瓦每米每开尔文（W/(m·K)）。
+
+- 铜：$385 W/m/K$
+- 铝：$205 W/m/K$
+- 水：$0.56 W/m/K$
+- FR4：$0.25 W/m/K$
+- 导热半固化片（prepreg）：$1.00 – 5.00 W/m/K$
+- 静止空气：$0.24 W/m/K$
+
+注意传统 PCB 半固化片的导热系数非常差，仅为 $0.25W/m/K$。
+
+## 设计
+
+基础的 IMS PCB 只允许将元件放在一面。白色和黑色是 IMS PCB 常用的阻焊层和丝印颜色。更先进的 IMS PCB 遵循常规层叠结构（layer stackup）规则，只是将 PCB 中的一个或多个芯板（PCB core）替换为金属材料，半固化片和普通铜层仍然使用。然而半固化片层很薄（通常 20–100 µm 厚），导热性差！但电介质也不能做得太薄，否则介电强度过低（会导致击穿）。可以使用陶瓷或硼填充的特殊半固化片，在保持绝缘性能的同时提高导热性。
+
+IMS PCB 可采用大多数常见镀覆工艺。不过，HASL 因与其他工艺（如 Cu-OSP、化学浸锡或化学镍金（ENIG））相比会产生不平整表面，通常不受青睐。
+
+## 单面单层 IMS PCB
+
+这是最基础、最便宜的 IMS PCB 设计布局。它由一个导电层夹在金属基板上构成，中间有半固化片。常用于基础的大功率 LED PCB 以及其他不需要太多布线的简单电路。
+
+<Image src={import('./_assets/example-stack-up-of-single-sided-single-layered-ims-pcb.png')} width="407px">单面单层 IMS PCB 的层叠结构示例。</Image>
+
+## 单面双层 IMS PCB
+
+这种设计并不比单层单面 IMS PCB 复杂多少，只是多了一层紧邻顶层导电层下方的导电铜层。先用常规 PCB 工艺制作薄型双层 PCB，然后加上金属基板即完成 PCB。
+
+<Image src={import('./_assets/example-stack-up-of-single-sided-double-layered-ims-pcb.png')} width="388px">单面双层 IMS PCB 的层叠结构示例。</Image>
+
+单面 IMS PCB 的无元件面可安装到散热器（例如设备外壳）上，从而大幅降低器件的总热阻。IMS PCB 与散热器之间使用热界面材料（TIM）。
+
+最大尺寸似乎在 500x500 mm 左右。
+
+阻燃等级可达 94V0。
+
+## PCB 约束
+
+根据设计不同，导热系数可在 0.60（一般到良好）至 2.2 W/m·K（非常好）之间，而 FR4 为 0.3 W/m·K。常见厚度为 1.5 mm 和 2.0 mm。我见过支持 0.8、1.0、1.2、1.5、1.6 和 2.0 mm 的工艺。铜厚范围为 35–200 µm。
+
+最小导体宽度：200 µm  
+最小导体间距：200 µm  
+最小环形焊盘：150 µm  
+最小过孔（PTH）：0.3 mm  
+介质层玻璃化转变温度：130 °C  
+Er（介电常数）：4.2–4.7。
+
+## IMS 的热管理替代方案
+
+从传统 PCB 转向 IMS PCB 可能是相当大的设计/制造变更。在这样做之前，请想想：“我能否通过其他方式改善 PCB 的热性能？”以下是 IMS PCB 的一些替代方案：
+
+- 散热过孔（注意也可与 IMS PCB 配合使用）
+- 更厚的铜层。35 µm（1 oz）铜厚是标准值，但大多数 PCB 制造商允许大幅增加厚度！

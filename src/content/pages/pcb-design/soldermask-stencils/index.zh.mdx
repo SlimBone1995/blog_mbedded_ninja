@@ -1,0 +1,79 @@
+---
+authors: [gbmhunter]
+date: 2014-07-23
+lastUpdated: 2014-07-23
+tags: [PCB design, soldermask, stencils, PCBs, CAD]
+title: 阻焊钢网
+type: page
+sourcePath: pcb-design/soldermask-stencils/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:680701c283de4c66faab85fd704bacda951d5f4be227fc1b696e58dec6f29fbb
+sourceUrl: https://blog.mbedded.ninja/pcb-design/soldermask-stencils/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+PCB 钢网用于在回流焊过程中快速、均匀地把锡膏涂布到 PCB 上。钢网通常由不锈钢片（用于大批量生产）或塑料/蜡纸（用于廉价的一次性原型）制成。
+
+<Image src={import('./soldermask-example-stainless-steel-soldermask-dot-com.jpg')} width="300px">不锈钢钢网示例。图片来源：http://www.soldermask.com/。</Image>
+
+钢网片上在所有需要涂布锡膏的位置开有窗口。把钢网贴在 PCB 表面，然后涂布锡膏。钢网的厚度决定锡膏密度（单位面积上涂布的锡膏量）。
+
+PCB 钢网通常由与制造 PCB 相同的设计文件生成。如果使用 [Gerber 格式](/pcb-design/pcb-data-formats#gerber-files)，则会用到顶层锡膏层（.GTP）和底层锡膏层（.GBP）文件。
+
+## 蚀刻工艺
+
+### 化学蚀刻
+
+化学蚀刻钢网通常由可蚀刻级别的不锈钢制成。在同样使用不锈钢的情况下，其制造成本低于激光切割钢网。由于蚀刻从钢网两面同时进行，工艺会在窗口内部形成腰部（收窄）。这种腰部可以通过抛光部分去除。
+
+抗蚀层开口会做得比最终所需的窗口尺寸更小，因为化学蚀刻会一定程度地**侧蚀**窗口侧壁。这会产生圆角，这也是化学蚀刻钢网的特征。
+
+### 激光切割
+
+不锈钢和蜡纸钢网都可以激光切割。激光切割可以使用比化学蚀刻更硬级别的不锈钢。
+
+由于激光的熔化效应，激光切割钢网的窗口侧壁表面更粗糙。
+
+## 钢网厚度
+
+常见厚度包括 0.12mm 和 0.15mm。0.10mm 厚的不锈钢在无框 A4 或更大尺寸的钢网上会相当软塌。
+
+## 纵横比
+
+某个窗口的纵横比是指窗口宽度与钢网厚度之比。
+
+$$
+\begin{align}
+R = \frac{W}{T}
+\end{align}
+$$
+
+对于给定的钢网，该比值不应小于某个特定数值。通常为 1 或 1.5。
+
+## 窗口尺寸
+
+规则如下：
+
+$$
+\begin{align}
+R = \frac{LW}{2(L+W)T}
+\end{align}
+$$
+
+该比值应始终大于或等于 0.66。
+
+<Image src={import('./pcb-stencil-aspect-and-area-ratio-illustration.png')} width="800px">解释 PCB 钢网纵横比和面积比的示意图。图片来源：http://www.ti.com/lit/an/slua271a/slua271a.pdf。</Image>
+
+## 价格
+
+用于原型的不锈钢钢网单片价格通常在 US\$20 至 US\$130 之间，具体取决于开孔方式。
+
+## 阶梯钢网
+
+有时不同元件需要不同的锡膏密度。可以通过组合化学蚀刻与激光切割来制造厚度变化的钢网，这类钢网称为**阶梯钢网**。
+
+## 艺术？
+
+用钢网做完 PCB 之后还能拿它做什么？钢网有没有可能成为艺术品？我确实给它加过背光和扩散板，做成了一件可挂在墙上的艺术品，详见[背光 PCB 钢网项目](/electronics/projects/backlit-pcb-stencil)。

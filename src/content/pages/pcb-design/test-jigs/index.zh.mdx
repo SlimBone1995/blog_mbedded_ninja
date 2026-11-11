@@ -1,0 +1,292 @@
+---
+authors: [gbmhunter]
+date: 2022-03-08
+description: 关于测试夹具的说明。
+lastUpdated: 2026-07-06
+tags: [PCBs, test jigs]
+title: 测试夹具
+type: page
+sourcePath: pcb-design/test-jigs/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:d3262f3eb9b65b72d6e7ebafe05548b62d9b5935c33e609f46b98f290ab7c345
+sourceUrl: https://blog.mbedded.ninja/pcb-design/test-jigs/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+测试夹具是生产线上用于对 PCB 进行编程和测试的设备。本页重点介绍用于测试已组装 PCB（PCBA）的测试夹具设计，这些 PCBA 尚未装入产品（或者即使已装入，其表面仍可供弹簧针接触）。
+
+## 弹簧针
+
+大多数测试夹具使用[弹簧针（弹簧加载连接器）](/electronics/components/connectors/pogo-pins/)在测试期间与 PCB 的多个位置建立电气接触。这样就不必插接传统连接器——后者更慢、更贵（因为 PCB 需要配对的连接器），而且在 PCB 上占用更多空间。
+
+可以在 PCB 上需要弹簧针接触的位置添加小型表面贴装（surface-mount）焊盘。对于大电流应用，你可以选择：
+
+- 并联更多弹簧针
+- 使用更大的弹簧针
+- 使用传统的线对板连接器（虽然会拖慢生产，但如果弹簧针确实不够用，这可能是必须的）。
+
+弹簧针针头有多种形状，包括圆头、单尖头和多尖头。我遇到过圆头弹簧针针头与 PCB 接触不良的问题。我推测原因是 PCB 上的残留助焊剂，或针头/PCB 焊盘氧化，再加上圆头形状，导致接触不良。因此我建议使用尖头（我认为尖头能“刺穿”助焊剂或氧化层）以及弹簧力较大的型号。
+
+使用弹簧针时另一点值得考虑：你不会测试 PCBA 上的连接器。多数情况下这不是大问题，因为连接器通常不是容易出故障的部件，而且测试连接器意味着不能只靠弹簧针，必须插接到这些连接器上，会大幅拖慢测试过程。
+
+## 软件
+
+你通常需要控制测试夹具来执行测试。虽然可以用微控制器来做，但一般更好的做法是使用 Windows 或 Linux 之类的操作系统。这样可以方便地用 Python 等语言开发软件、连接外部数据库记录结果，并使用各种工具帮助调试和测试软件。如果部分测试需要通用操作系统无法胜任的实时控制，可以用微控制器补充操作系统，负责实时部分。
+
+Python 非常适合这类工作：编写速度快，拥有大量用于与嵌入式设备（例如[串口](/programming/languages/python/pyserial/)、编程器、I/O 板卡等）对接的库，而且易于调试。
+
+你可能会想用[单元测试库](/programming/general/unit-testing/)来组织软件。然而，单元测试软件是为运行相互独立、彼此隔离的小测试而设计的。这并不适合产线末端测试，因为许多测试需要严格顺序，并依赖其他测试通过。例如，在给设备编程之前几乎无法测试任何东西；之后还必须先完成配置和其他通信，才能进行主要测试。
+
+### 测试函数
+
+把每个测试写成独立的函数。这样可以编写一个通用的 `def run_test(test_function)` 函数，在每个测试步骤运行之前和刚结束后执行通用任务（例如判断测试通过还是失败、记录结果、测量测试耗时）。这也便于重新调整测试顺序，或把不同的测试步骤组合成不同的完整测试序列。
+
+### 用列表组织测试函数
+
+运行测试的一种简便方法是将它们收集到一个列表中，然后循环执行，如下所示：
+
+```python
+list_of_tests = [
+    test_program_device,
+    test_connect_via_serial,
+    test_configure_device,
+    test_check_temperature,
+    test_write_serial_number,
+    test_save_results_to_database,
+]
+
+# Then....
+for test in list_of_tests:
+    test()
+```
+
+如果你有一组固定、始终按相同顺序运行的测试，而且测试运行通常没有条件逻辑，这种方式效果很好。
+
+### 创建测试步骤类
+
+你可能想创建一个 `TestStep` 类，用来保存每个测试步骤的更多信息，而不只是一个待调用的函数。这些额外数据可以包括测试步骤的名称，以及放弃前尝试的次数。
+
+```python
+class TestStep:
+    def __init__(self, name: str, function: Callable, max_attempts: int = 1):
+        self.name = name
+        self.function = function
+        self.max_attempts = max_attempts
+```
+
+然后可以构建一个测试步骤列表，再循环执行，如下所示：
+
+```python
+# Your test steps are defined here...
+test_steps = [
+    TestStep("Program Device", test_program_device, max_attempts=3),
+    TestStep("Connect via Serial", test_connect_via_serial, max_attempts=2),
+    TestStep("Configure Device", test_configure_device, max_attempts=2),
+    TestStep("Check Temperature", test_check_temperature, max_attempts=1),
+    TestStep("Write Serial Number", test_write_serial_number, max_attempts=2),
+    TestStep("Save Results to Database", test_save_results_to_database, max_attempts=1),
+]
+
+# Then when you want to run the tests:
+for test_step in test_steps:
+    for attempt in range(test_step.max_attempts):
+        try:
+            test_step.function()
+            logger.info(f"Test step {test_step.name} passed on attempt {attempt + 1}")
+            break
+        except Exception as e:
+            logger.warning(f"Test step {test_step.name} did not pass on attempt {attempt + 1}: {e}")
+            if attempt == test_step.max_attempts - 1:
+                logger.error(f"Test step {test_step.name} exhausted all attempts ({attempt + 1}). Failing the test.")
+```
+
+### 条件逻辑
+
+如果你需要有条件地运行测试，或按依赖运行时条件的不同顺序运行（例如，只有在连接测试中检测到设备尚未配置时，才想运行 `test_configure_device` 测试），上面基于列表的方式就不太适用。这种情况下更好的做法是从一个“父”测试序列函数中直接调用各测试函数。你可能还想做一个包装函数，供父函数调用以运行每个测试，从而复用一些通用逻辑，比如捕获测试函数抛出的异常并将其视为失败。
+
+```python
+def run_tests():
+    run_test(test_program_device)
+    run_test(test_connect_via_serial)
+    run_test(test_configure_device)
+    run_test(test_check_temperature)
+    run_test(test_write_serial_number)
+    run_test(test_save_results_to_database)
+```
+
+### 记录一切
+
+产线测试的失效模式可能相当多，而且模式本身难以预测。因此，记录一切非常重要。这样测试人员才能最好地诊断、归类并修复问题（修复可能稍后由他人完成，或者如果维修成本相对设备成本过高，也可能根本不做）。
+
+如果用 Python 编写软件，可以使用内置的[日志库](/programming/languages/python/logging/)（`import logging`）记录消息。可以在根 logger 上设置一个 handler（子 logger 的消息会向上传播到根 logger，并由该 handler 输出），按你希望的方式格式化日志。
+
+```python title="main.py"
+import logging
+import colorlog
+
+# Setup root logger, all child loggers will propagate up to the root logger and be emitted by the handler attached to this.
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.INFO)
+
+# Create a colored stream handler
+handler = colorlog.StreamHandler()
+
+# Configure the formatter with colors
+# Orange for warnings, red for errors
+formatter = colorlog.ColoredFormatter(
+    '%(log_color)s%(asctime)s - %(levelname)s - %(name)s:%(lineno)d - %(message)s',
+    log_colors={
+        'DEBUG': 'cyan',
+        'INFO': 'white',
+        'WARNING': 'yellow',  # Yellow/orange for warnings
+        'ERROR': 'red',       # Red for errors
+        'CRITICAL': 'red,bg_white',
+    }
+)
+
+handler.setFormatter(formatter)
+root_logger.addHandler(handler)
+```
+
+然后在其他文件中：
+
+```python title="my_other_file.py"
+import logging
+
+logger = logging.getLogger(__name__)
+
+def test_program_device():
+    logger.info("Programming device...")
+    
+    try:
+        # Call programming function
+        test_result = programming_function()
+        logger.info("Device programmed successfully")
+    except Exception as e:
+        logger.error(f"Device programming failed: {e}")
+        return False
+
+    return True
+```
+
+### 将测试结果保存到数据库
+
+排查测试过程的最佳方式是建立测试结果与分析的[数据库](/programming/databases/)。
+
+它可以简单到写入本地 CSV/JSON 文件，也可以保存到云端数据库。如今搭建云端数据库并不难（尤其是在 AI 的帮助下），所以除非你有强有力的理由要保存在本地，我建议采用云端方案（如果希望保存在本地、但比直接倾倒成文本更有条理，SQLite 可能是个不错的选择）。
+
+<Image src={import('./_assets/test-jig-and-server-architecture.webp')} width="800px">测试夹具服务器架构示例：包含数据库、REST API 和 Web 服务器，用于存储测试夹具的测试结果，并通过仪表板分析数据。</Image>
+
+使用数据库（例如 PostgreSQL）还便于日后从其他位置查询数据，也易于支持多台测试夹具。数据库权限可以收紧到只允许测试夹具插入或更新记录（如果需要让设备重新经过测试夹具并更新已配置设备记录，就需要更新，有时可以合并为一次 UPSERT 操作）。
+
+如果使用数据库，我建议至少有两张表：一张记录测试尝试，一张记录已配置设备（通过所有测试、可以投入生产的设备）。
+
+下面是测试尝试表各列的示例（可根据需要自行调整）：
+
+- `id`：可标识一次测试尝试的唯一自增整数。
+- `serial_number`：被测设备的序列号。可以是任何形式的唯一标识符，例如 MAC 地址、MCU 序列号，或你自己写入设备的编号。
+- `test_result`：`PASSED` 或 `FAILED`。
+- `test_steps`：测试过程中所执行步骤的 JSON 数组。由于每个测试步骤可能包含任意数据，通常最好不要对这种数据做结构化约束，直接接受 JSON。每个测试步骤可以包含唯一名称（例如 `CHECK_TEMPERATURE`）和简短消息（例如 `"Read back temperature of 25.3°C. Lower limit: 24.0°C, Upper limit: 26.0°C."`）。
+- `tester_id`：用于测试该设备的测试夹具的唯一标识符。通常由测试夹具软件从配置文件中读取。
+- `timestamp`：测试尝试的时间戳。
+- `logs`：该次测试尝试的日志 JSON 数组。你可能只想在测试失败时保存日志，因为日志通常相当冗长，会很快占满存储空间。
+
+只有通过所有测试的设备才会被加入已配置设备表。已配置设备表的列包括：
+
+- `id`：可标识一台已配置设备的唯一自增整数。
+- `serial_number`：被测设备的序列号。可以是任何形式的唯一标识符，例如 MAC 地址、MCU 序列号，或你自己写入设备的编号。
+- `pcb_version`：被测 PCB 的版本。
+- `firmware_version`：烧录到设备上的固件版本（如适用）。对于更复杂的设备，可能存在多个固件版本（例如引导程序、应用程序、多个 MCU 等）。我建议每个版本单独存一列。
+- `tester_id`：用于测试该设备的测试夹具的唯一标识符。通常由测试夹具软件从配置文件中读取。
+- `created`：已配置设备记录创建的时间戳。
+- `last_updated`：已配置设备记录最后更新的时间戳。
+
+注意，测试夹具只需向测试尝试表插入新记录，但通常需要能向已配置设备表插入和更新（即“upsert”）记录。这是因为同一台设备可能被测试多次，例如：
+
+- 开发期间，你会编写 Python 代码并在同一台设备上反复运行测试
+- 生产期间，如果改动了某些东西、改进了某项测试，或只是不确定其测试状态，你可能想重新测试之前已配置的设备。
+
+### 分配唯一序列号
+
+PostgreSQL 数据库有一种称为“序列（sequence）”的特殊对象，可用于生成唯一的[序列号](/programming/firmware/choosing-serial-numbers-for-embedded-products/)。序列是一种数据库对象，即使被多个连接并发访问也能生成唯一数值（通常用于生成表中主键的唯一标识符）。这样无需在数据库 API 中自行实现锁和并发控制，就能轻松生成序列号。
+
+### 测试步骤并行
+
+如果测试步骤耗时较长，可以考虑并行运行其中一些步骤。显然，这只适用于彼此独立的测试步骤（例如，需要复位 MCU 的测试步骤无法与需要与其通信的测试步骤同时运行）。
+
+测试步骤并行可以用 Python 内置的[线程库](/programming/languages/python/python-threading/)实现（如果你使用那种异步编程风格，也可以用 [asyncio](/programming/languages/python/an-introduction-to-asynchronous-programming-in-python/)）。注意，由于 GIL（全局解释器锁）的存在，Python 线程并非真正的并行，但对本场景足够，因为测试步骤通常是 I/O 密集型而非 CPU 密集型。
+
+如果你的测试软件提供命令行界面，要注意线程会干扰 Ctrl-C（终止程序）行为。Ctrl-C 只在主线程中被捕获，如果其他线程正在并行运行测试步骤，程序将无法按预期退出。有两种解决办法：
+
+- 将工作线程设为守护线程，使其在主线程退出时自动终止。
+- 在主线程中捕获 Ctrl-C 信号，然后用 `threading.Event` 通知工作线程退出。必须确保工作线程定期检查该事件，并在收到信号时退出。
+
+## 分析
+
+工业测试监控中最常用的指标之一是*一次通过率*（First Pass Yield，FPY）。它是一次尝试即通过所有测试的设备百分比。这个指标计算简单，可用于跟踪测试过程随时间的质量。
+
+另一个有趣的指标是*过程能力指数*（Process Capability Index，Cpk）。它衡量某个被测参数的分布（包括离散程度和中心位置）与规格限的吻合程度。
+
+如果把测试数据保存到数据库，这两个指标都很容易计算。
+
+以下指标在测试仪表板上很有用。所有指标都在用户可选的时间窗口内统计，以便观察趋势随时间的变化。
+
+汇总：
+
+- FPY（一次通过率）。
+- 按测试步骤统计的失败数。
+
+如果需要，能够下钻到单个测试也很重要。专门用于展示单次测试运行的页面（表格中每行是一次测试运行，最新的在前，分页每页约 50 条）效果很好。提供输入项，以便按失败或通过、起止日期范围、测试步骤名称等筛选测试。
+
+在表格中点击某次测试运行，应跳转到该次测试的详情页面（例如通过/失败、运行时间、捕获的日志输出）。
+
+## 生产阶段调试
+
+测试夹具通常会被送到组装 PCB 的工厂，以便在组装地就地测试。如果出现生产问题，这样做可以及早发现，从而节省时间和成本。这也让通过测试的 PCB 可以直接装入产品。
+
+始终要考虑生产阶段如何检查和修复测试夹具的问题。我建议通过[以太网](/electronics/communication-protocols/ethernet-protocol/)网线将测试夹具接入互联网（比 WiFi 更可靠，且无需认证），前提是工厂允许（任何称职的工厂都能把你的测试夹具隔离，让它通过网线接入其交换机/路由器上网，但访问不到工厂网络的其余部分）。
+
+如果能确保有互联网连接，那么 SSH 和桌面共享软件是生产阶段调试和诊断测试夹具问题的两个好工具。
+
+建立一个能显示测试结果并汇总统计数据的测试仪表板（前提是你有测试服务器），对改进生产过程非常有用。
+
+## 中国防火墙
+
+如果测试夹具要部署在中国，就需要考虑中国防火墙。它通常会封锁或限速 VPN 协议和到境外主机的 SSH 连接（一般允许普通 HTTPS 流量通过）。这意味着 VPN 以及 SSH 登录测试夹具通常都不可行。隧道和反向代理（测试夹具主动连接服务器，你再通过同样主动连接该服务器的方式访问测试夹具）也不太可能奏效。AWS、Azure、Google Cloud 等云服务通常被封（如果你原本打算把测试夹具数据库托管在这些云上，这一点很重要）。不过这些服务提供可用的中国区域（有时还支持从中国区域向境外复制）——但通常需要与世界其他地区不同的账户。
+
+防火墙可能会阻止测试夹具连接测试数据库（如果你有的话）。一种解决方法是在数据库前面放一个 HTTPS REST API 服务器，让测试夹具改为连接该 API 服务器。防火墙通常会放行这类流量（即使它是加密的 HTTPS）。这样做的好处是你能更好地控制数据访问和安全，代价是额外的复杂度（现在你需要管理 API 服务器，并使其与数据库模式保持同步）。
+
+## 证书
+
+有时被测设备需要烧录证书和/或密钥。这通常用于身份认证，以便其他服务（例如云服务器）在运行时能认证该设备。
+
+可以让测试夹具生成证书，但这意味着要把中间签名密钥存放在测试夹具本身上。根据测试夹具实际使用场所的不同，这可能带来安全问题。另一种方案是在测试夹具服务器上增加证书签名 API。这样测试夹具就无需持有签名密钥，而是向测试夹具服务器发送带有相关 DUT 信息的证书签名请求（CSR）。服务器持有中间签名密钥，生成设备证书和密钥，再发回测试夹具，由测试夹具烧录到设备上。
+
+## OpenHTF 与 TofuPilot
+
+OpenHTF（Open Hardware Testing Framework）是一个用于硬件测试的开源 Python 框架，最初在 Google 开发。[^openhtf-homepage] 它提供了一套把测试组织成多个 Phase 并按顺序运行的框架。
+
+<Image src={import('./_assets/openhtf-homepage-screenshot.webp')} width="800px">截至 2026 年 3 月的 OpenHTF 主页截图。[^openhtf-homepage]</Image>
+
+TofuPilot 是构建在 OpenHTF 之上的商业产品，提供基于 Web 的数据库和仪表板，用于记录和分析测试结果。它与 OpenHTF 紧密集成，但也支持 pytest 和自定义测试函数等其他测试框架。[^tofupilot-homepage]
+
+## 供应商
+
+### Redback Test Services
+
+一家设计和制造测试夹具的澳大利亚公司。
+
+### INGUN
+
+一家德国测试夹具和测试探针制造商。例如，可以看看他们 Manual Test Fixture MA 160 的视频：https://www.youtube.com/watch?v=NeKGzh2sa1k。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^openhtf-homepage]: OpenHTF。_OpenHTF - Homepage_ [网站]。检索于 2026-03-24，来自 https://www.openhtf.com/。
+[^tofupilot-homepage]: TofuPilot。_TofuPilot - Homepage_ [网站]。检索于 2026-03-24，来自 https://www.tofupilot.com/。

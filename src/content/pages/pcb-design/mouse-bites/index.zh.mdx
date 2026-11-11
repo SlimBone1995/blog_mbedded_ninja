@@ -1,0 +1,30 @@
+---
+authors: [gbmhunter]
+date: 2015-11-29
+description: 关于拼板时所用“鼠咬孔”的说明。
+lastUpdated: 2023-06-19
+tags: [PCB design, mouse bites, drill, holes, schematic symbols]
+title: 鼠咬孔
+type: page
+sourcePath: pcb-design/mouse-bites/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:3553d5ce86f1bde70617da66d2cdc39957cbcaa2cdc72e27a17ad38d62b7f172
+sourceUrl: https://blog.mbedded.ninja/pcb-design/mouse-bites/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+鼠咬孔（mouse bites）是一组沿板边排列成小半圆的钻孔。当电路板需要拼板、铣边并使用贴片机贴装元件时会用到它们。
+
+## 原理图符号
+
+鼠咬孔没有标准化的符号。实际上，鼠咬孔可以直接使用孔/过孔图元添加到 PCB 上，而完全不显示在原理图中（这由设计者自行决定）。
+
+我在原理图中使用以下符号来定义鼠咬孔：
+
+<Image src={import('./mouse-bite-schematic-symbol-three-circles.png')} width="248px">鼠咬孔的原理图符号。鼠咬孔可以直接添加到 PCB 上，而不出现在原理图中。</Image>
+
+## PCB 设计注意事项
+
+鼠咬孔周围不做布线（见下图紫色线条的断开处），因此各块 PCB 仍连在一起。不过，这些钻孔使得电路板在完成贴装和焊接后，可以很容易地从拼板中掰下。

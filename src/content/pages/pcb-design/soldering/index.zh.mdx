@@ -1,0 +1,56 @@
+---
+authors: [gbmhunter]
+date: 2013-08-27
+lastUpdated: 2021-03-14
+tags: [PCB design, solder, soldering, solder paste, reflow, oven, head-in-pillow, HiP, tombstoning]
+title: 焊接
+type: page
+sourcePath: pcb-design/soldering/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:17e86578e94c0a7698c6b9e75179af498b78b2476a5fea70e652170a58566c5e
+sourceUrl: https://blog.mbedded.ninja/pcb-design/soldering/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/smd-components-in-reflow.gif')} width="240px">回流焊过程中的 SMD 元件。</Image>
+
+## 手动施加锡膏
+
+塑料针头通常比金属针头更好，因为它们对锡膏的摩擦更小，更容易控制挤出的锡膏量。
+
+## 锡膏点胶机
+
+如果是手工施加锡膏（而不是使用钢网），可以购买能自动从注射器中定量挤出锡膏的机器。大多数这类机器用气压驱动，需要外接空气压缩机（建议至少 1.5HP）。也有基于直线电机和蠕动泵的机型。AliExpress 上的常见型号包括：
+
+- YDL-983A
+- AD-982
+
+型号 | 特性 | 供应商 | 供应商价格
+-------------|----------------|------------|-------------------------
+xxx-982      | 模拟旋钮 | AliExpress | US\$70（含运费）
+xxx-983A     | 数字旋钮  | AliExpress | US\$120（含运费）
+
+## 焊接前/后加热
+
+许多元件需要受控的预热和后冷却才能可靠焊接。
+
+## 焊接缺陷
+
+许多焊接缺陷隐藏在视线之外（例如 BGA 下方或带散热焊盘的元件下方），只能通过 [X 射线检测](/electronics/manufacturing/x-ray-inspection/)发现。
+
+### 开路
+
+有时在焊接元件时——尤其是手工焊接小元件——你会得到看起来相连、实际却是开路的焊点。
+
+<Image src={import('./_assets/open-circuit-solder-joint-on-smd-resistor-photo.webp')} width="1000px">我用烙铁手工焊接了一些电阻后，发现这个电路工作不正常。仔细检查后，我找到了这个并未真正连接的焊点——焊锡完全没有流到电阻侧面的焊盘上。在照片的放大倍率下看起来很明显，但肉眼观察时要难发现得多！</Image>
+
+
+### 立碑
+
+TODO：待补充。
+
+### 枕头效应（HiP）
+
+AIM Solder 有一篇关于枕头效应缺陷的优秀论文：https://aimsolder.com/sites/default/files/head-in-pillow_bga_defects.pdf（[本地缓存副本](/misc/soldering/head-in-pillow-bga-defects-aim-solder.pdf)）。

@@ -1,0 +1,43 @@
+---
+authors: [gbmhunter]
+date: 2015-10-21
+lastUpdated: 2026-08-18
+title: 原型制作
+type: page
+sourcePath: pcb-design/prototyping/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:72756d732340586542e391666cb7dc7b98d1cd62b207ca3d1590309f896f60ec
+sourceUrl: https://blog.mbedded.ninja/pcb-design/prototyping/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+PCB 成本高、耗时长，复杂的 PCB 更是如此。即使是最好的 PCB 设计师也会犯错。原型制作是指在设计者认为设计已完成并经过测试之前，对任何电路进行搭建和测试的过程。
+
+在制作正式 PCB 之前，你可能希望先在[条状板](#stripboard)上搭建一个小型原型电路，用于验证设计中的模拟信号处理/放大电路，或验证这个定制的数字多路复用器。
+
+尽可能使用开发套件。
+
+<Image src={import('./_assets/first-electric-skateboard-prototype-circuit.jpg')} width="504px">为[电动滑板](/electronics/projects/electric-skateboard/electric-skateboard-design/)搭建的第一个原型电路，制作在条状板上。</Image>
+
+## 网格生成器
+
+如果使用[条状板](#stripboard)、洞洞板或其他任何预制、已钻孔、带铜箔走线的 PCB 来搭建原型电路，那么在动手焊接之前先画出元件布局和电气连接会很有帮助。
+
+一个很好的草图工具是打印出来的、与 PCB 布局对应的纸质图纸。[http://incompetech.com/graphpaper/](http://incompetech.com/graphpaper/) 提供了不少好用的网格生成器，可以直接打印。
+
+## 条状板
+
+条状板是一种预制 PCB，铜箔条沿单一方向排列。它是不必制作 PCB 就能搭建原型电路的绝佳方式。可以用刀或钻头切断铜条，在需要处断开铜走线。由于连接已经预制好，它通常比洞洞板更快、更方便。
+
+<Image src={import('./_assets/busboard-prototype-systems-st1-stripboard.webp')} width="400px">BusBoard Prototype Systems ST1 条状板的照片。</Image>
+
+虽然条状板是为通孔元件设计的，但你也可以比较轻松地把片式电阻、电容等简单 SMD 元件焊到条状板上：将它们放在铜箔面，跨接在相邻两条铜条之间的间隙上。这种方法适用于最小约 0402 的片式尺寸。
+
+采用 [DIP 封装](/pcb-design/component-packages/dip-component-package/)的 IC 特别适合条状板，因为 0.1"（2.54mm）的引脚间距与孔距完全一致，每排引脚正好落在各自独立的铜条上，无需转接板。
+
+下面的条状板原型展示了可以达到的效果：
+
+- 以 DIP 封装的 ATmega8L-8PC 为核心的[电动滑板首个原型主板](/electronics/projects/electric-skateboard/electric-skateboard-design/#the-prototype-motherboard)。
+- [Luxcity UV Tonic 控制系统](/electronics/projects/luxcity-uv-tonic-control-system/)的继电器接线。

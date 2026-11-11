@@ -1,0 +1,49 @@
+---
+authors: [gbmhunter]
+date: 2014-07-28
+lastUpdated: 2023-06-08
+tags: [PCB design, castellation, half-vias, edge-plating, leadless chip carrier, LCC]
+title: 半孔（castellation）
+type: page
+sourcePath: pcb-design/castellation/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:e6d2ed6df76192834a02e22c4e55c1635f9e081295631af881c529b8deb6ff20
+sourceUrl: https://blog.mbedded.ninja/pcb-design/castellation/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+*半孔（castellation）*是一种将一块 PCB 安装到另一块 PCB 上的方式，也称为*半过孔*（half-via）、*边缘镀覆*（edge-plating）和*无引线芯片载体*（leadless chip carrier，LCC）。
+
+<Image src={import('./castellation-close-up-of-edge-holes.jpg')} width="500px">半孔 PCB 边缘孔的近景。</Image>
+
+对于需要安装到主 PCB 上的子板、模块或次级 PCB，这是一项常用技术。
+
+<Image src={import('./castellation-photo-of-telit-module.jpg')} width="300px">采用半孔的 Telit 蜂窝调制解调器模块。图片来源：http://www.cirtech-electronics.com/castellation/。</Image>
+
+一旦焊接到母板上，即为永久连接。
+
+<Image src={import('./castellated-daughter-board-logitech-keyboard.jpg')} width="500px">罗技 G810 机械键盘内部的半孔子板（众多子板之一）照片。</Image>
+
+## 工艺
+
+在 PCB 边缘周围钻出一排排孔。对这些孔进行通孔镀覆后，沿孔的正中切开板边。此时板边看起来就像城墙的顶部，castellation 一词由此而来。
+
+## 设计
+
+- 尽量增大过孔尺寸。
+- 尽量增大过孔在顶层和底层铜层的焊盘尺寸。
+- 如有可能，在中间层为半孔过孔添加焊盘，以帮助固定孔壁。这可减少铣边时的毛刺。
+
+这些孔既可用于机械固定，也可在主 PCB 与子板之间传输电信号。
+
+由于位于子板边缘，这些孔不会占用太多宝贵空间（通常板边本来就需要留出元件/走线间距）！
+
+由于半孔经过镀覆且呈凹形，非常适合焊接。
+
+注意避免边缘孔撕裂！
+
+<Image src={import('./castellation-torn-edge-holes.jpg')} width="400px">半孔加工中出现的边缘孔撕裂。图片来源：http://www.cirtech-electronics.com/castellation/。</Image>
+
+铣刀可能压扁过孔孔壁，如下图所示：

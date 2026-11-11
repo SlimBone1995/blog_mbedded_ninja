@@ -1,0 +1,76 @@
+---
+authors: [gbmhunter]
+date: 2019-05-04
+description: ''
+lastUpdated: 2019-05-04
+tags: [PCB design, PCB layers, soldermask, silkscreen, solder paste, PCBs, stack-up, layers, manufacturing]
+title: PCB 层
+type: page
+sourcePath: pcb-design/pcb-layers/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:e299e6f6a14920a08fb7341f9b22669045b5acc83f365ed86870dba0e2730328
+sourceUrl: https://blog.mbedded.ninja/pcb-design/pcb-layers/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 阻焊层
+
+以下均为典型值：
+
+- 最小阻焊条宽度 = 0.1016mm（4mil）
+- 阻焊厚度 = 铜上 11um、玻璃纤维上 20um（厚度差是为了使最终阻焊表面平整）
+- 常见阻焊颜色：绿色（最常见）、黑色、黄色、蓝色、透明、红色和白色
+- 典型介电常数：3–3.3。注意，阻焊颜色越深（例如黑色），越难看清下面的铜走线，这在某些情况下会增加故障 PCB 的调试难度。阻焊颜色必须与丝印颜色兼容。
+
+## 丝印层
+
+**丝印是 PCB 上的一层印刷层，用于向电路板使用者传达信息。** 它通常包含元件轮廓、元件极性指示、元件标号、测试点信息以及 PCB 设计者/版本。丝印层在手动放置元件和焊接电路板时非常有帮助。丝印印刷在阻焊层之上，位于电路板的一面或两面。在非常便宜的 PCB 批次中，丝印会完全省略（因为该层并非电路板工作所必需）。**为获得良好的可读性，丝印应与阻焊颜色形成良好对比。**
+
+常见的丝印颜色有：
+
+<table>
+  <thead>
+      <tr>
+        <th>丝印颜色</th>
+        <th>相对成本（满分 5）</th>
+        <th>兼容的阻焊颜色</th>
+      </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>白色</td>
+      <td>1</td>
+      <td>绿色、红色、黑色</td>
+    </tr>
+    <tr>
+      <td>黑色</td>
+      <td>2</td>
+      <td>绿色、白色、黄色</td>
+    </tr>
+    <tr>
+      <td>红色</td>
+      <td>4</td>
+      <td>白色、黄色</td>
+    </tr>
+  </tbody>
+</table>
+
+丝印必须印刷在阻焊层或裸 PCB 上，不能印刷在裸铜或镀锡铜上。因此，**元件焊盘上不能有阻焊层**。
+
+### 伸出 PCB 边缘的元件
+
+<Image src={import('./connector-protruding-over-edge-of-pcb.png')} width="320px">一个伸出 PCB 边缘的直角连接器。</Image>
+
+对于伸出 PCB 边缘的元件（例如连接器或直角开关/LED，见上图），如下所示，在丝印层用斜线标出会很有帮助。
+
+<Image src={import('./silkscreen-indicating-footprint-protrudes-edge-of-pcb.png')} width="400px">PCB 丝印层上的斜线可用于标示伸出 PCB 边缘的元件。</Image>
+
+有关丝印层常用元件标号的列表，请参见[元件原理图符号和标号页面](/electronics/circuit-design/component-schematic-symbols-and-designators/)。
+
+## 锡膏层
+
+锡膏在 PCB 制造过程中、电路板贴装和焊接之前施加。它是机器大批量施加焊锡的方式，由悬浮在浓稠助焊剂膏中的金属焊锡粉末组成。锡膏通常通过放置在 PCB 上方的金属钢网印刷，钢网上在需要施加锡膏的位置有激光切割出的孔。由于锡膏只在电路板由机器贴装时使用，因此在设计手工焊接的原型板时通常无需考虑，它属于“面向制造的设计”流程的一部分。对于将要大面积涂覆锡膏的区域（例如 QFN 封装上的散热焊盘），建议对钢网进行“开窗”，如下图所示。
+
+<Image src={import('./recommended-stencil-opening-for-solder-paste-on-qfn-package.png')} width="700px">QFN 封装上锡膏的推荐钢网开窗。注意其中的开窗分块可防止封装在焊接时漂浮。图片来自 http://www.ti.com/lit/an/sloa122/sloa122.pdf。</Image>

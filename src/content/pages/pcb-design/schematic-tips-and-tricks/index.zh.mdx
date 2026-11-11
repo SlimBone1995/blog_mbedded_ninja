@@ -1,0 +1,29 @@
+---
+authors: [gbmhunter]
+date: 2015-10-21
+lastUpdated: 2015-10-21
+tags: [pcb-design, electronics]
+title: 原理图技巧
+type: page
+sourcePath: pcb-design/schematic-tips-and-tricks/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:d8445c70ef833ab57426b3c9977afe7e86eb256f083f5f0bb836efe93d39517a
+sourceUrl: https://blog.mbedded.ninja/pcb-design/schematic-tips-and-tricks/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 输入连接器朝右，输出连接器朝左
+
+这样设计更容易读懂：信号从左侧进入，从右侧离开。大多数 EDA 软件都允许翻转（也称镜像）原理图符号（在 Altium 中，拖动原理图符号时按 x）。
+
+当然，这样一条通用规则也有问题。首先，什么算输入、什么算输出？如果连接器既有输入又有输出，又该怎么办？
+
+答案是凭常识判断。像温度传感器这类东西，大致可以算作输入；像电机连接这类东西，大致可以算作输出（尽管其中的反馈引脚是输入）。
+
+## 原理图注释
+
+确保所有注释箭头都不会与原理图导线/网络混淆。我的做法是改变箭头颜色，并始终让它非正交（即倾斜放置）。
+
+<Image src={import('./_assets/schematic-note-and-arrow-obvious-not-wire-annotated.png')} width="544px">通过改变颜色并使其非正交，可以明显看出这个注释箭头不是原理图导线/网络。</Image>

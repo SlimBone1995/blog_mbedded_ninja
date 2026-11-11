@@ -1,0 +1,131 @@
+---
+authors: [gbmhunter]
+date: 2016-04-11
+lastUpdated: 2026-05-28
+tags: [PCB design, track current, traces, PCBs, routing, overheating, thermal, IPC-2221A, IPC-2152]
+title: 如何计算走线最大电流
+type: page
+sourcePath: pcb-design/how-to-calculate-maximum-track-current/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:752bce698a5b3b09813884223f604341b6570c6d41c4001d4e2c31d42d0205d9
+sourceUrl: https://blog.mbedded.ninja/pcb-design/how-to-calculate-maximum-track-current/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+import TrackCurrentIpc2152 from 'src/components/tools/track-current-ipc2152/TrackCurrentIpc2152.jsx';
+import TrackCurrentIpc2221a from 'src/components/tools/track-current-ipc2221a/TrackCurrentIpc2221a.jsx';
+
+PCB 上的所有走线（track，又称 trace）都有最大电流限制。在 PCB 布线的大部分过程中，设计者不必担心这一点，因为大多数走线远超承载数字和模拟信号微弱电流所需的尺寸（即走线宽度受制造公差限制，而不是受其可承受的最大电流限制）。
+
+不过，在为电源走线、电机驱动电路、市电电路以及其他承载较大电流的走线确定尺寸时，走线电流限制有时确实起着重要作用。
+
+## 等等，最大电流到底是什么？
+
+你可能想知道*最大*电流到底指什么。是走线“爆炸”并向房间里喷出等离子体之前的最大电流？还是走线缓慢升温、开始冒烟并最终开路之前的最大电流？
+
+出于电路板寿命的考虑，通常规定的“最大电流”并非上述两者，而是**使走线温度比环境温度升高一定数值所需的电流**。这可将走线温度保持在安全水平，既不会损坏走线本身（可能性较小），也不会损坏其印制所附着的电路材料（可能性较大，因为玻璃纤维材料会在铜开始熔化之前分解/冒烟）。
+
+## 应该使用哪个标准？
+
+计算走线电流时，主要有两个常用标准。
+
+## IPC-2221A
+
+第一个标准 IPC-2221A 相当古老，它基于更早的 IPC-D-275 标准，而后者又基于 1954 年绘制的测量数据和图表。
+
+IPC-2221A 只有一张图（目前为图 6-4），下面的走线电流 $I$ 计算公式即由该图推导而来：
+
+$$
+I = k\Delta T^b A^c
+$$
+
+<p className="centered">    其中：<br/>
+    $ k $ = 0.048（外层走线），0.024（内层走线）<br/>
+    $ \Delta T $ = 温度变化量（温升），单位为 $ ^{\circ}C $<br/>
+    $ b $ = 0.44<br/>
+    $ A $ = 横截面积，单位为 $ mils^2 $<br/>
+    $ c $ = 0.725<br/></p>
+
+该标准仅涵盖以下范围：电流 0–35 A、走线宽度 0–10.16 mm、温升 10–100 °C、铜厚 0.5–3 oz（铜厚影响横截面积）。超出此范围的数值通过外推得到（且更容易出错）。
+
+<Aside type="tip">
+幸运的是，IPC-2221A 似乎宁可低估走线的载流能力，也不会高估。** 这正是它至今仍能（而且确实）成功使用的原因，即使面对当今几何形状复杂的多层 PCB。
+</Aside>
+
+该公式还假设走线足够长，使端点对散热没有显著影响。例如，该计算器不应用于计算从铜皮到过孔的热焊盘式连接宽度，因为这类走线非常短（0.2–1.0 mm）。它还假设走线长度方向上没有过孔。
+
+假定电流为恒定（DC）。不过，只要脉冲足够快，脉冲电流也可以使用 RMS 值。
+
+PCB 材料的温度**绝不应**超过材料的相对热指数（RTI）。UL746B 将其定义为材料性能在 100,000 小时后仍保留 50% 的温度。
+
+### IPC-2221A 走线电流计算器
+
+<TrackCurrentIpc2221a client:load />
+
+## IPC-2152
+
+第二个标准 IPC-2152 要新得多，它采用更技术化、据信更准确的方法来计算最大走线电流。
+
+### 历史
+
+IPC-2152 标准中的数据基于 Lockheed Martin 的 Mike Jouppi 的工作，并由美国海军水面作战中心 Crane 分部的一项平行研究验证。这两项实验的结果被汇编成 IPC-2152，标题为“_Standard for Determining Current Carrying Capacity in Printed Board Design_”[^olson-determining-board-current]
+
+### 计算步骤
+
+与 IPC-2221A 不同，IPC-2152 并非只是一个简单公式。
+
+1. 首先，使用*通用图表*（Universal Chart）计算未修正的横截面积。
+
+    <Image src={import('./_assets/ipc-2152-universal-chart.png')} width="650px">IPC-2152 中的通用图表，根据目标电流和温升给出未修正的走线横截面积。</Image>
+
+1. 然后，根据若干其他参数确定一系列系数（修正因子）。参数包括：
+
+    - PCB 的导热系数
+    - PCB 厚度
+    - 载流走线到铜平面的邻近程度
+    - 载流走线的厚度
+
+1. 确定所有系数后，将它们与未修正的横截面积相乘，得到修正后的横截面积。
+
+1. 修正后的横截面积。
+
+你可以手工计算，但很快就会厌烦。幸运的是，下面有一个计算器可以替我们完成！
+
+### IPC-2152 走线电流计算器
+
+<TrackCurrentIpc2152 client:load />
+
+该计算器使用的方程由 IPC-2152 图表提供的数据构建。数据点使用 [WebPlotDigitizer](http://arohatgi.info/WebPlotDigitizer/)（顺便说一句，这是个很棒的程序）从图表中提取，然后拟合合适的趋势线。对于三变量图表，则对第一组趋势线的系数再拟合趋势线。
+
+在这些图表提供的数据范围内，计算器的精度（相对于 IPC-2152 图表）相当高。超出该范围后，外推可能很快变得不准确，因为某些修正因子使用五阶多项式对数据建模（这是最佳选择）。其他图表则用 $y = Ax^B$ 形式的幂函数建模，外推时可能更准确。
+
+下面是趋势线拟合过程的一个示例。该图显示了 IPC-2152 中的“Copper Thickness Modifier”数据，以及为每个数据集拟合的五阶多项式。根据定义，3 oz 铜厚的数据是位于 $y = 1$ 的水平线。
+
+<Image src={import('./_assets/ipc-2152-copper-thickness-modifier-graph-with-trendlines.png')} width="700px">IPC-2152 的铜厚修正因子数据，以及为每种铜厚拟合的五阶多项式。</Image>
+
+然后将上述趋势线的系数对铜厚（又称走线厚度）作图。下图显示系数 $C_5$（$x^5$ 前的系数）随铜厚的变化，并对它们分别拟合了趋势线。注意这里只有四个数据点，而拟合的趋势线是三次多项式，这保证能完美拟合数据。这可能是从“离散图表数据集到连续方程”转换中最危险的部分。
+
+<Image src={import('./_assets/ipc-2152-copper-thickness-modifier-copper-weight-versus-c5-graph.png')} width="700px">拟合五阶多项式的系数 C5 随铜厚的变化，以及其自身的三次多项式拟合。</Image>
+
+假定电流为恒定（DC）。不过，只要脉冲足够快，脉冲电流也可以使用 RMS 值。
+
+PCB 材料的温度**绝不应**超过材料的*相对热指数*（RTI）。UL746B 将其定义为材料性能在 100,000 小时后仍保留 50% 的温度。
+
+请记住，该计算器未考虑附近的其他热源。
+
+IPC-2152 旨在取代较旧的 IPC-2221A 标准。它能给出更准确的走线宽度计算，但需要更多变量。如果你没有全部输入参数（板厚、与平面的邻近程度、基材导热系数），请改用下面的 IPC-2221A 计算器。
+
+## 外部资源
+
+[Jack Olsen - How To 2152（PDF）](/pdfs/JackOlson-HowTo2152.pdf)
+
+[Jack Olsen - How To 2152（基于 Excel 的计算器）](/pdfs/JackOlson-HowTo2152.xls)
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^olson-determining-board-current]: Jack Olson。_Determining Circuit Board Current Carrying Capability_ [PDF]。检索于 2026-05-28，来自 https://frontdoor.biz/PCBportal/HowTo2152.pdf。
+{/* ============================================================================================ */}

@@ -1,0 +1,48 @@
+---
+authors: [gbmhunter]
+date: 2015-04-27
+description: PCB 设计过程中位号选择与放置的教程。
+lastUpdated: 2019-05-04
+tags: [PCB design, designators, silkscreen, components, symbols, placement]
+title: 位号
+type: page
+sourcePath: pcb-design/designators/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:03c05576901d55250bed605445d27a4dd286a9255cb29ab42d8a065e539e3d33
+sourceUrl: https://blog.mbedded.ninja/pcb-design/designators/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+位号（designator）是用于标识元件的小段文本，通常同时出现在电路原理图以及 PCB 设计的顶层和底层丝印层上。
+
+<Image src={import('./0603-resistor-and-designator-2d-cad-birds-eye-high-zoom.png')} width="425px">CAD 软件 PCB 设计文件中的 0603 电阻及其位号。</Image>
+
+关于各类元件使用何种位号的更多信息，参见[元件原理图符号与位号页面](/electronics/circuit-design/component-schematic-symbols-and-designators/)。
+
+## PCB 上的位号放置
+
+位号通常只朝两个方向（即朝下和朝右）。
+
+<Image src={import('./close-up-of-0603-resistor-on-pcb.jpg')} width="800px">PCB 上 0603 电阻及其位号的近景。</Image>
+
+如果无法将位号放在相关元件旁边（例如高密度 PCB），可以在元件旁集中放置一组位号，并保持相同的朝向/排布，用户仍能理解哪个位号对应哪个元件。在主板、GPU 等 PC 组件上可以看到这种做法。
+
+<Image src={import('./designators-separated-from-dense-components-on-pcb.png')} width="800px">只要集中分组并与元件保持相同朝向，位号可以与高密度元件分开放置。</Image>
+
+## 重排位号
+
+在 PCB 元件布局和布线过程中，中途增删元件是常见做法。你可能新增一个电阻 `R112`，它需要紧挨着 `R3` 和 `R4` 放置。此时，你可能会想重排所有位号，使 `R112` 变成 `R5`。
+
+不过，重排 PCB 上的位号有利也有弊：
+
+**优点**
+
+- 可以重新排列位号，尤其是元件变更后出现“空号”时（例如存在 R8 和 R10，但没有 R9）。
+
+**缺点**
+
+- 不同版本之间的元件编号可能不再对应（假设该 PCB 存在旧版本）。当人们在某个版本中称某元件为“U7”，而在下一版本中它却是“U4”时，容易造成混淆。
+- 改变位号文本长度可能导致 PCB 上的丝印违规。例如，位号原为“C96”，重命名为“C102”后会变长，可能（比如）碰到 PCB 上的铜焊盘。
+- 如果 CAD 软件使用位号来标识元件，针对元件的规则和其他设计方法可能失效。在 Altium 中基于位号定义类和规则时就是如此。

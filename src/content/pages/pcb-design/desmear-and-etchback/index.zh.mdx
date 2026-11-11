@@ -1,0 +1,52 @@
+---
+authors: [gbmhunter]
+date: 2014-11-03
+lastUpdated: 2014-11-03
+tags: [PCB, design]
+title: 除胶渣与回蚀
+type: page
+sourcePath: pcb-design/desmear-and-etchback/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:6240cc495dfa70e6715c5fcd9e40a9bb15459df3a6e6ae4d04431c4c74d8c8c6
+sourceUrl: https://blog.mbedded.ninja/pcb-design/desmear-and-etchback/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+多层 PCB 中过孔的机械钻孔会产生残留树脂，树脂涂抹在过孔孔壁上，妨碍铜层与过孔本身之间形成良好的电气连接。残留物是由于钻头热量使树脂熔化，并将其涂抹到过孔孔壁内的内层铜表面上。除胶渣（desmear）的目的是去除这些残留物，以便过孔在镀覆（金属化）时形成良好连接。回蚀（etchback）则更进一步：不仅去除树脂，还从过孔孔壁蚀刻掉一部分环氧树脂/树脂，形成所谓的“三点连接”，从而可能提供更好的连接性（这是一个有争议的话题）。这常用于高可靠性 PCB（如军用、航空航天和医疗 PCB）。
+
+## 正回蚀
+
+下图展示了正回蚀。
+
+<table>
+  <tbody>
+    <tr>
+      <td>
+      
+<Image src={import('./etchback-none.png')} width="200px">未做回蚀的过孔剖面（孔尚未镀覆）。</Image>
+</td>
+      <td>
+
+<Image src={import('./etchback-before-plating.png')} width="220px">做了正回蚀的过孔剖面（孔尚未镀覆）。</Image>
+</td>
+      <td>
+
+<Image src={import('./etchback-after-plating.png')} width="200px">正回蚀后完成镀覆的过孔剖面，注意其中的“三点连接”。</Image>
+</td>
+    </tr>
+  </tbody>
+</table>
+
+## 负回蚀
+
+负回蚀是指铜层从过孔边缘后退，如下图所示。
+
+<Image src={import('./etchback-negative.png')} width="314px">负回蚀过孔的剖面。注意铜平面如何从过孔边缘后退。</Image>
+
+## 方法
+
+除胶渣和回蚀可通过化学方法或等离子体完成。化学工艺通常使用碱性高锰酸钾基蚀刻液。在过孔镀覆前，必须将该蚀刻液完全去除。
+
+等离子体方法利用生成的气态自由基攻击残留物，形成可被抽走的挥发性物质。

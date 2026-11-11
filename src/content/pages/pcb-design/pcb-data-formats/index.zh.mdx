@@ -1,0 +1,149 @@
+---
+authors: [gbmhunter]
+date: 2013-10-04
+description: Gerber 文件、层、ODB+、IPC-2581 以及更多 PCB 数据格式信息。
+lastUpdated: 2020-10-07
+tags: [PCB design, data formats, Gerber, files, manufacturing, RS-274-D, RS-274X, ODB++, IPC-2581]
+title: PCB 数据格式
+type: page
+sourcePath: pcb-design/pcb-data-formats/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:c5ea4d220552073ac78a2e228842b720600d7e42c847ad02875dccaba9b33644
+sourceUrl: https://blog.mbedded.ninja/pcb-design/pcb-data-formats/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+PCB 数据格式用于将使用 CAD 软件的设计者的 PCB 制造和组装信息传递给制作 PCB 的公司。
+
+下面将更详细介绍几种不同的格式。
+
+## Gerber 文件
+
+### 概述
+
+Gerber 文件是保存 PCB 设计信息的文件。它是一种古老的格式，最早于 1980 年开发，但截至 2020 年，仍是向 PCB 制造商提供 PCB 设计信息（用于 PCB 制作和组装）最常用的格式。用于设计 PCB 的 CAD 程序通常会输出一组 Gerber 文件（例如每个铜层、丝印层、阻焊层、锡膏层、机械层各一个文件，以及 PCB 每一面的元件贴装文件各一个）。
+
+Gerber 文件不包含电气网络的数量或名称信息，也不包含方向信息。这使 PCB 组装方必须自行确定方向，对于极性敏感的封装以及各种不同的极性标示方式（例如引脚 1 的丝印圆点、阴极的加粗丝印线、引脚 1 的不同铜焊盘形状等），这可能尤其困难。
+
+### 版本
+
+Gerber 格式有两个版本：
+
+- 标准 Gerber（RS-274-D）
+- 扩展 Gerber（RS-274X）
+
+扩展 Gerber 是最常见的 Gerber 格式，标准 Gerber 格式已**弃用**。
+
+### 层
+
+各层按扩展名字母顺序排列。
+
+<table>
+  <thead>
+    <tr>
+      <th>扩展名</th>
+      <th>层名称</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>.GBL</td>
+      <td>底层</td>
+      <td> 底部铜层。</td>
+    </tr>
+    <tr>
+      <td>.GBO</td>
+      <td>底部覆盖层（丝印）</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GBP</td>
+      <td>底部锡膏层</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GBS</td>
+      <td>底部阻焊层</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GKO</td>
+      <td>禁布层</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GMx</td>
+      <td>机械层 x（x 通常为 1–16）</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GPx</td>
+      <td>内层平面层 X</td>
+      <td>这些是<i>负片层</i>：该层上有对象的位置，就是最终 PCB 上<i>没有</i>铜的位置。</td>
+    </tr>
+    <tr>
+      <td>.GPB</td>
+      <td>底部焊盘主层</td>
+      <td>仅包含底层的铜焊盘，会移除所有过孔、走线、填充和圆弧。</td>
+    </tr>
+    <tr>
+      <td>.GPT</td>
+      <td>顶部焊盘主层</td>
+      <td>仅包含顶层的铜焊盘，会移除所有过孔、走线、填充和圆弧。</td>
+    </tr>
+    <tr>
+      <td>.GTL</td>
+      <td>顶层</td>
+      <td>顶部铜层。</td>
+    </tr>
+    <tr>
+      <td>.GTO</td>
+      <td>顶部覆盖层（丝印）</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GTP</td>
+      <td>顶部锡膏层</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GTS</td>
+      <td>顶部阻焊层</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>.GTS</td>
+      <td>顶部阻焊层</td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+请注意，顶部和底部焊盘主层文件的扩展名与其他“Top”和“Bottom”类文件的命名方式不同：它们使用 GPT/GPB，而不是 GTP/GBP。
+
+### Gerber 文件查看器
+
+在勾选“Open Output”选项生成 Gerber 文件时，Altium 会启动 Camtastic（随 Altium 安装）。
+
+### 缺点
+
+**长期以来，Gerber 文件格式因无法准确表达制造商和/或组装方所需的全部 PCB 信息而受到批评**。一个典型例子是：PCB 层信息用 Gerber 文件发送，钻孔文件用 Excellon 格式，PCB 说明要么作为文本添加到某个 Gerber 层，要么放在 Word 文档中，物料清单（bill of materials）放在 Excel 文件中，原理图（如需要）放在 PDF 中。这促使了新的 PCB 数据文件格式的出现。
+
+对于两层以上的电路板，PCB 制造商可能难以从 Gerber 文件中分辨层的顺序。这是因为内层铜层和内层平面层分别编号（都从 1 开始），因此它们应有的顺序并不明确。
+
+<Image src={import('./gerber-file-layer-order-confusion.png')} width="438px">仅凭 Gerber 文件扩展名，无法明确内层铜层和内层平面层的层叠顺序。</Image>
+
+## ODB++
+
+ODB++ 是一种数据库格式，最初由 Valor 开发，用于在单个文件中传递全部 PCB 信息。ODB++ 现在是收购了 Valor 的 Mentor Graphics 的专有格式。
+
+截至 2014 年，约 10% 的 PCB 设计以 ODB++ 格式提交。它是仅次于 Gerber 格式的第二大常用选择。
+
+## IPC-2581B
+
+IPC-2581 是一种新的**基于 XML 的** PCB 数据文件格式。
+
+该标准可从 IPC 网站免费下载。
