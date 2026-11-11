@@ -1,0 +1,85 @@
+---
+authors: [gbmhunter]
+date: 2015-04-05
+lastUpdated: 2015-04-05
+tags: [component packages, PCB design, Mini DIP, BLDC, motors, dual in-line package]
+title: Mini-DIP SPM 封装
+type: page
+sourcePath: pcb-design/component-packages/mini-dip-spm-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:ff8880a952f61f8352599953c9f596b3a3c78edc9b41eb9ea6fc46545c3cb995
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/mini-dip-spm-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<table>
+<tbody>
+<tr>
+<td >名称</td>
+<td >小型双列直插封装</td>
+</tr>
+<tr >
+<td >同义名称</td>
+<td>
+  <ul>
+    <li>SPM27-JA</li>
+    <li>SPM27-CC</li>
+    <li>SPM27-EC</li>
+  </ul></td>
+</tr>
+<tr >
+<td >变体</td>
+<td >不适用</td>
+</tr>
+<tr>
+  <td>相似封装</td>
+  <td>[DIP](/pcb-design/component-packages/dip-component-package)</td>
+</tr>
+<tr>
+<td>安装方式</td>
+<td>TH</td>
+</tr>
+<tr>
+<td>引脚数</td>
+<td>27</td>
+</tr>
+<tr>
+<td>间距</td>
+<td >1.778mm、2.050mm、2.531mm（同一封装上有 3 种不同间距！）</td>
+</tr>
+<tr >
+<td >可焊性</td>
+<td >易于手工焊接。</td>
+</tr>
+<tr >
+<td >热阻</td>
+<td >不适用</td>
+</tr>
+<tr >
+<td >焊盘面积</td>
+<td >Mini-DIP SPM 27：44mm x 26.8mm = 1179.2mm^2</td>
+</tr>
+<tr >
+<td >高度</td>
+<td >3.15mm（安装后）</td>
+</tr>
+<tr >
+<td >三维模型</td>
+<td >不适用</td>
+</tr>
+<tr>
+<td >常见用途</td>
+<td>Fairchild 的 BLDC 电机驱动器</td>
+</tr>
+</tbody>
+</table>
+
+## 说明
+
+SPM27-JA 没有顶面铜面，而 SPM27-CC 和 SPM27-EC 有。该铜面专为散热而设计，因为这些 IC 设计用于处理大功率。该封装相当独特，因为它包含一个三相 IGBT 逆变电路功率模块和四个驱动 IC。截至 2012 年，仅存在 27 引脚变体。
+
+## 三维渲染图
+
+<Image src={import('./_assets/mini-dip-spm-component-package-3d-render.png')} width="412px">Mini-DIP SPM 元件封装的三维渲染图。</Image>

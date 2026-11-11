@@ -1,0 +1,131 @@
+---
+authors: [gbmhunter]
+date: 2020-07-30
+description: DFN（又称 SON）是一种流行的 SMD 元件封装，引脚沿两侧向下延伸。它常用于 MOSFET、闪存 IC 和其他器件。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-11-30
+tags: [component packages, PCB design, DFN, SON, QFN]
+title: DFN 元件封装
+type: page
+sourcePath: pcb-design/component-packages/dfn-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a6efb7f3ccdecec235c74220f7c68e67606dfca4eb1de4999670424b1d099b21
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/dfn-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`DFN`（_Dual Flat No-lead_，双扁平无引脚）元件封装通常也称为 `SON` 封装。TI 还将其称为_塑料小外形无引脚_（Plastic Small Outline No-lead）封装。
+
+<Image src={import('./_assets/son-6-component-package-3d-model.jpg')} width="150px">DFN-6 元件封装的三维模型。</Image>
+
+`DFN` 封装与 `QFN` 封装关系非常密切。**据我所知，DFN 与 QFN 封装的主要区别在于：`DFN` 封装通常只有沿两侧向下延伸的引脚，而 `QFN` 封装四边都有引脚。** 不过，这并非绝对规则，例如 Diodes Inc. 的 `V-DFN3020-13 (Type A)` 封装在四边中的三边都有引脚[^bib-diodes-inc-ap63356]。我见过的另一个主要区别是，QFN 封装似乎更标准化，引脚/封装形状和尺寸一致；而标为“DFN”的封装可能有各种“奇怪”的焊盘/封装几何形状（见下图）。
+
+<Image src={import('./_assets/ap63356-dfn-pin-assignments.png')} width="300px">Diodes Inc. 的 V-DFN3020-13 封装外形[^bib-diodes-inc-ap63356]。注意其非常不标准的引脚几何形状，你会在一些 DFN 封装中看到这种情况。</Image>
+
+JEDEC 标准 `JESD75-5` 规定了通用逻辑电路如何连接到 DFN 封装的特定引脚。
+
+下面是 Numonyx 闪存芯片使用的一种“形状奇特”的 SON 封装，名称为 VDFPN8。注意引脚呈半圆形外观。
+
+<Image src={import('./_assets/component-package-vdfpn8-mlp8-outline-dimensions.png')} width="500px">Numonyx 闪存 IC 的 VDFPN8（SON-8）元件封装外形和尺寸。图片来自 http://www.micron.com/~/media/Documents/Products/Data%20Sheet/NOR%20Flash/Serial%20NOR/M25P/M25P128.pdf。</Image>
+
+[Texas Instruments AN-1187：无引脚引线框架封装（LLP）](https://www.ti.com/lit/an/snoa401r/snoa401r.pdf)是使用 DFN 或 QFN 封装时一份很棒的 PCB 设计参考文档（该文档称其为 LLP，但与 DFN/QFN 是同一回事）。
+
+## 同义名称
+
+* DFN（Linear Technology、Micron Technology Inc，此同义名称比 JEDEC 命名的 SON 更常用！）
+* DRC/S-PVSON-N9（TI，DFN-10_1EP_3x3mm_P0.5mm_EP1.05x2.5mm）[^bib-ti-drc-s-pvson-n9-package-outline]
+* DRP/S-PVSON-N6（TI）
+* DSG/S-PWSON-N8（TI）
+* LLP（Leadless Lead frame Package，无引脚引线框架封装）。National Semiconductor 在被 Texas Instruments 收购前对其 SON/DFN/QFN 封装使用的术语[^bib-ti-qfn-son-faqs]。
+* MFF2：用于 eSIM 卡的封装名称。代表 DFN-8 封装。[^st-st4sim-200m-esim-ds]
+* MLP（micro lead frame package 或 moulded leaded package）。也可指四边都有引脚的变体，也称为 QFN 封装。Linear Technologies、Carsem 使用该名称。
+* MLPD（MLP dual，双）。
+* MLPM（MLP micro，微型）。Carsem 使用该名称。
+* MLPQ（MLP quad，四）。
+* PE-SON-8（SON-8，Ricoh）
+* SON（JEDEC）
+* SW-PWSON-N8（SON-8，TI）
+* VDFPN（Numonyx、Micron Technology）
+* VFDFN（DigiKey，例如料号 TPS54260DRCT）。
+* VSON（Texas Instruments）
+* WDFN-6（SON-6，On Semiconductor/Fairchild Semiconductor）
+
+## 变体
+
+SON 封装的引脚数可以不同。还有 VSON 和 WSON 封装，除高度不同外与 SON 封装完全相同。该封装还可选配外露焊盘。
+
+## 相似封装
+
+* QFN（注意有些人可能把 SON 称为 QFN 的变体）
+* SOD-882（用于二极管的两焊盘封装）
+* SOT-883（用于晶体管的三焊盘封装）
+
+## 散热焊盘
+
+SON 封装底面有一个外露散热焊盘，与 QFN 封装类似。
+
+对于引脚数相同的可比 TQFP 封装，SON 封装（带外露焊盘）通常能处理两倍以上的功耗。
+
+## 可焊性
+
+建议采用回流焊。由于底面有散热焊盘，用电烙铁焊接较困难（有些封装没有散热焊盘，这种情况下成功率更高）。细间距问题不大，因为与 TQFP 封装不同，焊锡桥连很容易去除。某些情况下，可以在焊盘中心钻孔并从底面焊接外露焊盘。
+
+## DFN-6，3x3mm
+
+DFN-6 3x3mm 封装用于 MOSFET 等元件。
+
+<Image src={import('./_assets/son-6-component-package-3d-model.jpg')} width="300px">DFN-6 元件封装的三维模型。</Image>
+
+<Image src={import('./_assets/son-6-component-package-with-two-thermal-pads.jpg')} width="300px">具有两个散热焊盘（而非一个）的 DFN-6 元件封装三维模型。</Image>
+
+## DFN-8，3x3mm
+
+DFN-8 3x3mm 封装用于线性稳压器等元件[^bib-st-ldk715-ds]。
+
+<Image src={import('./_assets/son-8-component-package-3d-model.jpg')} width="400px">DFN-8 元件封装的三维模型。</Image>
+
+<Image src={import('./_assets/son-8-component-package-dimensions.png')} width="400px">DFN-8 元件封装的封装尺寸。</Image>
+
+<Image src={import('./_assets/son-8-component-package-exposed-thermal-pad.png')} width="400px">带外露散热焊盘的 DFN-8 元件封装的封装尺寸。</Image>
+
+<Image src={import('./_assets/son-8-component-package-land-pattern-and-thermal-properties.png')} width="400px">DFN-8 元件封装的推荐焊盘图形（land pattern）和热特性。</Image>
+
+<Image src={import('./_assets/son-8-component-package-ti-land-pattern.png')} width="400px">DFN-8 元件封装的推荐焊盘图形（来自 TI）。</Image>
+
+## MFF2（DFN-8）
+
+MFF2 是 eSIM 卡使用的一种封装。它是 DFN-8，尺寸为 5x6x1.27mm。[^velocity-iot-viot-flex-mff2-ds] 完整尺寸如图 <IRef iref="fig-mff2-dfn-8-package-dimensions-stm" /> 所示。
+
+<Image iref="fig-mff2-dfn-8-package-dimensions-stm" src={import('./_assets/mff2-dfn-8-package-dimensions-stm.webp')} width="700px">常用于 eSIM IC 的 MFF2（DFN-8）元件封装尺寸，依据 STMicroelectronics 的 ST4SIM-200M eSIM。该封装具有可润湿侧翼（wettable flanks）。[^st-st4sim-200m-esim-ds]</Image>
+
+## WSON 和 VSON 变体
+
+SON 封装的 WSON 和 VSON 变体除高度不同外与 SON 封装完全相同。
+
+WSON 变体的高度为 0.80mm（最大）。
+
+<Image src={import('./_assets/wson-component-package-height.png')} width="450px">WSON 元件封装的外形图，显示其高度。</Image>
+
+VSON 变体的高度为 1.00mm（最大）。
+
+<Image src={import('./_assets/vson-component-package-height.png')} width="470px">VSON 元件封装的外形图，显示其高度。</Image>
+
+## 常见用途
+
+* MOSFET
+* 嵌入式 SIM 卡
+* 固态负载开关
+* 闪存 IC
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^bib-ti-qfn-son-faqs]:  Texas Instruments。_QFN/SON package FAQs_。检索于 2020-07-30，来自 https://www.ti.com/support-quality/faqs/qfn-son-faqs.html。
+[^bib-diodes-inc-ap63356]:  Diodes Incorporated。_3.8V to 32V input, 3.5A low Iq Synchronous Buck with Enhanced EMI Reduction_。检索于 2021-12-14，来自 https://www.diodes.com/assets/Datasheets/AP63356-AP63357.pdf。
+[^bib-st-ldk715-ds]:  STMicroelectronics（2020 年 4 月）。_LDK715 (datasheet)_。检索于 2021-12-14，来自 https://www.st.com/resource/en/datasheet/ldk715.pdf。
+[^bib-ti-drc-s-pvson-n9-package-outline]: Texas Instruments（2011 年 9 月）。_DRC (S-PVSON-N9): Mechanical Data_。检索于 2022-10-06，来自 https://www.ti.com/lit/ml/mpss035d/mpss035d.pdf。
+[^st-st4sim-200m-esim-ds]: STMicroelectronics（2021 年 1 月）。_ST4SIM-200M - eSIM GSMA system-on-chip solution for secure M2M industrial applications_。检索于 2024-12-09，来自 https://www.st.com/resource/en/data_brief/st4sim-200m.pdf。
+[^velocity-iot-viot-flex-mff2-ds]: Velocity IoT。_VIoT-Flex MFF2 - Multi-IMSI eUICC compliant eSIM card_ [数据手册]。检索于 2024-12-09，来自 https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/4887/VIOT-1SIM-MFF2.pdf。

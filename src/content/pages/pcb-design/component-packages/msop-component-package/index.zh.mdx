@@ -1,0 +1,77 @@
+---
+authors: [gbmhunter]
+date: 2015-01-08
+description: MSOP 是一类带鸥翼引脚的 SMD 元件封装。它是 SSOP 封装的微型化版本。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-14
+tags: [component packages, PCB design, MSOP, Micro SOP, MSE, uSOP, uMAX, RM-8, RM-10]
+title: MSOP 元件封装
+type: page
+sourcePath: pcb-design/component-packages/msop-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:6eefae9425ca9cf58655310ed491d928cb82e8b4bebcc23d5234d4af3f90022f
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/msop-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+_MSOP_（Mini Small Outline Package，微型小外形封装）[^wikipedia-msop]是一类带鸥翼引脚的 SMD 元件封装。该系列是 SSOP 封装的微型化版本。MSOP 系列中有几个常见变体：MSOP-8、MSOP-10 和 MSOP-16。
+
+该封装的外露焊盘是可选的（Analog Devices 为每种情况分配了不同代码）。
+
+## MSOP-8
+
+_MSOP-8_ 是 MSOP 系列中的 8 引脚变体。
+
+<Image src={import('./_assets/msop-8-component-package-3d-model-with-exposed-pad.jpg')} width="200px">MSOP-8 元件封装（带外露焊盘）的三维模型。</Image>
+
+### 同义名称
+
+* RM-8：Analog Devices，无焊盘[^analog-msop-rm-8]。
+* uMAX：Maxim Integrated[^maxim-umax-8]。
+* uSOP：Maxim Integrated[^maxim-umax-8]。
+
+### 尺寸
+
+<Image src={import('./_assets/msop-8-component-package-dimensions.png')} width="800px">MSOP-8 元件封装（带外露焊盘）的封装尺寸。</Image>
+
+MSOP-8 本体为 3x3mm。计入引脚长度后，本体宽度扩展到 4.9 mm。
+
+| 尺寸名称         | 尺寸符号 | 数值  |
+|------------------------|------------------|--------|
+| 本体长度            | $D$            | 3.0 mm |
+| 本体宽度             | $E$            | 3.0 mm |
+| 含引脚的本体宽度 | $H_e$          | 4.9 mm |
+| 间距                  | $e$            | 0.65 mm |
+
+## MSOP-10
+
+_MSOP-10_ 是 MSOP 系列中的 10 引脚变体。
+
+### 同义名称
+
+* MSE：Linear Technology/Analog Devices[^analog-mse-package]。
+* RM-10：Analog Devices，无焊盘。
+
+### 尺寸
+
+<Image src={import('./_assets/msop-10-component-package-dimensions.png')} width="500px">MSOP-10 元件封装（带外露焊盘）的封装尺寸。</Image>
+
+### 封装
+
+<Image src={import('./_assets/msop-10-component-package-recommend-land-pattern.gif')} width="500px">MSOP-10 元件封装的封装图形。</Image>
+
+## MSOP-16
+
+MSOP-16 的间距为 0.50 mm，不同于 MSOP-8 和 MSOP-10 使用的 0.65 mm。
+
+## 相似封装
+
+* SSOP
+* [TSSOP](/pcb-design/component-packages/tssop-component-package/)
+
+[^wikipedia-msop]: Wikipedia。_Mini Small Outline Package_。检索于 2024-04-29，来自 https://en.wikipedia.org/wiki/Mini_Small_Outline_Package。
+[^analog-mse-package]: Analog Devices。_MSE Package - 10-Lead Plastic MSOP, Exposed Die Pad_。检索于 2024-04-29，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/ltc-legacy-msop/05081664_i_mse.pdf。
+[^analog-msop-rm-8]: Analog Devices。_8-Lead Mini Small Outline Package [MSOP] (RM-8)_。检索于 2024-04-29，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/msoprm/rm_8.pdf。
+[^maxim-umax-8]: Maxim Integrated。_Package Outline - 8L uMAX/uSOP_。检索于 2024-04-29，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/micromax/21-0036.pdf。

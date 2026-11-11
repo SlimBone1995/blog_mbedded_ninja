@@ -1,0 +1,135 @@
+---
+authors: [gbmhunter]
+date: 2015-04-06
+description: TO-220 是一类常用的通孔元件封装，常用于功率晶体管、电压调节器和其他电力电子元件。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-04-08
+tags: [component packages, PCB design, transistors, transistor outline, TO-220, TO-220AB, TO-220-3, TO-220NIS, JEDEC, TO-220-7, TO-220-7C, Power Integrations]
+title: TO-220 元件封装
+type: page
+sourcePath: pcb-design/component-packages/to-220-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a66a722ab3d6bfd5a7244d0ec50ef0d5143fdcc18e7d25b33f3cb4bb352e0302
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/to-220-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+TO-220（Transistor Outline 220）是一类通孔元件封装，常用于功率晶体管、电压调节器（voltage regulator）和其他电力电子元件。
+
+变体包括：
+
+* [TO-220AC (TO-220-2)](#to-220-2-to-220ac)
+* [TO-220AB (TO-220-3)](#to-220-3-to-220ab)
+* [TO-220-5 (SOT-263B)](#to-220-5-sot-263b)
+* [TO-220-7](#to-220-7)
+* [TO-220F (TO-220FP, SOT-186A)](#to-220f-to-220fp-sot-186a)
+* [TO-220FM](#to-220fm)
+
+## TO-220-2 (TO-220AC)
+
+TO-220-2（又称 TO-220AC）是 TO-220 封装的一种变体，只有两个引脚和散热片（这仍意味着它可能有三个不同的连接点）。用于某些大功率二极管。
+
+<Image src={import('./_assets/to-220ac-component-package-photo.jpg')} width="271px">TO-220AC 元件封装的实物照片。</Image>
+
+### 尺寸
+
+<Image src={import('./_assets/to-220ac-component-package-dimensions.png')} width="637px">TO-220AC 元件封装的尺寸。</Image>
+
+## TO-220-3 (TO-220AB)
+
+<Image src={import('./_assets/to-220ab-to-220-3-component-package-3d-render.jpg')} width="200px">TO-220AB 元件封装的三维渲染图。</Image>
+
+TO-220-3（又称 TO-220AB）是 TO-220 封装最常见的变体。它有三个引脚和散热片（但只有三个不同的连接点，散热片与其中一个引脚电气相连）。常用于需要高散热的电力电子元件。不加散热器时大约可耗散 1W 功率。
+
+散热片通常与其中一个引脚电气相连，有时需要使用隔离散热器或隔离散热垫（位于 TO-220AB 的散热片与散热器之间）。
+
+### 尺寸
+
+<Image src={import('./_assets/component-package-to-220ab-dimensions.png')} width="500px">TO-220AB 元件封装的尺寸。</Image>
+
+垂直安装时高 18.8mm，引脚插入 PCB 直至碰到锥形收窄处。
+
+### 照片
+
+<Image src={import('./_assets/component-package-to-220ab-photo.jpg')} width="300px">TO-220AB 元件封装的实物照片。</Image>
+
+<Image src={import('./_assets/component-package-to-220ab-mounted-on-heatsink.jpg')} width="300px">安装在散热器上的 TO-220AB 元件封装实物照片。</Image>
+
+## TO-220-5 (SOT-263B)
+
+TO-220-5（又称 SOT-263B[^to-220-5]）是 TO-220 封装的 5 引脚变体。
+
+<Image src={import('./_assets/to-220-5-component-package-3d-model.jpg')} width="300px">TO-220-5（SOT-263B）元件封装的三维模型。图片来自 https://assets.nexperia.com/documents/outline-drawing/SOT263B.pdf。</Image>
+
+<Image src={import('./_assets/to-220-5-component-package-dimensions.png')} width="700px">TO-220-5（SOT-263B）元件封装的尺寸。图片来自 https://assets.nexperia.com/documents/outline-drawing/SOT263B.pdf。</Image>
+
+## TO-220-7
+
+`TO-220-7` 是 `TO-220` 系列中 7 引脚变体的名称。它采用成形引脚（每隔一个引脚被弯折）。
+
+同义名称：
+
+- `T7`（Analog Devices）[^analog-devices-to-220-7]
+- `NDZ`（Texas Instruments）[^ti-lm2673-ds]
+
+<Image src={import('./_assets/to-220-7-analog-devices-t7-package-dimensions.png')} width="700px">Analog Devices 的 TO-220-7（T7）封装尺寸[^analog-devices-to-220-7]。</Image>
+
+## TO-220-7C
+
+`TO-220-7C` 是 `TO-220` 系列的一种变体，由 Power Integrations 使用[^power-int-top254-258-ds]。有趣的是，它缺少第 6 个引脚，且引脚被成形（弯折）成 3 排，而 `TO-220-7` 只有 2 排。
+
+<Image src={import('./_assets/power-integrations-to-220-7c-package-dimensions.png')} width="700px">Power Integrations 的 TO-220-7C 封装尺寸[^power-int-top254-258-ds]。</Image>
+
+## TO-220AA
+
+这是一种已停产的 JEDEC 封装。它是 TO-220 封装的一种变体，有两个被弯折成直角的引脚。
+
+## TO-220F (TO-220FP, SOT-186A)
+
+<Image src={import('./_assets/to-220f-component-package-3d-render.jpg')} width="200px">TO-220F 元件封装的三维渲染图。</Image>
+
+TO-220F（又称 TO-220FP 或 SOT-186A）是 TO-220 封装的一种变体，具有**绝缘金属散热片，不与任何引脚电气相连**。由于这层绝缘层，散热性能有所牺牲。`F` 或 `FP` 是 _full pack_ 的缩写。
+
+增加这个绝缘散热片是为了消除 TO-220-3（TO-220AB）封装的一个缺点——金属散热片虽然有利于散热，却与元件的中间引脚电气相连。这通常需要使用绝缘散热器，或在散热片与散热器之间加绝缘散热垫，以防止意外连接（例如对地短路）。
+
+TO-220F 通常指 3 引脚版本，不过有时也称为 TO-220F-3，以区别于 [TO-220FM](#to-220fm)（2 引脚变体）。它也可能与 TO-220NIS 封装相同（未经验证）。
+
+### 同义名称
+
+- SOT-186A[^nxp-sot-186a]
+- TO-220F[^nxp-sot-186a]
+- TO-220F-3
+
+### 尺寸
+
+TO-220F 的尺寸如下：
+
+<Image src={import('./_assets/component-package-to-220f-dimensions.png')} width="574px">TO-220F 元件封装的尺寸。</Image>
+
+### 照片
+
+<Image src={import('./_assets/component-packages-to-220f-photo.jpg')} width="329px">TO-220F 元件封装的实物照片。</Image>
+
+## TO-220FM
+
+TO-220FM 是 TO-220 封装的一种变体，与 [TO-220F](#to-220f-to-220fp-sot-186a) 相同，只是引脚为两个而非三个。中间引脚被截短，仅略突出于环氧封装体（不打算使用）。
+
+<Image src={import('./_assets/to-220fm-component-package-dimensions.png')} width="700px">TO-220FM 元件封装的尺寸。图片来自 https://d1d2qsbl8m0m72.cloudfront.net/en/techdata_basic/power/dimension/SiC_TO-220FM-e.pdf。</Image>
+
+## 相似封装
+
+- [TO-126](/pcb-design/component-packages/to-126-component-package/)：一种 3 引脚通孔封装，外观与 TO-220 相似。
+- [TO-273AA (Super TO-220)](/pcb-design/component-packages/to-273aa-component-package/)：TO-273AA 类似 TO-220，但采用卡扣安装设计而非螺钉安装。有时被称为“Super TO-220”。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^cs306am]: 检索于 2019-04-30，来自 https://www.mouser.ca/datasheet/2/348/cs306am-e-1519302.pdf。
+[^to-220-5]: 检索于 2019-04-30，来自 https://www.nexperia.com/packages/SOT263B.html。
+[^analog-devices-to-220-7]: Analog Devices。_T7 Package - 7-Lead Plastic TO-220 (Standard) - (Reference LTC DWG # 05-08-1422)_。检索于 2023-06-06，来自 https://www.analog.com/media/en/package-pcb-resources/package/pkg_pdf/ltc-legacy-to-220/to-220_7_05-08-1422.pdf。
+[^ti-lm2673-ds]: Texas Instruments（2000 年 4 月）。_LM2673 SIMPLE SWITCHER® 3-A Step-Down Voltage Regulator With Adjustable Current Limit (datasheet)_。检索于 2023-06-06，来自 https://www.ti.com/lit/ds/symlink/lm2673.pdf。
+[^power-int-top254-258-ds]: Power Integrations（2007 年 9 月）。_TOP254-258 - TOPSwitch-HX Family (datasheet)_。检索于 2023-06-06，来自 https://www.farnell.com/datasheets/5793.pdf。
+[^nxp-sot-186a]: NXP（2016 年 2 月 8 日）。_SOT186A - plastic single-ended package; isolated heatsink mounted; 1 mounting hole; 3-lead TO-220 "full pack"_。检索于 2024-04-21，来自 https://www.nxp.com/docs/en/package-information/SOT186A.pdf。

@@ -1,0 +1,68 @@
+---
+authors: [gbmhunter]
+date: 2015-04-04
+lastUpdated: 2024-04-16
+tags: [component packages, PCB design, LGA, land grid array, AMD, Intel]
+title: LGA 元件封装
+type: page
+sourcePath: pcb-design/component-packages/lga-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:21bd79089867d310c1c9b58c276f18f5a7a6d951571b50a58197942015472d42
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/lga-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/lga-component-package-3d-render.jpg')} width="350px">LGA 元件封装的三维渲染图。</Image>
+
+`LGA` 封装是一种底面带有焊盘的表面贴装（surface-mount）封装。它与 [BGA 封装](/pcb-design/component-packages/bga-component-package/)非常相似，只是没有焊球，而是使用平坦的普通焊盘。`LGA` 封装与 `BGA` 的不同之处还可能在于增加了任意尺寸的焊盘，用于接地、散热、屏蔽和机械强度等目的。LGA 封装可以用 PCB 制成，因此许多 LGA 元件实际上是由一块 PCB 和若干元件构成的完整“模块”。这种模块化形式常见于蜂窝调制解调器和 WiFi 元件。
+
+CPU 变体：
+
+| 代码     | 插座名称
+|----------|----------------
+| LGA 771  | Intel Socket J
+| LGA 775  | Intel Socket T
+| LGA 1150 | Intel Socket H3
+| LGA 1155 | Intel Socket H2
+| LGA 1156 | Intel Socket H
+| LGA 1207 | AMD Socket F, AMD Socket C32
+| LGA 1356 | Intel Socket B2
+| LGA 1366 | Intel Socket B
+| LGA 1944 | AMD Socket G34
+| LGA 2011 | Intel Socket R
+
+LGA 封装有许多不同的变体，它们的引脚数和引脚配置各不相同。引脚通常排列成 x 列、y 行的网格，但并非每个位置都有焊盘。因此，你可以买到宽度和长度相同的不同 LGA 封装变体。
+
+不能用电烙铁焊接，可以用热风或红外焊接，推荐采用回流焊工艺。
+
+与 BGA 一样，LGA 封装在焊接时可承受高达 50% 的对准偏差（相邻焊盘间距即引脚间距的 50%），因为封装会自动对齐[^bib-nxp-lga-rework]。LGA 封装可以通过插座或直接焊接连接到 PCB。Intel 在一些 CPU 系列中采用该封装，使其流行起来。
+
+## 插座
+
+<Image src={import('./_assets/lga-775-component-package-socket.jpg')} width="500px">LGA-775 元件封装的插座。</Image>
+
+## 偏移阻焊层布局
+
+有时 LGA 元件会推荐带有“偏移”开窗的独特锡膏层设计，如下所示。
+
+<Image src={import('./_assets/panasonic-pan9026-solder-mask-layout.png')} width="500px">Panasonic PAN9026 的推荐锡膏层布局（Panasonic 将其称为“solder mask”（阻焊层），但他们实际指的是大多数人所说的锡膏层！）。注意约 150um 的不等偏移[^bib-panasonic-pan9026-design-guide]。</Image>
+
+## 常见用途
+
+* CPU
+* 蜂窝调制解调器
+* WiFi 模块
+
+## 相似封装
+
+* [BGA](/pcb-design/component-packages/bga-component-package/)：BGA 的底面焊盘上有焊球，而 LGA 没有。
+* PGA
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^bib-panasonic-pan9026-design-guide]: Panasonic。_PAN9026: Wi-Fi Dual Band 2.4/5 GHz and Bluetooth Module. Design Guide. Rev. 1.1._。检索于 2022-04-19，来自 https://mediap.industry.panasonic.eu/assets/custom-upload/Devices/Wireless%20Connectivity/Wi-Fi%20Modules/PAN9026/WM%20PAN9026%20Design%20Guide.pdf。
+[^bib-nxp-lga-rework]: NXP（2009 年 10 月）。_AN3241: Land Grid Array (LGA) Package Rework_。检索于 2022-04-19，来自 https://www.nxp.com/docs/en/application-note/AN3241.pdf。

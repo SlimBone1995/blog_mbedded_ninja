@@ -1,0 +1,94 @@
+---
+authors: [gbmhunter]
+date: 2021-09-07
+description: 晶体有多种通孔和 SMD 封装。较老的晶体使用看起来像闪亮金属罐的通孔封装，而现代晶体通常采用带 2 或 4 个引脚、外观类似 IC 的小型 SMD 封装。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-11-29
+tags: [component packages, PCB design, SMD, crystal, oscillator, package, dimensions, component]
+title: 晶体封装
+type: page
+sourcePath: pcb-design/component-packages/crystal-packages/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:d332117574cc0d032a1ab044f071ba041031d22f1b6dbf0c270f9a25534afd6f
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/crystal-packages/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+遗憾的是，大多数表面贴装（surface-mount）晶体没有命名封装。一个值得注意的例外是 [HC-49US 封装](/pcb-design/component-packages/hc-49us-component-package/)。本页介绍未命名的 SMD 晶体封装，它们通常按宽度 $\times$ 长度来标识。市面上有多种流行的宽度 $\times$ 长度组合。
+
+## SMD 晶体封装
+
+常见 SMD 2 焊盘晶体封装尺寸表：
+
+| 尺寸（宽 x 长）
+|--------------------------------
+| 1.20x1.00mm
+| 1.60x1.00mm
+| 2.00x1.20mm
+| 2.05x1.20mm
+| 3.20x1.50mm
+| 4.10x1.50mm
+
+### 1.5x0.8mm
+
+* 尺寸：1.5x0.8mm
+* 引脚数：4
+* 连接类型：BGA
+
+<Image src={import('./_assets/sit1532ai-j4-dcc-32.768e-1.5x0.8mm-4-bga-package-3d-render.png')} width="300px">SiTIME SIT1532AI-J4-DCC-32.768E 采用 1.5x0.8mm CSP BGA 封装的三维渲染图[^element14-sit1532ai-j4-dcc-32.768e]。</Image>
+
+### 3.2x2.5mm（4 引脚）
+
+* 尺寸：3.2x2.5mm
+* 引脚数：4
+* 连接类型：焊盘
+
+<Image src={import('./_assets/abm3b-8.000mhz-10-1-u-t-crystal-3.2x2.5mm-package-render.png')} width="300px">Abracon ABM3B-8.000MHZ-10-1-U-T 采用 3.2x2.5mm SMD 晶体封装的三维渲染图[^element14-abm3b-8.000mhz-10-1-u-t]。</Image>
+
+4 引脚 SMD 晶体的非常常见的封装尺寸。也有长宽同为 3.2x2.5mm 的 6 引脚晶体封装。
+
+### 3.2x2.5mm（6 引脚）
+
+* 尺寸：3.2x2.5mm
+* 引脚数：6
+* 连接类型：焊盘
+ 
+<Image src={import('./_assets/abracon-ax3dbf1-125.0000t-crystal-package-dimensions.png')} width="600px">Abracon AX3DBF1-125.0000T SMD 晶体的封装尺寸，采用 3.2x2.5x1.0mm 外形。图片检索于 2021-09-07，来自 https://nz.mouser.com/datasheet/2/3/AX3-1578477.pdf。</Image> 
+
+### 7.0x5.0mm（2 引脚）
+
+* 尺寸：7.0x5.0mm
+* 引脚数：2
+* 连接类型：焊盘
+
+这是晶体常见的较大 SMD 封装。也有外形尺寸相同的 4 引脚封装。
+
+### 7.0x5.0mm（4 引脚）
+
+* 尺寸：7.0x5.0mm
+* 引脚数：4
+* 连接类型：焊盘
+
+<Image src={import('./_assets/7x5mm-4lead-euroquartz-smd-crystal-smd-package-photo.png')} width="400px">EUROQUARTZ 10.000MHZ MQ/30/30/40/12PF 晶体采用 7x5mm SMD 封装的照片[^element14-10.000mhz-mq-30-30-40-12pf]。</Image>
+
+这是晶体常见的较大 SMD 封装。也有外形尺寸相同的 2 引脚封装。
+
+<Image src={import('./_assets/7x5mm-4lead-euroquartz-smd-crystal-smd-package-dimensions.png')} width="400px">EUROQUARTZ 10.000MHZ MQ/30/30/40/12PF 晶体采用 7x5mm SMD 封装的封装尺寸[^element14-10.000mhz-mq-30-30-40-12pf]。</Image>
+
+## 通孔晶体封装
+
+径向 6.2x2.1mm
+
+<Image src={import('./_assets/raltron-r26-32.768-6-crystal-package-6.2x2.1mm-photo.png')} width="300px">Raltron R26-32.768-6 32.678kHz 晶体采用 6.2x2.1mm 径向封装的照片。图片检索于 2021-09-11，来自 https://nz.element14.com/raltron/r26-32-768-6/crystal-32-768khz-6pf-6-2-x-2/dp/2982324。</Image>
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^element14-abm3b-8.000mhz-10-1-u-t]: Element14。_Crystal, 8 MHz, SMD, 5mm x 3.2mm, 10 ppm, 10 pF, 10 ppm, ABM3B_ [产品页面]。检索于 2021-09-07，来自 https://nz.element14.com/abracon/abm3b-8-000mhz-10-1-u-t/crystal-8mhz-10pf-5-x-3-2mm/dp/2467817。
+[^element14-sit1532ai-j4-dcc-32.768e]: Element14。_SIT1532AI-J4-DCC-32.768E: MEMS Oscillator, 32.768 kHz, SMD, 1.5mm x 0.8mm, 100 ppm, SiT1532, LVCMOS_ [产品页面]。检索于 2023-06-27，来自 https://nz.element14.com/sitime/sit1532ai-j4-dcc-32-768e/osc-32-7khz-1-5-x-0-8mm-lvcmos/dp/2850210。
+[^element14-10.000mhz-mq-30-30-40-12pf]: Element14。_10.000MHZ MQ/30/30/40/12PF - Crystal, 10 MHz, SMD, 7mm x 5mm, 30 ppm, 12 pF, 30 ppm, MQ_ [产品页面]。检索于 2023-06-27，来自 https://nz.element14.com/euroquartz/10-000mhz-mq-30-30-40-12pf/crystal-5x7mm-cer-10-000mhz/dp/1640911

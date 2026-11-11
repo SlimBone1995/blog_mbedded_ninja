@@ -1,0 +1,71 @@
+---
+authors: [gbmhunter]
+date: 2020-01-09
+description: QFP 是一类四边均有鸥翼引脚的 SMD 封装，常用于中等引脚数的 IC。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-13
+tags: [component packages, PCB design, quad flat package, BQFP, CQFP, FQFP, QFP, TQFP, SOT-1571-1]
+title: QFP 元件封装
+type: page
+sourcePath: pcb-design/component-packages/qfp-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:6ee63b590131f4d737e7b5354cf9d0daa1771312bc1c921117221a6ad3f4f4a6
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/qfp-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+四方扁平封装（Quad-flat pack，QFP）是一类 SMD 元件封装。其特征是本体扁平、呈方形，四边均伸出鸥翼引脚。
+
+QFP 封装有许多子系列。引脚间距通常在 0.4-0.8mm 之间，引脚数通常在 12（每边 4 个引脚）到 200 以上。
+
+QFP 封装及其大多数变体对不当操作非常敏感。由于间距细、尺寸小且引脚外伸，在元件焊接到 PCB 之前，引脚很容易受损和弯曲。BQFP 变体（见下文）虽然不常见，但能提供最好的引脚保护。
+
+<Image src={import('./_assets/stm32f070rbt6-lqfp-64-two-dots.png')} width="600px">采用 LQFP-64 封装的 STM32F070RBT6 微控制器特写（安装在 NUCLEO-F070RV 开发板上）。不知为何 ST 在封装上放了两个看起来像极性标记的圆点，很难分辨哪个才是正确的！（丝印上的圆点可以给出答案，但想象一下如果你只拿到裸 IC 会怎样！）</Image>
+
+## 同义名称
+
+- SOT-1571-1：NXP 对 QFP 的命名，48 引脚，7x7x1.4mm 本体，0.5mm 间距，4.5x4.5mm EP[^nxp-sot1571-1-ds]。
+
+## 变体
+
+- BQFP（Bumpered Quad Flat Package）
+- CQFP（Ceramic Quad Flat Package）
+- FQFP（Fine pitch Quad Flat Package）
+- QFP（Quad Flat Package）
+- TQFP（Thin Quad Flat Package）
+
+## 相似封装
+
+- [QFN](/pcb-design/component-packages/qfn-component-package)：与 QFP 相似，但 QFN 没有鸥翼引脚，其焊盘大多位于本体底面，并略微延伸到侧壁。
+
+## 可焊性
+
+推荐使用回流焊。只要有足够的耐心和技巧，就可以手工焊接，前提是不是带散热焊盘的变体。手工焊接时，相邻引脚之间有可能形成焊锡桥连，不过这些桥连很容易清除。如果可以选择，手工焊接时应选 QFN 而不是 QFP，因为 QFN 的焊锡桥连问题更少。
+
+## BQFP
+
+缓冲四方扁平封装（_Bumpered Quad Flat Pack_，BQFP）是 QFP 封装的一种变体，在封装的四个角上带有缓冲块，用于在封装焊接到 PCB 之前保护引脚不被弯曲。
+
+## CQFP
+
+陶瓷四方扁平封装（_Ceramic Quad Flat Pack_，CQFP）是 QFP 封装的一种变体，采用高质量陶瓷材料。CQFP 封装可以气密封装，通常用于航天应用。
+
+关于 28 到 304 引脚 CQFP 封装的尺寸，见 [Texas Instruments 陶瓷四方扁平封装文档（SNOA025）](http://www.ti.com/lit/an/snoa025/snoa025.pdf)（[本地缓存副本](/misc/qfp-component-package/snoa025-ti-instruments-cqfp-dimensions.pdf)）。
+
+<Image src={import('./_assets/cqfp-component-package-3d-render.jpg')} width="200px">一个 CQFP 元件封装的三维渲染图。图片来自 analog.com。</Image>
+
+## TQFP
+
+薄型四方扁平封装（thin-quad-flat-pack，TQFP）是一种带引脚的薄型 SMT 封装，常用于微控制器。它是最流行的 QFN 封装变体之一。这类封装很容易焊接，测试时事后探测各个引脚也很方便。
+
+引脚间距：0.4-0.8mm
+
+<Image src={import('./_assets/tqfp-32-component-package-3d-render.jpg')} width="300px">TQFP-32 元件封装的三维渲染图。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^nxp-sot1571-1-ds]: NXP（2018 年 1 月 12 日）。_SOT1571-1 - HLQFP48, plastic, thermal enhanced low profile quad flat package; 48 terminals; 0.5 mm pitch; 7 mm x 7 mm x 1.4 mm body_ [封装数据手册]。检索于 2024-04-03，来自 https://www.nxp.com/docs/en/package-information/98ASA00173D.pdf。

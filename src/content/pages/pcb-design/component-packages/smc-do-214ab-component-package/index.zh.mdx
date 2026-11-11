@@ -1,0 +1,40 @@
+---
+authors: [gbmhunter]
+date: 2015-03-09
+description: SMC（DO-214AB）是一种常用于二极管的 2 引脚 SMD 元件封装，是 SMA、SMB、SMC 系列中尺寸最大的封装。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-04-10
+tags: [component packages, PCB design, SMC, DO-214AB, diodes]
+title: SMC（DO-214AB）元件封装
+type: page
+sourcePath: pcb-design/component-packages/smc-do-214ab-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:04f23f542bade16bda2dae3d10bfba79a5c95a380f66fe97743685bdbfd60eaa
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/smc-do-214ab-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+SMC 是一种 2 引脚 SMD 元件封装，也常被称为 DO-214AB。它是 SMA、SMB 和 SMC 系列中尺寸最大的封装。它用于散热能力要求较高和/或需要高浪涌电流能力的二极管，适用于通用二极管、肖特基二极管和 TVS 二极管。
+
+<Image src={import('./_assets/smc-do-214ab-component-package-3d-render.jpg')} width="200px">SMC（DO-214AB）元件封装的三维渲染图。</Image>
+
+该封装易于焊接。不过烙铁需要较大的功率（尤其是当焊盘连接到 PCB 上的大面积覆铜平面时），因为这种封装本身就是为获得良好散热能力而设计的。
+
+## 尺寸与推荐焊盘图形（land pattern）
+
+<Image src={import('./_assets/component-package-smc-do-214ab-dimensions-and-land-pattern.png')} width="800px">DO-214AB（SMC）元件封装的尺寸与推荐焊盘图形。图片来自 Vishay Outline Dimensions: SMC（http://www.vishay.com/docs/95023/smc.pdf）。</Image>
+
+SMC 高出 PCB 表面 2.62mm。占用的 PCB 焊盘面积为 50.6mm^2。引脚间距为 6.8mm（焊盘中心到焊盘中心）。
+
+## 热阻
+
+- $T_{\theta JC} = 10-16°C/W$
+- $T_{\theta JA} = 47-55°C/W$（安装在具有 8x8mm 铜焊盘面积的 PCB 上）
+- $T_{\theta JA} = 90°C/W$（安装在具有两个 1.54x3.14mm 铜焊盘的 PCB 上）
+
+## 相似封装
+
+- [SMA（DO-214AC）](/pcb-design/component-packages/sma-do-214ac-component-package/)
+- [SMB（DO-214AA）](/pcb-design/component-packages/smb-do-214aa-component-package/)

@@ -26,6 +26,8 @@ const ROOT = process.cwd();
 const REPO = 'SlimBone1995/blog_mbedded_ninja';
 const BRANCH = 'zh';
 const dryRun = process.argv.includes('--dry-run');
+const batch3 = process.argv.includes('--batch3');
+const update = process.argv.includes('--update') || batch3;
 
 function walk(dir) {
   const out = [];
@@ -117,6 +119,61 @@ const GROUPS = [
   },
 ];
 
+const UPDATE_FILES = [
+  'README.md',
+  'README.zh.md',
+  'src/components/starlight/SocialIcons.astro',
+  'zh/README.md',
+];
+
+const BATCH3_FILES = [
+  'bga-component-package',
+  'chip-carrier-packages',
+  'chip-eia-component-packages',
+  'crystal-packages',
+  'dfn-component-package',
+  'dip-component-package',
+  'dsop-advance-component-package',
+  'lga-component-package',
+  'mini-dip-spm-component-package',
+  'msop-component-package',
+  'pdip-component-package',
+  'plcc-component-package',
+  'qfp-component-package',
+  'sma-do-214ac-component-package',
+  'smb-do-214aa-component-package',
+  'smc-do-214ab-component-package',
+  'smd-220-component-package',
+  'smd-electrolytic-capacitor-packages',
+  'smd-inductor-packages',
+  'smd-tantalum-capacitor-packages',
+  'smd35-component-package',
+  'sod-123-component-package',
+  'sod-123f-component-package',
+  'soic-component-package',
+  'sop-component-package',
+  'sot-23f-component-package',
+  'ssop-component-package',
+  'to-220-component-package',
+  'to-247-component-package',
+  'to-252-component-package',
+].map((dir) => `src/content/pages/pcb-design/component-packages/${dir}/index.zh.mdx`);
+
+BATCH3_FILES.push(
+  'zh/glossary/terms.csv',
+  'zh/translation-runs.csv',
+  'zh/status.json',
+  'zh/ZH_TODO.md',
+  'start-zh-preview.bat',
+  'scripts/zh/publish-github.mjs',
+);
+
+const groupsToPublish = batch3
+  ? [{ message: 'feat(zh): translate 30 PCB component-package pages', files: BATCH3_FILES }]
+  : update
+    ? [{ message: 'feat(zh): add language switcher and Chinese README', files: UPDATE_FILES }]
+    : GROUPS;
+
 function gh(args, input) {
   return execFileSync('gh', args, {
     cwd: ROOT,
@@ -138,7 +195,7 @@ function api(endpoint, method = 'GET', body) {
 function checkFiles() {
   const seen = new Set();
   let bytes = 0;
-  for (const group of GROUPS) {
+  for (const group of groupsToPublish) {
     group.files = [...new Set(group.files)];
     for (const file of group.files) {
       if (seen.has(file)) throw new Error(`file listed twice: ${file}`);
@@ -156,7 +213,7 @@ function checkFiles() {
 
 const { count, bytes } = checkFiles();
 console.log(`files: ${count}, text bytes: ${bytes}`);
-for (const group of GROUPS) {
+for (const group of groupsToPublish) {
   console.log(`- ${group.message}: ${group.files.length} files`);
 }
 
@@ -172,18 +229,23 @@ try {
   process.exit(1);
 }
 
-const masterRef = api(`repos/${REPO}/git/ref/heads/master`);
-let parent = masterRef.object.sha;
+let parent;
+if (update) {
+  parent = api(`repos/${REPO}/git/ref/heads/${BRANCH}`).object.sha;
+} else {
+  const masterRef = api(`repos/${REPO}/git/ref/heads/master`);
+  parent = masterRef.object.sha;
 
-try {
-  api(`repos/${REPO}/git/ref/heads/${BRANCH}`);
-  console.error(`Branch ${BRANCH} already exists. Delete it or publish manually.`);
-  process.exit(1);
-} catch (error) {
-  if (!String(error.message).includes('Not Found')) throw error;
+  try {
+    api(`repos/${REPO}/git/ref/heads/${BRANCH}`);
+    console.error(`Branch ${BRANCH} already exists. Use --update to add commits.`);
+    process.exit(1);
+  } catch (error) {
+    if (!String(error.message).includes('Not Found')) throw error;
+  }
 }
 
-for (const group of GROUPS) {
+for (const group of groupsToPublish) {
   const parentCommit = api(`repos/${REPO}/git/commits/${parent}`);
   const entries = [];
   for (const file of group.files) {
@@ -207,8 +269,13 @@ for (const group of GROUPS) {
   console.log(`commit ${parent.slice(0, 7)}: ${group.message}`);
 }
 
-api(`repos/${REPO}/git/refs`, 'POST', {
-  ref: `refs/heads/${BRANCH}`,
-  sha: parent,
-});
-console.log(`created branch ${BRANCH} at ${parent}`);
+if (update) {
+  api(`repos/${REPO}/git/refs/heads/${BRANCH}`, 'PATCH', { sha: parent, force: false });
+  console.log(`updated branch ${BRANCH} to ${parent}`);
+} else {
+  api(`repos/${REPO}/git/refs`, 'POST', {
+    ref: `refs/heads/${BRANCH}`,
+    sha: parent,
+  });
+  console.log(`created branch ${BRANCH} at ${parent}`);
+}

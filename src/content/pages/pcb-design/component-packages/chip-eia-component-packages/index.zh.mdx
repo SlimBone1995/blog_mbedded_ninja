@@ -1,0 +1,258 @@
+---
+authors: [gbmhunter]
+date: 2015-10-25
+description: 片式（EIA xxxx）元件是一类非常流行的矩形 SMD 长方体封装，常用于电阻和电容。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-11-29
+tags: [component packages, PCB design, chip, EIA, IEC, '0603', '0805', '1206', MEMS, oscillators, crystals, tombstoning, head-in-pillow, resistors, capacitors, MLCC, ferrite beads, LICC, reverse geometry, low inductance, parasitics]
+title: 片式（EIA）元件封装
+type: page
+sourcePath: pcb-design/component-packages/chip-eia-component-packages/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:6a98bffeeff7184e3395411a5fe15d387ed25601504aae13939d466dc0944f5d
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/chip-eia-component-packages/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+表面贴装（surface-mount）电阻、多层陶瓷电容器（MLCC）和铁氧体磁珠通常采用一组标准化的_片式_封装。这些封装尺寸同时由采用公制单位的 IEC 和采用英制单位的 EIA 标准化。
+
+<Aside type="note">
+尽管我更偏爱公制，但我已接受大多数人在描述片式封装时使用英制代码，我自己也这么用。
+</Aside>
+
+它们由四位数字定义，分别表示封装的总宽度和高度（假设两个封装焊盘位于左右两侧而非上下，更正式地说，元件的轴线平行于宽度方向）。
+
+在**公制**单位下，格式是用两个数字分别描述宽度和高度，单位为十分之一毫米，例如片式封装尺寸“2012”表示宽度为 2.0mm、高度为 1.2mm。在**英制**下，数字单位为百分之一英寸（注意不是 mil——mil 是千分之一英寸）。例如，0805 片式封装表示宽度为 0.08inch、高度为 0.05inch。这等同于公制的“2012”表示法。下面简要介绍最流行的片式封装。先列出封装的英制尺寸，括号内为对应的公制尺寸。
+
+以下是从小到大排列的常见片式封装列表：
+
+<table>
+  <thead>
+    <tr>
+      <th width="100">封装位号（designator，公制，IEC）</th>
+      <th width="100">尺寸（公制）</th>
+      <th width="100">封装位号（英制，EIA）</th>
+      <th width="100">尺寸（英制）</th>
+      <th width="100">典型额定功率（W）</th>
+      <th width="100">焊盘面积</th>
+      <th width="400">备注</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0402</td>
+      <td>0.4x0.2mm</td>
+      <td>01005</td>
+      <td>0.0157x0.0079in</td>
+      <td>1/32</td>
+      <td></td>
+      <td>小得离谱的片式封装，肉眼几乎看不见。</td>
+    </tr>
+    <tr>
+      <td>0603</td>
+      <td>0.6x0.3mm</td>
+      <td>0201</td>
+      <td>0.024x0.012in</td>
+      <td>1/20</td>
+      <td>0.12mm²</td>
+      <td>小型片式封装，无法手工焊接（实在太小）。注意不要把公制尺寸误认为英制，因为英制 0603 也存在！</td>
+    </tr>
+    <tr>
+      <td>1005</td>
+      <td>1.0x0.5mm</td>
+      <td>0402</td>
+      <td>0.039x0.020in</td>
+      <td>1/16</td>
+      <td>0.5mm²</td>
+      <td>这些对于“正规”手工焊接来说太小，但仍可做到。电阻和皮法/纳法级小容量电容的常用尺寸。</td>
+    </tr>
+    <tr>
+      <td>1608</td>
+      <td>1.6x0.8mm</td>
+      <td>0603</td>
+      <td>0.063x0.031in</td>
+      <td>1/16</td>
+      <td>1.28mm²</td>
+      <td>该封装支持所有电阻，以及容量最高 10uF 的陶瓷电容器。我最喜欢的封装尺寸！稍加练习就能轻松焊接。你可以在焊盘之间布一条小走线（两个焊盘内边缘相距 0.6mm，这刚好允许一条 0.2mm 走线，两侧各留 0.2mm 间隙，这是常见的最小间距规则）。</td>
+    </tr>
+    <tr>
+      <td>2012</td>
+      <td>2.0x1.25mm</td>
+      <td>0805</td>
+      <td>0.079x0.049in</td>
+      <td>1/10</td>
+      <td>2.4mm²</td>
+      <td>支持容量最高 47uF 的陶瓷电容器。你可以轻松地在两个焊盘之间布线。</td>
+    </tr>
+    <tr>
+      <td>2518</td>
+      <td></td>
+      <td>1007</td>
+      <td></td>
+      <td>?</td>
+      <td>4.5mm²</td>
+      <td>常用于 100uH、250mA 级别的片式电感。</td>
+    </tr>
+    <tr>
+      <td>3216</td>
+      <td>3.2x1.6mm</td>
+      <td>1206</td>
+      <td>0.126x0.063in</td>
+      <td>1/8</td>
+      <td>5.1mm²</td>
+      <td>较大的 SMT 电阻/电容封装之一。许多大容量陶瓷电容器（100uF 及以上）以及更高功率的电阻都采用此封装。虽然比通孔等效器件小，但 1206 元件仍占用 PCB 上相当大的空间。不过手工焊接非常容易！</td>
+    </tr>
+    <tr>
+      <td>3225</td>
+      <td>3.2x2.5mm</td>
+      <td>1210</td>
+      <td>0.126x0.098in</td>
+      <td>1/4</td>
+      <td>8.0mm²</td>
+      <td>3216 的稍胖版本，因此能承受更大功率。</td>
+    </tr>
+    <tr>
+      <td>4516</td>
+      <td>4.5x1.6mm</td>
+      <td>1806</td>
+      <td>0.177x0.063in</td>
+      <td>?</td>
+      <td>7.2mm²</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>4532</td>
+      <td>4.5x3.2mm</td>
+      <td>1812</td>
+      <td>0.18x0.13in</td>
+      <td>1/2</td>
+      <td>14.4mm²</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>5025</td>
+      <td>5.0x2.5mm</td>
+      <td>2010</td>
+      <td>0.197x0.098in</td>
+      <td>1/2</td>
+      <td>12.5mm²</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>6432</td>
+      <td>6.4x3.2mm</td>
+      <td>2512</td>
+      <td>0.25x0.13in</td>
+      <td>1</td>
+      <td>20.48mm²</td>
+      <td>你能买到的最大的 SMT 片式封装之一。该封装的元件供应有限，主要是功率电阻和电流检测电阻。</td>
+    </tr>
+    <tr>
+      <td>
+
+7451 或（7351[^bib-mouser-resettable-fuses]）
+      </td>
+      <td>7.4x5.1mm</td>
+      <td>2920</td>
+      <td>0.29x0.20in</td>
+      <td></td>
+      <td>mm²</td>
+      <td>
+      
+用于 PTC 自恢复保险丝[^bib-belfuse-0zcf-ptc]。
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+下图展示了如何轻松地在 0805 元件的焊盘之间布一条 0.2mm 粗的走线。
+
+<Image src={import('./_assets/routing-between-0805-footprints.jpg')} width="500px">在 0805 封装的焊盘之间布线（Altium 中）。</Image>
+
+下图是小容器中的 0603（英制）SMD 元件。
+
+<Image src={import('./_assets/smd-container-open-and-closed.jpg')} width="800px">来自 DealExtreme 的容器，用于存放 SMD 元件（图中为电容器）。</Image>
+
+## SMD 片式电阻器
+
+下表列出了片式电阻器的封装尺寸范围（基于上文的 EIAJ 片式封装）以及每种封装的典型参数。注意，最大额定电流基于封装及其引脚的热特性，未考虑电阻器的实际阻值（例如用 0Ω 电阻测试）。显然，由于电阻的存在，实际允许电流很可能要小得多。
+
+<table>
+    <thead>
+        <tr>
+            <th>位号（公制）</th>
+            <th>位号（英制，EIA）</th>
+            <th>最大电流（A）</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>1005</td>
+            <td>0402</td>
+            <td>1</td>
+        </tr>
+        <tr>
+            <td>1608</td>
+            <td>0603</td>
+            <td>1</td>
+        </tr>
+        <tr>
+            <td>2012</td>
+            <td>0805</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td>3216</td>
+            <td>1206</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td>3225</td>
+            <td>1210</td>
+            <td>3</td>
+        </tr>
+        <tr>
+            <td>5025</td>
+            <td>2010</td>
+            <td>3</td>
+        </tr>
+        <tr>
+            <td>6432</td>
+            <td>2512</td>
+            <td>3</td>
+        </tr>
+    </tbody>
+</table>
+
+## 封装
+
+任何像样的 PCB CAD 程序都会在其默认库中为标准片式封装提供封装。
+
+有报告称，Eagle 自带的默认 0402（英制）封装并不理想，会导致“枕头效应”（head-in-pillow）和/或立碑（tombstoning）。详见 https://www.worthingtonassembly.com/perfect-0402-footprint[^worthington-perfect-0402-footprint]。
+
+## 反几何片式电容器（LICC）
+
+反几何片式电容器（Kyocera AVX 将其命名为 _LICC_（Low Inductance Chip Capacitor，低电感片式电容器）[^kyocera-avx-licc]）的引脚位于片式元件的长边，而标准片式元件的引脚位于短边。这种反几何结构缩短了通过元件的电流路径长度，**降低了电容器的寄生电感**（小于 400pH[^tdk-reverse-geometry-mlcc]）。在高速设计等应用中，当电容器用于噪声去耦时，寄生电感需要尽可能低，以提高电容器的谐振频率[^tdk-reverse-geometry-mlcc]。
+
+<Image src={import('./_assets/reverse-geometery-chip-capacitor-photo-tdk.png')} width="200px">TDK C 系列反几何片式电容器的照片。[^tdk-reverse-geometry-mlcc-ds]</Image>
+
+它们的命名通常与普通片式电容器相同，只是两个数字顺序相反，即 `0603` 尺寸的电容器现在变成 `0306` 电容器。
+
+## MEMS 振荡器
+
+一些 MEMS 振荡器采用片式封装尺寸，但增加了用于电源和地的额外引脚。一种常见的封装尺寸是 `2012`（2.0x1.2mm），有时用于 32.768kHz 晶体振荡器（XTAL）：
+
+<Image src={import('./_assets/2012-smd-mems-oscillator-component-package.png')} width="300px">采用改进型（多 2 个引脚）2012（2.0x1.2mm）片式封装的 MEMS 振荡器底面照片。图片来自 https://www.mouser.com/ProductDetail/SiTime/SiT1533AI-H4-AA3-32768E/?qs=dMZC7um9hO9NUxlac12G7g%3D%3D。</Image>
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^bib-belfuse-0zcf-ptc]: Bel。_0ZCF Series_。检索于 2022-01-25，来自 https://www.belfuse.com/product-detail/circuit-protection-0zcf-series。
+[^bib-mouser-resettable-fuses]: Mouser。_2920 (7351 metric) Resettable Fuses - PPTC Datasheets_。检索于 2022-01-25，来自 https://www.mouser.com/c/ds/circuit-protection/thermistors/resettable-fuses-pptc/?package%20%2F%20case=2920%20%287351%20metric%29。
+[^worthington-perfect-0402-footprint]: Worthington（2020）。_The Perfect 0402 Footprint_。检索于 2023-06-14，来自 https://www.worthingtonassembly.com/perfect-0402-footprint。
+[^kyocera-avx-licc]: Kyocera AVX。_Low Inductance Capacitors_。检索于 2023-06-14，来自 https://datasheets.kyocera-avx.com/LICC.pdf。
+[^tdk-reverse-geometry-mlcc]: TDK。_Reverse Geometry MLCC (C Series)_。检索于 2023-06-14，来自 https://www.tti.com/content/ttiinc/en/manufacturers/tdk/products/TDK-Reverse-Geometery-Multilayer-ceramic-capacitor-MLCC.html。
+[^tdk-reverse-geometry-mlcc-ds]: TDK（2022 年 12 月）。_Multilayer Ceramic Chip Capacitors - Commercial grade, low ESL reverse geometry (datasheet)_。检索于 2023-06-14，来自 https://product.tdk.com/en/system/files?file=dam/doc/product/capacitor/ceramic/mlcc/catalog/mlcc_commercial_lwreverse_en.pdf。

@@ -1,0 +1,111 @@
+---
+authors: [gbmhunter]
+date: 2015-10-26
+description: SMD 钽电容器通常采用黄色或橙色、带两个引脚的矩形封装。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-13
+tags: [component packages, PCB design, SMD, tantalum, capacitor, Kemet, AVX, EIA]
+title: SMD 钽电容器封装
+type: page
+sourcePath: pcb-design/component-packages/smd-tantalum-capacitor-packages/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:3e6dd7bad4c4dcca2da24467ded8690aac4940ec58bf9feb8a446304bde088a4
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/smd-tantalum-capacitor-packages/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+大多数 SMD 钽电容器遵循下表给出的一组标准尺寸。它们大多接近矩形，但仔细观察会发现有些面略有倾斜。它们通常为橙色。Kemet 和 AVX（两家大型电容制造商）对封装的标注略有不同。
+
+<Image src={import('./_assets/smd-tantalum-capacitor-package-photo.jpg')} width="262px">一个 SMD 钽电容器封装的照片。</Image>
+
+<table>
+  <thead>
+    <tr>
+      <th>Kemet 代码</th>
+      <th>AVX 代码</th>
+      <th>长度 (mm)</th>
+      <th>宽度 (mm)</th>
+      <th>高度 (mm)</th>
+      <th>EIA 标准</th>
+    </tr>
+  </thead>
+  <tbody>
+  <tr >
+<td >S</td>
+<td >S</td>
+<td >3.2</td>
+<td >1.6</td>
+<td >1.2</td>
+<td >EIA 3216-12</td>
+</tr><tr >
+<td >A</td>
+<td >A</td>
+<td >3.2</td>
+<td >1.6</td>
+<td >1.8</td>
+<td >EIA 3216-18</td>
+</tr><tr >
+<td >T</td>
+<td >T</td>
+<td >3.5</td>
+<td >2.8</td>
+<td >1.2</td>
+<td >EIA 3528-12</td>
+</tr><tr >
+<td >B</td>
+<td >B</td>
+<td >3.5</td>
+<td >2.8</td>
+<td >2.1</td>
+<td >EIA 3528-21</td>
+</tr><tr >
+<td >U</td>
+<td >W</td>
+<td >6.0</td>
+<td >3.2</td>
+<td >1.5</td>
+<td >EIA 6032-15</td>
+</tr><tr >
+<td >C</td>
+<td >C</td>
+<td >6.0</td>
+<td >3.2</td>
+<td >2.8</td>
+<td >EIA 6032-28</td>
+</tr><tr >
+<td >E</td>
+<td >V</td>
+<td >7.2</td>
+<td >6.0</td>
+<td >3.8</td>
+<td >EIA 7260-38</td>
+</tr><tr >
+<td >V</td>
+<td >Y</td>
+<td >7.3</td>
+<td >4.3</td>
+<td >2.0</td>
+<td >EIA 7343-20</td>
+</tr><tr >
+<td >D</td>
+<td >D</td>
+<td >7.3</td>
+<td >4.3</td>
+<td >3.1</td>
+<td >EIA 7343-31</td>
+</tr><tr >
+<td >X</td>
+<td >E</td>
+<td >7.3</td>
+<td >4.3</td>
+<td >4.3</td>
+<td >EIA 7343-43</td>
+</tr>
+</tbody>
+</table>
+
+焊盘尺寸与庭院层如下所示：
+
+<Image src={import('./_assets/tantalum-smd-capacitors-component-package-kemet-land-dimensions-and-courtyard-info.pdf.png')} width="1139px">各种 SMD 钽电容器尺寸的焊盘尺寸与庭院层。图片来自 www.kemet.com。</Image>

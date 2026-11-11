@@ -1,0 +1,68 @@
+---
+authors: [gbmhunter]
+date: 2021-03-16
+description: TO-247 元件封装系列是一类大型 3 引脚通孔元件封装，常用于 BJT 和 MOSFET。最常见的变体是 TO-247AC（3 引脚变体）。
+image: ./_assets/cover-image.webp
+lastUpdated: 2023-06-13
+tags: [component packages, PCB design, transistor, transistor outline, TO-247, TO-247AC, SOD-429]
+title: TO-247 元件封装
+type: page
+sourcePath: pcb-design/component-packages/to-247-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a97ce91775b3897f968590d17fbfbd891ebde588901815915ac56e9a7aa262be
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/to-247-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`TO-247`（Transistor Outline 247，JEDEC）是一类大型 3 引脚通孔元件封装，常用于耗散大量热功率的 3 引脚器件，包括 BJT 和 MOSFET。
+
+变体：
+
+* TO-247AC、TO-247-3（3 引脚）
+* TO-247PLUS-3（Infineon）[^bib-infineon-to247plus]
+* TO-247PLUS-4（Infineon）[^bib-infineon-to247plus]
+
+引脚间距：5.45mm（0.215"）[^bib-on-semi-package-change]
+
+可焊性：适用于波峰焊。易于手工焊接。
+
+相似封装：
+
+* [TO-218](/pcb-design/component-packages/to-218-component-package)（与 TO-247 不同，它没有隔离安装孔）
+
+## TO-247AC (TO-247-3)
+
+`TO-247AC`（又称 `TO-247-3`）是 `TO-247` 封装的 3 引脚变体。它被视为 `TO-218`（`SOT-93`）的“升级版”，主要区别在于绝缘安装孔，使其更容易安装到散热器上而不会造成短路（它与 `TO-218`“机械兼容”，但并不完全相同！[^bib-on-semi-package-change]）。
+
+同义名称：
+
+* `SOD-429`（Nexperia）
+* `CASE 340L-02`（On Semi）[^bib-on-semi-package-change]
+
+常见用途：
+
+* BJT
+* MOSFET
+
+内部为 MOSFET 时，引脚接线通常为：
+
+1. 栅极
+2. 漏极
+3. 源极
+
+<Image src={import('./_assets/irfp460-to-247.jpg')} width="200px">TO-247AC 元件封装中的 International Rectifier（现 Vishay）IRFP460 N 沟道功率 MOSFET 实物照片。</Image>
+
+<Image src={import('./_assets/to-247ac-component-package-3d-render-infineon.jpg')} width="500px">TO-247AC 元件封装的三维渲染图。图片来自 https://www.powerelectronictips.com/igbts-come-fully-isolated-247-package/，检索于 2021-03-16。</Image>
+
+<Image src={import('./_assets/to-247ac-sod-429-component-package-dimensions.png')} width="800px">TO-247AC（SOD-429）元件封装的尺寸。图片来自 https://assets.nexperia.com/documents/package-information/SOT429.pdf，访问于 2021-03-16。</Image>
+
+## TO-247PLUS
+
+`TO-247PLUS` 封装（`TO-247PLUS-3` 和 `TO-247PLUS-4`）是 Infineon 的 `TO-247` 封装变体。主要区别是 TO-247PLUS 变体取消了安装孔，并且 TO-247PLUS 的爬电距离有所增加[^bib-infineon-to247plus]。
+
+<Image src={import('./_assets/to-247vs-to-247-plus-component-packages-infineon.png')} width="500px">TO-247-3 和 -4 与 TO-247PLUS 变体的对比[^bib-infineon-to247plus]。</Image>
+
+[^bib-on-semi-package-change]:  ON Semiconductor（2012 年 6 月 9 日）。_Final Product/Process Change Notification #16827:  Package change from TO-218 to TO-247 for all Bipolar Power Transistors_。检索于 2021-12-24，来自 https://www.mouser.com/PCN/ON%20Semiconductor_16827.pdf。
+[^bib-infineon-to247plus]:  Infineon（2017 年 2 月 10 日）。_AN2017-01: TO-247PLUS - Description of the packages and assembly guidelines_。检索于 2021-12-25，来自 https://www.infineon.com/dgdl/Infineon-Discrete_IGBT_in_TO-247PLUS-AN-v02_00-EN.pdf?fileId=5546d46249cd10140149e0c7fe9d56c7。

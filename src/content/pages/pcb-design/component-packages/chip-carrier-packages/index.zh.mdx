@@ -1,0 +1,67 @@
+---
+authors: [gbmhunter]
+date: 2024-12-06
+description: 芯片载体封装是一类大型 SMD 封装，用于容纳四边均有引脚的 IC。最常见的变体之一是采用 J 形引脚的 PLCC 封装。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-06
+tags: [component packages, PCB design, chip carrier, PLCC, LCC, LCCC, BCC, sockets]
+title: 芯片载体封装
+type: page
+sourcePath: pcb-design/component-packages/chip-carrier-packages/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:55a647650f5f144c19dc6641d44d3922e2d5469b01fa7651a1c641a7e5d5ffeb
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/chip-carrier-packages/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+芯片载体封装是一类大型 SMD 封装，用于容纳四边均有引脚的 IC。最常见的变体之一是采用 J 形引脚的 PLCC 封装。截至 2024 年，芯片载体封装已不常用，在容纳 IC 方面已在很大程度上被 [QFP](/pcb-design/component-packages/qfp-component-package/)、[QFN](/pcb-design/component-packages/qfn-component-package/) 和 [BGA](/pcb-design/component-packages/bga-component-package/) 封装取代。
+
+它仍然流行的一个领域是需要可更换 IC 的场合（因为很容易为其制作插座），例如只读存储器（ROM）。
+
+## 变体
+
+芯片载体家族有很多变体，包括：[^wikipedia-chip-carrier]
+
+* **BCC（Bump Chip Carrier，凸点芯片载体）**
+* **LCC（Leaded Chip Carrier，有引脚芯片载体）**
+* **LCCC（Leaded Ceramic Chip Carrier，有引脚陶瓷芯片载体）**
+* **PLCC（Plastic Leaded Chip Carrier，塑料有引脚芯片载体）**：最常见的变体。
+
+<Aside type="caution">
+容易混淆的是，有些人在芯片载体封装的缩写中用“L”表示“leaded”（有引脚），另一些人则用它表示“leadless”（无引脚）。务必仔细确认！
+</Aside>
+
+## PLCC
+
+塑料有引脚芯片载体（PLCC）封装如图 <IRef iref="fig-plcc-3d-render" /> 所示，很可能是芯片载体封装最常见的变体。它们通常具有方形本体，但也可以是矩形。我遇到过的所有 PLCC 封装间距都是 1.27mm。
+
+<Image iref="fig-plcc-3d-render" src={import('./_assets/plcc-3d-render.webp')} width="300px">PLCC 封装的三维渲染图。[^ebay-nineveh-chip-package-plcc-44-oem-parts]</Image>
+
+JEDEC 行业组织于 1981 年成立工作组，对 PLCC 封装进行标准化。MO-047 标准于 1984 年发布，适用于方形 PLCC 封装；MO-052 标准于 1985 年发布，适用于矩形封装。[^wikipedia-chip-carrier] 你可以购买 PLCC 封装的插座，有通孔和 SMD 两种版本。图 <IRef iref="fig-adam-tech-plcc-socket-plcc-52-at" /> 展示了通孔 PLCC 插座。
+
+<Image iref="fig-adam-tech-plcc-socket-plcc-52-at" src={import('./_assets/adam-tech-plcc-socket-plcc-52-at.webp')} width="400px">Adam Tech PLCC-52-AT，一款通孔 52 引脚 PLCC 插座。[^digikey-adam-tech-plcc-52-at-socket]</Image>
+
+### 同义名称
+
+* **FN**：Texas Instruments 对 PLCC 的封装代码。[^texas-instruments-plcc-fn-package-info]
+
+PLCC 有一些奇怪的版本，例如图 <IRef iref="fig-ir2131jtrpbf-plcc44-missing-leads" /> 所示的 Infineon Technologies IR2131JTRPBF 栅极驱动 IC。它是 PLCC44 封装，但缺少部分引脚，而且引脚缩进封装底部的小凹槽中。
+
+<Image iref="fig-ir2131jtrpbf-plcc44-missing-leads" src={import('./_assets/ir2131jtrpbf-plcc44-missing-leads.webp')} width="300px">采用 PLCC44 封装的 Infineon Technologies IR2131JTRPBF 栅极驱动 IC。注意部分引脚缺失，引脚缩进封装底部的小凹槽中！[^digikey-infineon-tech-ir2131jtrpbf]</Image>
+
+## 相似封装
+
+* [QFP](/pcb-design/component-packages/qfp-component-package/)：QFP 是另一种常用于 IC 的 SMD 封装，但采用鸥翼引脚而不是 J 形引脚。
+* [SOJ](/pcb-design/component-packages/soj-component-package/)：SOJ 是另一种使用 J 形引脚的 SMD 封装，但只在封装的两侧有引脚。
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^wikipedia-chip-carrier]: Wikipedia（2024 年 10 月 25 日）。_Chip carrier_。检索于 2024-12-06，来自 https://en.wikipedia.org/wiki/Chip_carrier。
+[^digikey-infineon-tech-ir2131jtrpbf]: DigiKey。_Integrated Circuits (ICs) > Power Management (PMIC) > Gate Drivers > Infineon Technologies IR2131JTRPBF_ [产品页面]。检索于 2024-12-06，来自 https://www.digikey.co.nz/en/products/detail/infineon-technologies/IR2131JTRPBF/1928462。
+[^texas-instruments-plcc-fn-package-info]: Texas Instruments（2017 年 4 月）。_FN 20 - PLCC - 4.57mm max height_。检索于 2024-12-07，来自 https://www.ti.com/lit/ml/mpqc018a/mpqc018a.pdf。
+[^ebay-nineveh-chip-package-plcc-44-oem-parts]: Ebay，nineveh。_IC CHIP package PLCC-44 ORIGINAL OEM PARTS_ [商品列表]。检索于 2024-12-07，来自 https://www.ebay.com/itm/273980251251。
+[^digikey-adam-tech-plcc-52-at-socket]: DigiKey。_Connectors, Interconnects > Sockets for ICs, Transistors > IC Sockets > Adam Tech PLCC-52-AT_ [商品列表]。检索于 2024-12-07，来自 https://www.digikey.com/en/products/detail/adam-tech/PLCC-52-AT/9833068。

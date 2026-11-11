@@ -1,0 +1,120 @@
+---
+authors: [gbmhunter]
+date: 2015-04-07
+description: TO-252 元件封装系列是一类 SMD 元件封装，常用于 MOSFET 和线性功率稳压器。它包括 3 引脚变体（DPAK）以及 2 种较少使用的 5 引脚变体。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-04-08
+tags: [component packages, PCB design, DPACK, SC-63, SOT-428, TO-252, TO-252AA, CPD, Case 369C]
+title: TO-252（DPAK）元件封装
+type: page
+sourcePath: pcb-design/component-packages/to-252-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:f8df1ef537e9002de737971529a0b13657a6794418720584ee33856597ca859e
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/to-252-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/to-252-component-package-3d-render.jpg')} width="150px">TO-252-3（DPACK）元件封装的三维渲染图。</Image>
+
+_TO-252_（JEDEC Transistor Outline 252）是一类 SMD 元件封装，常用于中等功率 MOSFET 和线性功率稳压器等器件。它有一个常用的 3 引脚变体，也称为 `DPAK`，以及 2 种较少使用的 5 引脚变体。“DPAK”系列中还有更大的 [TO-263 (D2PAK)](/pcb-design/component-packages/to-263-component-package/) 和 [TO-268 (D3PAK)](/pcb-design/component-packages/to-268-component-package/)，提供更高的功耗额定值。
+
+所有 TO-252 封装的引脚间距均为 1.27mm（50mill）。TO-252 相当容易手工焊接，不过较大的散热片因其散热能力可能会增加难度。
+
+它具有一个可直接焊接到 PCB 上的大散热片/引脚，提供良好的散热能力。
+
+<Aside type="tip">
+如果单独提到 DPAK 而没有引脚数说明（例如不是 DPAK3、DPAK5），通常指的是 3 引脚版本（TO-252-3）。
+</Aside>
+
+## 相似封装
+
+* [TO-220](/pcb-design/component-packages/to-220-component-package)：TO-252-3 旨在取代的通孔封装（显然引脚不兼容！）。
+* [TO-263 (D2PAK)](/pcb-design/component-packages/to-263-component-package/)：TO-263（D2PAK）是比 TO-252-3 封装功耗能力更高的下一级封装。
+* [TO-268 (D3PAK)](/pcb-design/component-packages/to-268-component-package/)：TO-268（D3PAK）是比 TO-263（D2PAK）封装功耗能力更高的下一级封装。
+
+## TO-252-3
+
+TO-252-3 是 TO-252 系列中的 3 引脚变体，最常以同义名称 DPACK 为人所知。下图展示了该封装的三维渲染图。
+
+<Image src={import('./_assets/to-252-component-package-3d-render.jpg')} width="300px">TO-252-3（DPACK）元件封装的三维渲染图。</Image>
+
+同义名称：
+
+* **Case 369C**：On Semiconductor 使用[^onsemi-mbrb1045g-schottky-diode-ds]。
+* **CPD**：Rohm Semiconductor 使用[^rohm-semi-rb085b-40fh-schottky-diode-ds]。
+* **DPAK**：常用的替代名称。
+* **DPAK3**：DPAK 的一种写法，加上 3 以区别于 5 引脚版本。
+* **SC-63**：JEITA EIAJ 标准名称[^nexperia-sot-428-package-info]。
+* **SOT-428**：Nexperia 使用[^nexperia-sot-428-package-info]。
+* **TO-252**：严格来说这是一个封装系列，但若未提及后缀，通常指 TO-252-3[^nexperia-sot-428-package-info]。
+* **TO-252AA**：JEDEC 名称。
+
+三维模型：
+
+* [DPAK、TO-252AA，作者 Bill Brooks](http://www.3dcontentcentral.com/download-model.aspx?catalogid=171&amp;id=444823)
+
+热阻：
+
+* $T_{JA} = 80^{\circ}{\rm C}/W$（仅焊盘，无铜填充）
+
+## TO-252-5-P1
+
+TO-252-5 是 TO-252 系列中的 5 引脚变体，其散热片呈方形，且比 TO-252-5-P2 更短。它不如 3 引脚变体常见。大多数情况下，该变体的中间引脚（第 3 引脚）会被截短，因为它与散热片电气相连。
+
+**三维模型**
+
+下图展示了该元件封装的三维模型：
+
+<Image src={import('./_assets/to-252-5-p1-3d-model-diodes-inc.png')} width="400px">TO-252-5-P1 封装的三维模型[^diodes-inc-to-252-5-p1]。</Image>
+
+你可以从以下位置下载三维模型：
+
+* [DPAK-5，作者 Alexey Olehnovich](http://www.3dcontentcentral.com/download-model.aspx?catalogid=171&amp;id=432344)
+
+**同义名称**
+
+* `KVU (R-PSFM-G5)`：Texas Instruments 用作图纸编号[^ti-tps7b87-q1-ldo-ds]。
+* `TO-252-5`：有时该封装就直接称为 `TO-252-5`。
+
+**尺寸**
+
+下图展示了 Diodes Inc 的 `TO-252-5-P1` 封装尺寸。
+
+<Image src={import('./_assets/to-252-p1-package-dimensions-diode-inc.png')} width="600px">Diodes Inc 的 TO-252-5-P1 封装尺寸[^diodes-inc-to-252-5-p2-ds]。</Image>
+
+**推荐焊盘图形（land pattern）**
+
+下图展示了 Diodes Inc 的 `TO-252-5-P1` 封装推荐焊盘图形。
+
+<Image src={import('./_assets/to-252-p1-recommended-land-pattern-diode-inc.png')} width="600px">Diodes Inc 的 TO-252-5-P1 封装推荐焊盘图形[^diodes-inc-to-252-5-p2-ds]。</Image>
+
+**热阻**
+
+任何 TO-252-5 封装的热阻如下所示。
+
+* $T_{JA} = 59^{\circ}{\rm C}/W$（仅焊盘，无铜填充）
+* $T_{JA} = 26^{\circ}{\rm C}/W$（高功率焊盘图形）
+* $T_{JA} = 20^{\circ}{\rm C}/W$（封装周围 1 平方英寸铜，连接到地）
+* $T_{JA} = 7^{\circ}{\rm C}/W$（带到底层散热过孔的高功率焊盘图形）
+
+## TO-252-5-P2
+
+`TO-252-5-P2` 是 `TO-252` 封装的 5 引脚变体，其散热片呈圆形且比 `TO-252-5-P1` 更长[^nisshinbo-to-252-5-p2]。如果 `TO-252-5` 封装未列出后缀（例如未提及 `P1` 或 `P2`），则很可能就是该变体。下图展示了该封装的三维渲染图。
+
+<Image src={import('./_assets/to-252-5-p2-3d-render-nisshinbo.png')} width="300px">TO-252-5-P2 元件封装的三维渲染图。[^nisshinbo-to-252-5-p2]</Image>
+
+**推荐焊盘图形**
+
+下图展示了 Ricoh 为 `TO-252-5-P2` 提供的推荐焊盘图形。
+
+<Image src={import('./_assets/component-package-to-252-5-recommended-land-pattern.png')} width="500px">TO-252-5 元件封装的推荐 PCB 焊盘图形。图片来自 Ricoh TO-252 Package Information（http://www.ricoh.com/LSI/product_power/pkg/to-252-5-p2.pdf）。</Image>
+
+[^onsemi-mbrb1045g-schottky-diode-ds]: onsemi（2020 年 8 月）。_Schottky Power Rectifier, Switch-Mode, 10 A, 45 V - MBRB1045G, MBRD1045G, SBRB1045G, SBRD81045T4G_ [数据手册]。检索于 2023-07-19，来自 https://www.onsemi.com/pdf/datasheet/mbrb1045-d.pdf。
+[^nexperia-sot-428-package-info]: Nexperia（2022 年 5 月 20 日）。_SOT428 - plastic, single-ended surface-mounted package (DPAK); 3 leads; 2.285 mm pitch; 6 mm x 6.6 mm x 2.3 mm body_ [封装信息]。检索于 2023-07-19，来自 https://assets.nexperia.com/documents/package-information/SOT428.pdf。
+[^nisshinbo-to-252-5-p2]: Nisshinbo Micro Devices Inc。_TO-252-5-P2_ [封装信息]。检索于 2023-07-19，来自 https://www.nisshinbo-microdevices.co.jp/en/design-support/package/to-252-5-p2.html。
+[^diodes-inc-to-252-5-p1]: Diodes Inc。_TO-252-5_ [封装概览]。检索于 2023-07-19，来自 https://www.diodes.com/package/view/400.info。
+[^diodes-inc-to-252-5-p2-ds]: Diodes Inc（2017 年 4 月 4 日）。_TO-252-5_ [封装信息]。检索于 2023-17-19，来自 https://www.diodes.com/assets/Package-Image/TO252-5.pdf。
+[^ti-tps7b87-q1-ldo-ds]: Texas Instruments（2021 年 4 月）。_TPS7B87-Q1 - 500-mA, 40-V, Low-Dropout Regulator With Power-Good_ [数据手册]。检索于 2023-07-19，来自 https://www.ti.com/lit/ds/symlink/tps7b87-q1.pdf。
+[^rohm-semi-rb085b-40fh-schottky-diode-ds]: Rohm Semiconductor（2011）。_RB085B-40FH - Schottky barrier diode_ [数据手册]。检索于 2023-07-19，来自 https://fscdn.rohm.com/en/products/databook/datasheet-nrnd/discrete/diode/schottky_barrier/rb085b-40fh.pdf。

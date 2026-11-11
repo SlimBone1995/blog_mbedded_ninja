@@ -1,0 +1,43 @@
+---
+authors: [gbmhunter]
+date: 2022-12-07
+description: SOT-23F 是一种 3 引脚 SMD 元件封装，与 SOT-23 封装非常相似，区别在于其引脚为扁平式而非鸥翼式。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-14
+tags: [component packages, PCB design, SOT-23F, SOT-23]
+title: SOT-23F 元件封装
+type: page
+sourcePath: pcb-design/component-packages/sot-23f-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:27c8b6472e64437bef997f47f48cb47c5b0db6acd388fd10664b4fe0e89b9d22
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/sot-23f-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`SOT-23F` 元件封装是一种 3 引脚 SMD 元件封装，与 [SOT-23](/pcb-design/component-packages/sot-23-component-package/) 封装非常相似，区别在于其引脚为扁平式而非鸥翼式（`F` 大概就代表 flat）。由于引脚间距和间隔相同，SOT-23 的 PCB 封装通常可以与 SOT-23F 互换使用。
+
+<Image src={import('./_assets/sot-23f-3d-render-toshiba-rs.png')} width="400px">SOT-23F 元件封装的三维渲染图[^bib-rs-toshiba-hall-effect-sensor-tcs40dprlf]。</Image>
+
+`SOT-23F` 封装用于与 `SOT-23` 封装相同的元件——即晶体管、电压基准。
+
+## 同义名称
+
+* 2-3Z1S（Toshiba[^bib-toshiba-packages-sot-23f]）
+
+## 封装外形与尺寸
+
+<Image src={import('./_assets/sot-23f-package-outline-and-dimensions-diodes-inc.png')} width="600px">Diodes Inc 给出的 SOT-23F 封装外形与尺寸[^bib-diodes-inc-sot-23f-package-info]。</Image>
+
+## 推荐封装
+
+<Image src={import('./_assets/sot-23f-suggested-footprint-diodes-inc.png')} width="600px">Diodes Inc 给出的 SOT-23F 封装推荐 PCB 封装[^bib-diodes-inc-sot-23f-package-info]。</Image>
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^bib-diodes-inc-sot-23f-package-info]: Diodes Incorporated。_SOT-23F - Package Information_。检索于 2022-12-07，来自 https://www.diodes.com/assets/Package-Files/SOT23F.pdf。
+[^bib-toshiba-packages-sot-23f]: Toshiba。_Package & Packing Information - Product detail - SOT-23F_。检索于 2022-12-07，来自 https://toshiba.semicon-storage.com/ap-en/semiconductor/design-development/package/detail.SOT-23F.html。
+[^bib-rs-toshiba-hall-effect-sensor-tcs40dprlf]: RS Components。_TCS40DPR,LF(T - Toshiba Surface Mount Hall Effect Sensor, SOT-23F, 3-Pin (product page)_。检索于 2022-12-07，来自 https://my.rs-online.com/web/p/motion-sensor-ics/2363597。

@@ -1,16 +1,16 @@
 # 中文翻译待办
 
-生成时间：2026-11-11T04:46:47.562Z
+生成时间：2026-11-11T07:47:23.384Z
 
 ## 翻译进度
 
-`█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░` **40 / 1175（3.4%）**
+`██░░░░░░░░░░░░░░░░░░░░░░░░░░░░` **70 / 1175（6.0%）**
 
 | 状态 | 数量 |
 |---|---:|
-| current | 40 |
+| current | 70 |
 | stale | 0 |
-| missing | 1135 |
+| missing | 1105 |
 | orphan | 0 |
 
 ## Token 消耗
@@ -24,7 +24,11 @@
 | 2026-11-11 | PCB batch 2 | A | 7 | 77,268 | 11,038 | 3m 29s |  |
 | 2026-11-11 | PCB batch 2 | B | 6 | 78,774 | 13,129 | 3m 25s |  |
 | 2026-11-11 | PCB batch 2 | C | 7 | 74,769 | 10,681 | 3m 6s |  |
-| **合计** | | | **39** | **790,382** | **20,266** | **45m 21s** | 仅统计有 token 记录的批次 |
+| 2026-11-11 | README zh | README agent | 1 | 38,619 | 38,619 | 1m 25s | README.zh.md translation |
+| 2026-11-11 | PCB batch 3 | B | 10 | 68,501 | 6,850 | 2m 52s |  |
+| 2026-11-11 | PCB batch 3 | A | 10 | 102,631 | 10,263 | 5m 27s |  |
+| 2026-11-11 | PCB batch 3 | C | 10 | 100,182 | 10,018 | 4m 58s |  |
+| **合计** | | | **70** | **1,100,315** | **15,719** | **60m 3s** | 仅统计有 token 记录的批次 |
 
 > Token 数为子代理会话的累计用量（含读取原文、校验和工具调用），不是纯翻译成本；主会话直接翻译的页面未单独计量。每次翻译后可用 `npm run zh:log` 追加记录。
 
@@ -396,7 +400,7 @@
 - [ ] mathematics/statistics/the-three-classical-pythagorean-means/index.mdx
 - [ ] mathematics/wiener-deconvolution/index.mdx
 
-## 未翻译：pcb-design（208）
+## 未翻译：pcb-design（178）
 
 - [ ] pcb-design/component-packages/1-3g1g-component-package/index.mdx
 - [ ] pcb-design/component-packages/2-2h1s-component-package/index.mdx
@@ -404,16 +408,10 @@
 - [ ] pcb-design/component-packages/463c-03-component-package/index.mdx
 - [ ] pcb-design/component-packages/526ag-component-package/index.mdx
 - [ ] pcb-design/component-packages/bcc-component-package/index.mdx
-- [ ] pcb-design/component-packages/bga-component-package/index.mdx
-- [ ] pcb-design/component-packages/chip-carrier-packages/index.mdx
-- [ ] pcb-design/component-packages/chip-eia-component-packages/index.mdx
-- [ ] pcb-design/component-packages/crystal-packages/index.mdx
 - [ ] pcb-design/component-packages/d2pak-component-package/index.mdx
 - [ ] pcb-design/component-packages/d3pak-component-package/index.mdx
 - [ ] pcb-design/component-packages/dddpak-component-package/index.mdx
 - [ ] pcb-design/component-packages/ddpak-component-package/index.mdx
-- [ ] pcb-design/component-packages/dfn-component-package/index.mdx
-- [ ] pcb-design/component-packages/dip-component-package/index.mdx
 - [ ] pcb-design/component-packages/do-103aa-component-package/index.mdx
 - [ ] pcb-design/component-packages/do-103ab-component-package/index.mdx
 - [ ] pcb-design/component-packages/do-14-component-package/index.mdx
@@ -435,7 +433,6 @@
 - [ ] pcb-design/component-packages/do-7-component-package/index.mdx
 - [ ] pcb-design/component-packages/dpack-component-package/index.mdx
 - [ ] pcb-design/component-packages/drl-6-component-package/index.mdx
-- [ ] pcb-design/component-packages/dsop-advance-component-package/index.mdx
 - [ ] pcb-design/component-packages/e-line-component-package/index.mdx
 - [ ] pcb-design/component-packages/eep-component-package/index.mdx
 - [ ] pcb-design/component-packages/emd3f-component-package/index.mdx
@@ -446,7 +443,6 @@
 - [ ] pcb-design/component-packages/index.mdx
 - [ ] pcb-design/component-packages/lfcsp-component-package/index.mdx
 - [ ] pcb-design/component-packages/lfpak-component-package/index.mdx
-- [ ] pcb-design/component-packages/lga-component-package/index.mdx
 - [ ] pcb-design/component-packages/ll-34-component-package/index.mdx
 - [ ] pcb-design/component-packages/macro-x-component-package/index.mdx
 - [ ] pcb-design/component-packages/melf-component-package/index.mdx
@@ -454,21 +450,16 @@
 - [ ] pcb-design/component-packages/micro3-component-package/index.mdx
 - [ ] pcb-design/component-packages/micromelf-component-package/index.mdx
 - [ ] pcb-design/component-packages/microsip-component-package/index.mdx
-- [ ] pcb-design/component-packages/mini-dip-spm-component-package/index.mdx
 - [ ] pcb-design/component-packages/minimelf-component-package/index.mdx
 - [ ] pcb-design/component-packages/mlp-component-package/index.mdx
 - [ ] pcb-design/component-packages/mpak-component-package/index.mdx
-- [ ] pcb-design/component-packages/msop-component-package/index.mdx
-- [ ] pcb-design/component-packages/pdip-component-package/index.mdx
 - [ ] pcb-design/component-packages/pdmu-component-package/index.mdx
 - [ ] pcb-design/component-packages/pff-psf-pss-leadform-component-package/index.mdx
 - [ ] pcb-design/component-packages/pg-sct595-component-package/index.mdx
-- [ ] pcb-design/component-packages/plcc-component-package/index.mdx
 - [ ] pcb-design/component-packages/powerdi123-component-package/index.mdx
 - [ ] pcb-design/component-packages/powerpak-so8-component-package/index.mdx
 - [ ] pcb-design/component-packages/pp3-component-package/index.mdx
 - [ ] pcb-design/component-packages/pp9-component-package/index.mdx
-- [ ] pcb-design/component-packages/qfp-component-package/index.mdx
 - [ ] pcb-design/component-packages/qip-component-package/index.mdx
 - [ ] pcb-design/component-packages/rt-3-component-package/index.mdx
 - [ ] pcb-design/component-packages/sc-101-component-package/index.mdx
@@ -487,21 +478,11 @@
 - [ ] pcb-design/component-packages/sc-89-component-package/index.mdx
 - [ ] pcb-design/component-packages/sim-card-sizes/index.mdx
 - [ ] pcb-design/component-packages/sip-component-package/index.mdx
-- [ ] pcb-design/component-packages/sma-do-214ac-component-package/index.mdx
-- [ ] pcb-design/component-packages/smb-do-214aa-component-package/index.mdx
-- [ ] pcb-design/component-packages/smc-do-214ab-component-package/index.mdx
-- [ ] pcb-design/component-packages/smd-220-component-package/index.mdx
-- [ ] pcb-design/component-packages/smd-electrolytic-capacitor-packages/index.mdx
-- [ ] pcb-design/component-packages/smd-inductor-packages/index.mdx
-- [ ] pcb-design/component-packages/smd-tantalum-capacitor-packages/index.mdx
-- [ ] pcb-design/component-packages/smd35-component-package/index.mdx
 - [ ] pcb-design/component-packages/smf-component-package/index.mdx
 - [ ] pcb-design/component-packages/smt3-component-package/index.mdx
 - [ ] pcb-design/component-packages/snaphat-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-106-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-110-component-package/index.mdx
-- [ ] pcb-design/component-packages/sod-123-component-package/index.mdx
-- [ ] pcb-design/component-packages/sod-123f-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-128-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-27-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-323-component-package/index.mdx
@@ -514,10 +495,8 @@
 - [ ] pcb-design/component-packages/sod-80-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-882-component-package/index.mdx
 - [ ] pcb-design/component-packages/sod-923-component-package/index.mdx
-- [ ] pcb-design/component-packages/soic-component-package/index.mdx
 - [ ] pcb-design/component-packages/soj-component-package/index.mdx
 - [ ] pcb-design/component-packages/son-component-package/index.mdx
-- [ ] pcb-design/component-packages/sop-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-1040-1-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-106a-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-1193-component-package/index.mdx
@@ -529,7 +508,6 @@
 - [ ] pcb-design/component-packages/sot-162-1-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-223-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-227-component-package/index.mdx
-- [ ] pcb-design/component-packages/sot-23f-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-323-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-346-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-353-component-package/index.mdx
@@ -553,7 +531,6 @@
 - [ ] pcb-design/component-packages/sot-923-component-package/index.mdx
 - [ ] pcb-design/component-packages/sot-93-component-package/index.mdx
 - [ ] pcb-design/component-packages/spm23-component-package/index.mdx
-- [ ] pcb-design/component-packages/ssop-component-package/index.mdx
 - [ ] pcb-design/component-packages/supersot-3-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-126-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-18-component-package/index.mdx
@@ -564,14 +541,11 @@
 - [ ] pcb-design/component-packages/to-206-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-209ab-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-218-component-package/index.mdx
-- [ ] pcb-design/component-packages/to-220-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-226-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-23-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-236aa-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-236ab-component-package/index.mdx
-- [ ] pcb-design/component-packages/to-247-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-247ac-component-package/index.mdx
-- [ ] pcb-design/component-packages/to-252-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-253-4-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-253aa-component-package/index.mdx
 - [ ] pcb-design/component-packages/to-261-4-component-package/index.mdx

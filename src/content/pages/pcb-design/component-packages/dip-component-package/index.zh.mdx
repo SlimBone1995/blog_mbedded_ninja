@@ -1,0 +1,106 @@
+---
+authors: [gbmhunter]
+date: 2015-03-08
+description: DIP 是一种流行的通孔元件封装，通常用于 IC。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-11-29
+tags: [component packages, PCB design, DIP, N Package, PDIP, CDIP, dual inline package]
+title: DIP 元件封装
+type: page
+sourcePath: pcb-design/component-packages/dip-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:ed9068c4d405d34f345c74f3b821c6d085f22ca4ef4677799e6d231a0f887540
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/dip-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/dip-16-component-package-3d-render.jpg')} width="300px">DIP-16 元件封装的三维渲染图。</Image>
+
+DIP 是一种通孔（through-hole）元件封装，通常用于集成电路（IC）。它很可能是历史上最常见的通孔 IC 封装，尽管如今已在很大程度上被 SMD 封装取代。它是元件封装界的乐高积木——而且和乐高一样，如果你踩到它，它会硌坏你的赤脚。它具有标准的 100mil 引脚间距。两排引脚之间通常相距 300mil（窄体）或 600mil（宽体）（也有不常见的 400mil 和 900mil 变体）。600mil 封装通常留给引脚数较多的变体。除标准通孔安装外，它们也可以插入插座，通过摩擦力或夹紧（零插入力）固定。DIP 封装通常有 4–64 个引脚。引脚编号从左上角开始逆时针排列。
+
+一种常见的封装命名方式是按宽度和引脚数，格式为 `DIP-<width in inches>-<num. pins>`，例如 `DIP-300-8` 表示 300mil 宽的 8 引脚 DIP 封装。如果未指定宽度，例如 `DIP-8`，则假定为 300mil 宽，因为这是最常见的变体。
+
+如图所示，可以很容易地用泡沫和铝箔为 DIP 封装制作防静电包装。
+
+<Image src={import('./_assets/making-antistatic-packaging-for-dip-ic-with-aluminium-foil.jpg')} width="500px">可以很容易地用泡沫和铝箔为 DIP 封装制作防静电包装。</Image>
+
+IC 以外的元件也可以使用这种封装（尽管它们通常采用不同的封装）。一个例子是某些 7 段 4 位 LCD 字符显示器，它们使用 `DIP-600-12` 封装。
+
+大型 DIP 封装由于内部裸片与外部引脚之间的路径较长，不适合高速器件。
+
+<Image src={import('./_assets/motorola-mc68000-dip-package-640x314.jpg')} width="500px">1979 年标志性的 Motorola 68000 CPU，采用 DIP-600-64 封装。</Image>
+
+## 同义名称
+
+* FDIP（ST Microelectronic 对带透明盖的 DIP 的命名[^bib-st-m27w256]）
+* N Package（Analog Devices）
+* DIL（Mitsubishi[^bib-mitsubishi-m5l2764k-ds]）
+
+## 变体
+
+* PDIP（plastic dual-inline package，塑料双列直插封装）
+* CDIP/CERDIP（ceramic dual-inline package，陶瓷双列直插封装）
+
+## 焊接
+
+DIP 封装是最容易焊接的 IC 封装之一！大尺寸通孔引脚，间距宽裕，为 2.54mm（100mil）。
+
+## 焊盘面积
+
+DIP 封装的通用焊盘面积公式为：
+
+$$
+\begin{align}
+A = (\frac{n}{2})*2.54) * (width + 1.65mm)
+\end{align}
+$$
+
+<p className="centered">其中：<br/>
+$n$ 为引脚数<br/>
+$width$ 为封装的额定宽度，单位 mm（例如 7.62（300mil）、15.24（600mil））<br/></p>
+
+一些常见 DIP 封装的焊盘面积为：
+
+* `DIP-300-8`: 94.2mm2
+* `DIP-300-16`: 188.4mm2
+* `DIP-300-32`: 376.7mm2
+* `DIP-600-32`: 686.4mm2  
+
+## 三维模型
+
+* [DIP-300-8](http://www.3dcontentcentral.com/download-model.aspx?catalogid=1023&amp;id=79)
+* [DIP-300-16](http://www.3dcontentcentral.com/download-model.aspx?catalogid=1023&amp;id=71)
+* [DIP-300-20](http://www.3dcontentcentral.com/download-model.aspx?catalogid=171&amp;id=71043)
+* [DIP-600-40](http://www.3dcontentcentral.com/download-model.aspx?catalogid=171&amp;id=95319)
+
+## PDIP
+
+塑料双列直插封装（_Plastic Dual Inline Package_，`PDIP`）是 `DIP` 的一种变体，其外壳由塑料制成。它通常通过将两半塑料在引脚周围熔合或粘合而成，但由于塑料的多孔性，它不被视为气密封装[^bib-wikipedia-dip]。
+
+## 透明盖
+
+20 世纪 70–80 年代的许多 EPROM 器件采用带_透明盖_的 DIP 封装。盖子有一个由石英制成的透明区域，允许用紫外线擦除 EPROM（石英对许多波长的紫外线透明，而许多其他“透明”材料则不然）。
+
+<Image src={import('./_assets/m5l2764k-eeprrom.jpg')} width="400px">Mitsubishi M5L2764K EPROM（注意，是一个 \"E\" 而不是两个，它是 \"erasable\"（可擦除）的，但不是 \"electronically erasable\"（电可擦除）的）的照片，采用带透明盖的 \"DIL\"（DIP）封装。</Image>
+
+## 常见用途
+
+* 通孔 IC
+* DIP 开关
+* 继电器/干簧管开关
+* 7 段 4 位 LCD 字符显示器封装（封装不同）
+
+## 相似封装
+
+* [SIP](/pcb-design/component-packages/sip-component-package)
+* [QIP](/pcb-design/component-packages/qip-component-package)
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^bib-wikipedia-dip]: Wikipedia。_Dual In-line Package (DIP)_。检索于 2021-12-28，来自 https://en.wikipedia.org/wiki/Dual_in-line_package。
+[^bib-mitsubishi-m5l2764k-ds]: Mitsubishi。_M5L2764K 65536-bit (8192-word by 8-bit) Erasable and Electronically Reprogrammable ROM (datasheet)_。检索于 2021-12-27，来自 https://pdf1.alldatasheet.com/datasheet-pdf/view/126049/MITSUBISHI/M5L2764K.html。
+[^bib-st-m27w256]: ST Microelectronics（2006 年 4 月）。_M27W256: 256 Kbit (32Kb x 8) Low Voltage UV EPROM and OTP EPROM (datasheet)_。检索于 2021-12-28，来自 https://www.st.com/resource/en/datasheet/cd00004936.pdf。

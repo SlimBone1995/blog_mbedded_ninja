@@ -1,0 +1,47 @@
+---
+authors: [gbmhunter]
+date: 2015-05-13
+description: DSOP Advance 是 Toshiba 使用的一种 SMD 元件封装，其底面和顶面均有散热焊盘。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-04-27
+tags: [component packages, PCB design, DSOP, SOP, Toshiba, MOSFETs]
+title: DSOP Advance 元件封装
+type: page
+sourcePath: pcb-design/component-packages/dsop-advance-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:1621391a8edbea7e87012310f22f0e470e9f0571cb85f7844eb7a82b892e621a
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/dsop-advance-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/dsop-advance-photo-top-and-bottom-business-wire.png')} width="300px">DSOP Advance 元件封装顶部和底部的照片。图片来自 Business Wire[^business-wire-dsop-advance]。</Image>
+
+_DSOP（Dual-side Cooling SOP）Advance_ 是 Toshiba 使用的一种 SMD 元件封装，其底面和顶面均有散热焊盘。它有 10 个引脚（如果不把两个独立引脚算进去则为 8 个），间距为 1.27mm（50 mil）。
+
+## 同义名称
+
+* 2-5S1A：Toshiba。
+* DSOP-Advance-8：Mouser[^mouser-dsop-advance-8]。
+
+## 热阻
+
+与 SOP Advance 元件封装相比，DSOP Advance 具有双面散热特性，可进一步降低热阻。
+
+## 尺寸
+
+封装尺寸为 5x6x0.73mm（含引脚，标称值）。
+
+<Image src={import('./_assets/dsop-advance-component-package-dimensions.png')} width="900px">DSOP Advance 元件封装的尺寸。</Image>
+
+## 推荐焊盘图形（land pattern）
+
+<Image src={import('./_assets/dsop-advance-component-package-recommended-land-pattern.png')} width="350px">DSOP Advance 元件封装的推荐焊盘图形（land pattern）。</Image>
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^business-wire-dsop-advance]: Business Wire（2015 年 2 月 27 日）。_Toshiba Launches Low-Voltage MOSFET Series with Dual-sided Cooling Packages_ [新闻文章]。检索于 2024-04-27，来自 https://www.businesswire.com/news/home/20150227005214/en/Toshiba-Launches-Low-Voltage-MOSFET-Series-with-Dual-sided-Cooling-Packages。
+[^mouser-dsop-advance-8]: Mouser Electronics。_MOSFETS - DSOP-Advance-8_ [搜索结果]。检索于 2024-04-27，来自 https://nz.mouser.com/c/semiconductors/discrete-semiconductors/transistors/mosfet/?package%20%2F%20case=DSOP-Advance-8。

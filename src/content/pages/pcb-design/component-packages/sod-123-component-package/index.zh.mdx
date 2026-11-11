@@ -1,0 +1,124 @@
+---
+authors: [gbmhunter]
+date: 2015-06-19
+description: SOD-123 是一类采用鸥翼引脚的中等尺寸 SMD 元件封装。它与 SOD-323、SOD-523、SOD-723 和 SOD-923 封装相关，常用于二极管。
+image: ./_assets/cover-image.webp
+lastUpdated: 2025-03-05
+tags: [component packages, PCB design, SOD-123, small-outline, diodes, D6, SC-109D, SOD-123EP, CASE 425AC, SOD-123W]
+title: SOD-123 元件封装
+type: page
+sourcePath: pcb-design/component-packages/sod-123-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:71bc10984899bb74f9ba1df91c30f4701e9a3b3a915bec7ec8de907b08f32499
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/sod-123-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<Image src={import('./_assets/sod-123-component-package-3d-render.jpg')} width="150px">SOD-123 元件封装的三维渲染图。图片来自 www.digikey.com。</Image>
+
+_SOD-123_（Small-outline diode 123）元件封装是一类中等尺寸、2 引脚的 SMD 封装，常用于封装二极管。
+
+## 变体
+
+SOD-123 有以下变体：
+
+* SOD-123：事实标准。鸥翼引脚。
+* SOD-123EP：焊盘向封装下方进一步延伸，以获得更好的散热性能。
+* SOD-123F：焊盘。
+* SOD-123FL
+* SOD-123W
+
+## SOD-123
+
+<Image src={import('./_assets/sod-123-component-package-3d-render.jpg')} width="200px">SOD-123 元件封装的三维渲染图。图片来自 www.digikey.com。</Image>
+
+事实标准的 SOD-123 采用鸥翼式引脚（从封装侧面伸出），而 SOD-123F 变体则采用焊盘（位于封装底面）。它是 SOD-323、SOD-523、SOD-723 和 SOD-923 这一系列中尺寸最大的 SOD 封装。
+
+### 尺寸与推荐封装
+
+<Image src={import('./_assets/sod-123-component-package-dimensions-and-recommended-footprint.png')} width="550px">SOD-123 元件封装的尺寸与推荐封装，即推荐焊盘图形（land pattern）。</Image>
+
+注意，上图中的引脚标注为：二极管阳极是引脚 2，阴极是引脚 1。在我看来，这并不算直观的编号方式！
+
+## SOD-123F
+
+<Image src={import('./_assets/component-package-sod-123f-3d-model.jpg')} width="200px">SOD-123F 元件封装顶部的三维模型。</Image>
+
+SOD-123F 元件封装具有从 SMD 封装底部伸出的窄而平的引脚。
+
+### 同义名称
+
+* DO-219AA：虽然我找不到任何可靠来源将 DO-219AA 与 SOD-123F 联系起来，但 Diodes Inc. 给出的 DO-219AA 尺寸[见这里](https://www.diodes.com/assets/Package-Files/DO-219AA_RevA.pdf)与 SOD-123F 的尺寸[见这里](https://www.diodes.com/assets/Package-Files/SOD123F.pdf)如此相似，我认为它们是同一种封装？
+* PDMU：Rohm 的命名[^rohm-rb160m-90-schottky-barrier-diode-ds]。
+* M1F：Fagor Electronica。
+* Mini2-F4-B：Panasonic 的命名[^panasonic-db2x20700l-schottky-barrier-diode-ds]。
+* SC-109D：据 Panasonic 称，这是 JEITA 名称[^panasonic-db2x20700l-schottky-barrier-diode-ds]。
+
+### 尺寸
+
+SOD-123F 长 3.5mm（从引脚端到引脚端），宽 1.6mm，高 1.1mm（典型值或平均值）。
+
+<Image src={import('./_assets/component-package-sod-123f-dimensions.png')} width="900px">Diodes Incorporated 给出的 SOD-123F 元件封装尺寸[^diodes-inc-sod-123f]。</Image>
+
+### 推荐焊盘图形
+
+下面是 Diodes Incorporated 给出的 SOD-123F 元件封装推荐焊盘图形[^diodes-inc-sod-123f]：
+
+<Image src={import('./_assets/component-package-sod-123f-recommended-land-pattern.png')} width="900px">SOD-123F 元件封装的推荐焊盘图形。</Image>
+
+上述推荐封装在 PCB 上占用的焊盘面积为 $4.4mm \times 2.1mm = 9.2mm^2$。引脚间距为 $2.8mm$，以各焊盘中心计算。
+
+## SOD-123EP
+
+SOD-123EP 是 SOD-123 封装的一种变体，其中一个焊盘进一步延伸到封装下方，以改善功耗表现。该封装通常用于二极管，其中阴极连接到较大的焊盘[^onsemi-ss12fp-ds]。On Semi 将其称为 CASE 425AC[^onsemi-ss12fp-ds]。
+
+<Image src={import('./_assets/sod-123ep-3d-model-onsemi-ss12fp.png')} width="500px">SOD-123EP 元件封装的三维模型。你可以清楚地看到底面较大的焊盘，在此例中它连接到 OnSemi SS12FP 二极管的阴极[^onsemi-ss12fp-ds]。</Image>
+
+### 同义名称
+
+* CASE 425AC：OnSemi[^onsemi-ss12fp-ds]。
+
+### 尺寸
+
+<Image src={import('./_assets/sod-123ep-mechanical-dimensions-on-semi.png')} width="700px">SOD-123EP 元件封装的机械尺寸[^onsemi-ss12fp-ds]。</Image>
+
+## SOD-123W
+
+### 同义名称
+
+* CFP3（Nexperia）[^nexperia-pmeg60t20elr-ds]
+* SOD-123W-2（Mouser）[^mouser-diodes-sod-123w-2]
+
+### 尺寸
+
+SOD-123W 封装的尺寸为[^nexperia-pmeg60t20elr-ds]：
+
+* 长度：3.5mm
+* 宽度：1.7mm
+* 高度：1.0mm
+
+上述尺寸为标称值，包含引脚（即外形尺寸）。该封装与 SOD-123F 和 SOD-123EP 变体具有相同的标称外形尺寸。
+
+<Image src={import('./_assets/sod-123w-package-outline-nexperia-cfp3.png')} width="800px">SOD-123W 元件封装的封装外形图。该外形图取自 Nexperia PMEG60T20ELR 肖特基势垒二极管数据手册[^nexperia-pmeg60t20elr-ds]。</Image>
+
+## 相似封装
+
+SOD-123 系列封装类似于：
+
+* [SOD-323](/pcb-design/component-packages/sod-323-component-package/)（更小）
+* [SOD-523](/pcb-design/component-packages/sod-523-component-package/)（更小）
+* [SOD-723](/pcb-design/component-packages/sod-723-component-package/)（更小）
+* [SOD-923](/pcb-design/component-packages/sod-923-component-package/)（最小）
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^onsemi-ss12fp-ds]: ON Semiconductor（现 On Semi）（2021 年 5 月）。_Surface Mount Schottky Barrier Rectifiers 1 A, 20 V - 150 V: SS12FP - S115FP_ [数据手册]。检索于 2022-01-36，来自 https://www.mouser.com/datasheet/2/308/1/S110FP_D-2320074.pdf。
+[^nexperia-pmeg60t20elr-ds]: Nexperia（2018 年 3 月 6 日）。_PMEG60T20ELR: 60 V, 2 A low leakage current Trench MEGA Schottky barrier rectifier_ [数据手册]。检索于 2022-01-26，来自 https://www.mouser.com/datasheet/2/916/PMEG60T20ELR-1599911.pdf。
+[^mouser-diodes-sod-123w-2]: Mouser。_SOD-123W-2 Schottky Diodes & Rectifiers_ [搜索]。检索于 2022-01-26，来自 https://www.mouser.com/c/semiconductors/discrete-semiconductors/diodes-rectifiers/schottky-diodes-rectifiers/?package%20%2F%20case=SOD-123W-2。
+[^diodes-inc-sod-123f]: Diodes Incorporated（2019 年 10 月 9 日）。_SOT123F - PACKAGE INFORMATION_。检索于 2024-04-17，来自 https://www.diodes.com/assets/Package-Files/SOD123F.pdf。
+[^rohm-rb160m-90-schottky-barrier-diode-ds]: Rohm Semiconductor（2015）。_Schottky barrier diode - RB160M-90_ [数据手册]。检索于 2024-04-17，来自 https://fscdn.rohm.com/en/products/databook/datasheet-nrnd/discrete/diode/schottky_barrier/rb160m-90.pdf。
+[^panasonic-db2x20700l-schottky-barrier-diode-ds]: Panasonic（2013 年 4 月 24 日）。_Schottky Barrier Diode - DB2X20700L_ [数据手册]。检索于 2024-04-17，来自 https://www.datasheet.es/PDF/737041/DB2X20700L-pdf.html。

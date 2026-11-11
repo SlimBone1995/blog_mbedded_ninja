@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-11T04:46:47.562Z",
+  "generatedAt": "2026-11-11T07:47:23.384Z",
   "counts": {
-    "current": 40,
+    "current": 70,
     "stale": 0,
-    "missing": 1135,
+    "missing": 1105,
     "orphan": 0
   },
   "current": [
@@ -40,12 +40,132 @@
       "source": "pcb-design/castellation/index.mdx"
     },
     {
+      "zh": "pcb-design/component-packages/bga-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/bga-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/chip-carrier-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/chip-carrier-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/chip-eia-component-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/chip-eia-component-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/crystal-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/crystal-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/dfn-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/dfn-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/dip-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/dip-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/dsop-advance-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/dsop-advance-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/lga-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/lga-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/mini-dip-spm-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/mini-dip-spm-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/msop-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/msop-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/pdip-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/pdip-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/plcc-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/plcc-component-package/index.mdx"
+    },
+    {
       "zh": "pcb-design/component-packages/qfn-component-package/index.zh.mdx",
       "source": "pcb-design/component-packages/qfn-component-package/index.mdx"
     },
     {
+      "zh": "pcb-design/component-packages/qfp-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/qfp-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/sma-do-214ac-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/sma-do-214ac-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smb-do-214aa-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/smb-do-214aa-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smc-do-214ab-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/smc-do-214ab-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smd-220-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/smd-220-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smd-electrolytic-capacitor-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/smd-electrolytic-capacitor-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smd-inductor-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/smd-inductor-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smd-tantalum-capacitor-packages/index.zh.mdx",
+      "source": "pcb-design/component-packages/smd-tantalum-capacitor-packages/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/smd35-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/smd35-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/sod-123-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/sod-123-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/sod-123f-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/sod-123f-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/soic-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/soic-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/sop-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/sop-component-package/index.mdx"
+    },
+    {
       "zh": "pcb-design/component-packages/sot-23-component-package/index.zh.mdx",
       "source": "pcb-design/component-packages/sot-23-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/sot-23f-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/sot-23f-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/ssop-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/ssop-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/to-220-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/to-220-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/to-247-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/to-247-component-package/index.mdx"
+    },
+    {
+      "zh": "pcb-design/component-packages/to-252-component-package/index.zh.mdx",
+      "source": "pcb-design/component-packages/to-252-component-package/index.mdx"
     },
     {
       "zh": "pcb-design/decoupling-and-noise-suppression/index.zh.mdx",
@@ -535,16 +655,10 @@
     "pcb-design/component-packages/463c-03-component-package/index.mdx",
     "pcb-design/component-packages/526ag-component-package/index.mdx",
     "pcb-design/component-packages/bcc-component-package/index.mdx",
-    "pcb-design/component-packages/bga-component-package/index.mdx",
-    "pcb-design/component-packages/chip-carrier-packages/index.mdx",
-    "pcb-design/component-packages/chip-eia-component-packages/index.mdx",
-    "pcb-design/component-packages/crystal-packages/index.mdx",
     "pcb-design/component-packages/d2pak-component-package/index.mdx",
     "pcb-design/component-packages/d3pak-component-package/index.mdx",
     "pcb-design/component-packages/dddpak-component-package/index.mdx",
     "pcb-design/component-packages/ddpak-component-package/index.mdx",
-    "pcb-design/component-packages/dfn-component-package/index.mdx",
-    "pcb-design/component-packages/dip-component-package/index.mdx",
     "pcb-design/component-packages/do-103aa-component-package/index.mdx",
     "pcb-design/component-packages/do-103ab-component-package/index.mdx",
     "pcb-design/component-packages/do-14-component-package/index.mdx",
@@ -566,7 +680,6 @@
     "pcb-design/component-packages/do-7-component-package/index.mdx",
     "pcb-design/component-packages/dpack-component-package/index.mdx",
     "pcb-design/component-packages/drl-6-component-package/index.mdx",
-    "pcb-design/component-packages/dsop-advance-component-package/index.mdx",
     "pcb-design/component-packages/e-line-component-package/index.mdx",
     "pcb-design/component-packages/eep-component-package/index.mdx",
     "pcb-design/component-packages/emd3f-component-package/index.mdx",
@@ -577,7 +690,6 @@
     "pcb-design/component-packages/index.mdx",
     "pcb-design/component-packages/lfcsp-component-package/index.mdx",
     "pcb-design/component-packages/lfpak-component-package/index.mdx",
-    "pcb-design/component-packages/lga-component-package/index.mdx",
     "pcb-design/component-packages/ll-34-component-package/index.mdx",
     "pcb-design/component-packages/macro-x-component-package/index.mdx",
     "pcb-design/component-packages/melf-component-package/index.mdx",
@@ -585,21 +697,16 @@
     "pcb-design/component-packages/micro3-component-package/index.mdx",
     "pcb-design/component-packages/micromelf-component-package/index.mdx",
     "pcb-design/component-packages/microsip-component-package/index.mdx",
-    "pcb-design/component-packages/mini-dip-spm-component-package/index.mdx",
     "pcb-design/component-packages/minimelf-component-package/index.mdx",
     "pcb-design/component-packages/mlp-component-package/index.mdx",
     "pcb-design/component-packages/mpak-component-package/index.mdx",
-    "pcb-design/component-packages/msop-component-package/index.mdx",
-    "pcb-design/component-packages/pdip-component-package/index.mdx",
     "pcb-design/component-packages/pdmu-component-package/index.mdx",
     "pcb-design/component-packages/pff-psf-pss-leadform-component-package/index.mdx",
     "pcb-design/component-packages/pg-sct595-component-package/index.mdx",
-    "pcb-design/component-packages/plcc-component-package/index.mdx",
     "pcb-design/component-packages/powerdi123-component-package/index.mdx",
     "pcb-design/component-packages/powerpak-so8-component-package/index.mdx",
     "pcb-design/component-packages/pp3-component-package/index.mdx",
     "pcb-design/component-packages/pp9-component-package/index.mdx",
-    "pcb-design/component-packages/qfp-component-package/index.mdx",
     "pcb-design/component-packages/qip-component-package/index.mdx",
     "pcb-design/component-packages/rt-3-component-package/index.mdx",
     "pcb-design/component-packages/sc-101-component-package/index.mdx",
@@ -618,21 +725,11 @@
     "pcb-design/component-packages/sc-89-component-package/index.mdx",
     "pcb-design/component-packages/sim-card-sizes/index.mdx",
     "pcb-design/component-packages/sip-component-package/index.mdx",
-    "pcb-design/component-packages/sma-do-214ac-component-package/index.mdx",
-    "pcb-design/component-packages/smb-do-214aa-component-package/index.mdx",
-    "pcb-design/component-packages/smc-do-214ab-component-package/index.mdx",
-    "pcb-design/component-packages/smd-220-component-package/index.mdx",
-    "pcb-design/component-packages/smd-electrolytic-capacitor-packages/index.mdx",
-    "pcb-design/component-packages/smd-inductor-packages/index.mdx",
-    "pcb-design/component-packages/smd-tantalum-capacitor-packages/index.mdx",
-    "pcb-design/component-packages/smd35-component-package/index.mdx",
     "pcb-design/component-packages/smf-component-package/index.mdx",
     "pcb-design/component-packages/smt3-component-package/index.mdx",
     "pcb-design/component-packages/snaphat-component-package/index.mdx",
     "pcb-design/component-packages/sod-106-component-package/index.mdx",
     "pcb-design/component-packages/sod-110-component-package/index.mdx",
-    "pcb-design/component-packages/sod-123-component-package/index.mdx",
-    "pcb-design/component-packages/sod-123f-component-package/index.mdx",
     "pcb-design/component-packages/sod-128-component-package/index.mdx",
     "pcb-design/component-packages/sod-27-component-package/index.mdx",
     "pcb-design/component-packages/sod-323-component-package/index.mdx",
@@ -645,10 +742,8 @@
     "pcb-design/component-packages/sod-80-component-package/index.mdx",
     "pcb-design/component-packages/sod-882-component-package/index.mdx",
     "pcb-design/component-packages/sod-923-component-package/index.mdx",
-    "pcb-design/component-packages/soic-component-package/index.mdx",
     "pcb-design/component-packages/soj-component-package/index.mdx",
     "pcb-design/component-packages/son-component-package/index.mdx",
-    "pcb-design/component-packages/sop-component-package/index.mdx",
     "pcb-design/component-packages/sot-1040-1-component-package/index.mdx",
     "pcb-design/component-packages/sot-106a-component-package/index.mdx",
     "pcb-design/component-packages/sot-1193-component-package/index.mdx",
@@ -660,7 +755,6 @@
     "pcb-design/component-packages/sot-162-1-component-package/index.mdx",
     "pcb-design/component-packages/sot-223-component-package/index.mdx",
     "pcb-design/component-packages/sot-227-component-package/index.mdx",
-    "pcb-design/component-packages/sot-23f-component-package/index.mdx",
     "pcb-design/component-packages/sot-323-component-package/index.mdx",
     "pcb-design/component-packages/sot-346-component-package/index.mdx",
     "pcb-design/component-packages/sot-353-component-package/index.mdx",
@@ -684,7 +778,6 @@
     "pcb-design/component-packages/sot-923-component-package/index.mdx",
     "pcb-design/component-packages/sot-93-component-package/index.mdx",
     "pcb-design/component-packages/spm23-component-package/index.mdx",
-    "pcb-design/component-packages/ssop-component-package/index.mdx",
     "pcb-design/component-packages/supersot-3-component-package/index.mdx",
     "pcb-design/component-packages/to-126-component-package/index.mdx",
     "pcb-design/component-packages/to-18-component-package/index.mdx",
@@ -695,14 +788,11 @@
     "pcb-design/component-packages/to-206-component-package/index.mdx",
     "pcb-design/component-packages/to-209ab-component-package/index.mdx",
     "pcb-design/component-packages/to-218-component-package/index.mdx",
-    "pcb-design/component-packages/to-220-component-package/index.mdx",
     "pcb-design/component-packages/to-226-component-package/index.mdx",
     "pcb-design/component-packages/to-23-component-package/index.mdx",
     "pcb-design/component-packages/to-236aa-component-package/index.mdx",
     "pcb-design/component-packages/to-236ab-component-package/index.mdx",
-    "pcb-design/component-packages/to-247-component-package/index.mdx",
     "pcb-design/component-packages/to-247ac-component-package/index.mdx",
-    "pcb-design/component-packages/to-252-component-package/index.mdx",
     "pcb-design/component-packages/to-253-4-component-package/index.mdx",
     "pcb-design/component-packages/to-253aa-component-package/index.mdx",
     "pcb-design/component-packages/to-261-4-component-package/index.mdx",

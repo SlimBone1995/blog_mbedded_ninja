@@ -6,3 +6,7 @@ date,batch,agent,pages,tokens,duration_s,notes
 2026-11-11,PCB batch 2,A,7,77268,209,
 2026-11-11,PCB batch 2,B,6,78774,205,
 2026-11-11,PCB batch 2,C,7,74769,186,
+2026-11-11,README zh,README agent,1,38619,85,README.zh.md translation
+2026-11-11,PCB batch 3,B,10,68501,172,
+2026-11-11,PCB batch 3,A,10,102631,327,
+2026-11-11,PCB batch 3,C,10,100182,298,

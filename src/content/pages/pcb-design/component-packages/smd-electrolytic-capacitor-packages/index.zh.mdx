@@ -1,0 +1,46 @@
+---
+authors: [gbmhunter]
+date: 2015-10-26
+description: SMD 电解电容器有多种行业标准封装。
+image: ./_assets/cover-image.webp
+lastUpdated: 2024-12-13
+tags: [component packages, PCB design, SMD, electrolytics, capacitors, Panasonic, Chemi-Con]
+title: SMD 电解电容器封装
+type: page
+sourcePath: pcb-design/component-packages/smd-electrolytic-capacitor-packages/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:f1877142e5aa0080a93c3de4eba28b362a4be364aedb075ba68fd6fc99f90606
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/smd-electrolytic-capacitor-packages/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+下图展示了 Panasonic 电解 SMD 电容器的封装尺寸。这些 Panasonic 电容系列（有相当多的子系列）在需要 SMD 电解电容时被广泛使用。
+
+<Image src={import('./_assets/smd-electrolytic-capacitor-package-photo.jpg')} width="250px">一个 SMD 电解电容器封装的照片。</Image>
+
+下图展示了上述每种尺寸的推荐焊盘图形（land pattern）。
+
+<Image src={import('./_assets/panasonic-electrolytic-smd-cap-land-patterns.png')} width="500px">Panasonic 电解 SMD 电容器的推荐焊盘图形。图片来自 “Panasonic SMT Aluminium Electrolytic Capacitors: Application Guidelines”（http://www.panasonic.com/industrial/components/pdf/aluminum_app_dne.pdf）。</Image>
+
+下表展示了 Panasonic 标准电容封装（不含耐振动电容）与 Chemi-Con 电容封装之间的对应关系。
+
+| Panasonic 代码 | Chemi-Con 代码 | 直径 (mm) | 高度 (mm)
+|----------------|----------------|---------------|----------
+| A              | B              |               |
+| B              | D, D61         | 4.0mm         | 5.8mm
+| C              | E, E61         | 5.0mm         | 5.8mm
+| D              | F, F61         | 6.3mm         | 5.8mm
+| D8             | F80            | 6.3mm         | 7.7mm
+| E              | n/a            | 8.0mm         | 6.2mm
+| F              | H, Ha0         | 8.0mm         | 10.2mm
+| G              | J, JA0         | 10.0mm        | 10.2mm
+| n/a            | KE0            | 12.5mm        | 13.5mm 
+| H              | n/a
+| J              | L 
+| K              | M
+
+Panasonic 有一个耐振动 SMD 电解电容器系列，其中部分尺寸代码与其标准系列相同。必须小心，因为两个产品线的尺寸并不相同。直径始终相同（这意味着耐振动电容器可以使用标准封装，但不推荐这样做，因为耐振动电容器有更大的“+”符号焊盘图形，以便更好地固定在 PCB 上），但耐振动系列的电容高度略大（例如标准尺寸 `D` 的长度为 5.8mm，而耐振动尺寸 `D` 的长度为 6.1mm）。
+
+Chemi-Con 对标准电容器使用端子代码 `A`，对耐振动电容器使用 `G`。

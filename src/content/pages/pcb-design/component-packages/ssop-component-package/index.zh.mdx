@@ -1,0 +1,64 @@
+---
+authors: [gbmhunter]
+date: 2025-12-02
+description: SSOP 是一类具有鸥翼引脚的 SMD 元件封装，其引脚间距和本体宽度均可不同。
+lastUpdated: 2025-12-02
+tags: [component packages, PCB design, SSOP, shrink small-outline package]
+title: SSOP 元件封装
+type: page
+sourcePath: pcb-design/component-packages/ssop-component-package/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:88d2f7a42ca4483e4e22b209acb5f8ed5a82793dc2254d5620a3f7a9aed8665c
+sourceUrl: https://blog.mbedded.ninja/pcb-design/component-packages/ssop-component-package/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+SSOP（_Shrink Small Outline Package_）是一类采用鸥翼引脚的塑料 SMD IC 元件封装。[^madpcb-glossary-ssop] 其引脚间距和本体宽度均可不同。
+
+<Image src={import('./_assets/3d-render-of-ssop-24-4x8.74mm-package-ams-osram.webp')} width="300px">AMS-OSRAM 的 SSOP-24 4x8.74mm 封装三维渲染图。</Image>
+
+同义名称：
+
+- DB：Texas Instrument 对 SSOP-16 5.3x6.2mm 本体封装的代码。[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]
+- DBQ：Texas Instrument 对 SSOP-16 3.9x4.9 mm 本体封装的代码。[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]
+
+引脚间距：[^madpcb-glossary-ssop]
+
+- 0.635mm（Texas Instruments 用于其 SSOP-16 3.9x4.9 mm 本体封装（DBQ）的非典型间距）[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]
+- 0.65mm（最常见间距）
+- 0.80mm（少见）
+- 1.27mm（少见）
+
+SSOP 封装有几种不同的本体宽度：
+
+- 3.9 mm[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]
+- 4.4 mm[^nisshinbo-njm062c-low-power-jfet-op-amp-datasheet]
+- 5.3 mm[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]
+
+可焊性：最适合回流焊。有经验的用户可以手工焊接。必须小心避免 IC 引脚之间出现焊锡桥连。
+
+常见用途：
+
+- 74 系列的逻辑 IC。
+
+相似封装：
+
+- [SOP](/pcb-design/component-packages/sop-component-package/)：SOP 的引脚间距更大，用于光隔离器等器件。
+- [TSSOP]()：TSSOP 通常更薄，高度约为 1.2 mm，而 SSOP 封装的高度约为 2.0 mm。
+
+## SSOP-16，0.65 mm 间距，5.3x6.2 mm 本体（DB）
+
+5.3x6.2mm 本体的 SSOP-16 如图 <IRef iref="fig-ti-ssop-16-db0016a-package-dimensions"/> 所示。
+
+<Image iref="fig-ti-ssop-16-db0016a-package-dimensions" src={import('./_assets/ti-ssop-16-db0016a-package-dimensions.webp')} width="800px">Texas Instruments SSOP-16 DB 元件封装的尺寸。[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]</Image>
+
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^madpcb-glossary-ssop]: MADPCB。_Glossary > SSOP_。检索于 2025-12-02，来自 https://www.madpcb.com/glossary/ssop。
+[^ti-sn74cbt3251-1-of-8-fet-multiplexer-and-demultiplexer-datasheet]: Texas Instruments（2015 年 12 月）。_SN74CBT3251 - 1-of-8 FET Multiplexer and Demultiplexer_ [数据手册]。检索于 2025-12-02，来自 https://www.ti.com/lit/ds/symlink/sn74cbt3251.pdf。
+[^nisshinbo-njm062c-low-power-jfet-op-amp-datasheet]: Nisshinbo Microdevices。_NJM062C/064C NJM062CA/064CA - Low Power J-FET Input Operational Amplifiers_ [数据手册]。检索于 2025-12-02，来自 https://www.nisshinbo-microdevices.co.jp/en/pdf/datasheet/NJM062C_NJM062CA_NJM064C_NJM064CA_E.pdf。
