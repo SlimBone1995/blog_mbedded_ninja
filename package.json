@@ -8,7 +8,11 @@
     "start": "npx astro dev",
     "build": "npx astro check && npx astro build",
     "preview": "npx astro preview",
-    "astro": "npx astro"
+    "astro": "npx astro",
+    "zh:status": "node scripts/zh/status.mjs",
+    "zh:check": "node scripts/zh/check.mjs",
+    "zh:assets": "node scripts/zh/fetch-assets.mjs",
+    "zh:log": "node scripts/zh/log-run.mjs"
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",

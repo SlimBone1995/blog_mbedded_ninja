@@ -1,0 +1,93 @@
+---
+// @ts-nocheck
+import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
+import { render } from 'astro:content';
+
+import {
+  getPageHierarchy,
+  convertNodesToSidebarData,
+  findPageNodeBySlug,
+} from 'src/js/PageHierarchy';
+import { getPagesRoutes } from 'src/js/Collections';
+import { getZhRoutes } from 'src/js/ZhCollections';
+import { getGlobalMdxComponents } from 'src/js/GlobalMdxComponents';
+import ZhFallbackNotice from 'src/components/ZhFallbackNotice.astro';
+
+export async function getStaticPaths() {
+  const [allRoutes, enRoutes] = await Promise.all([getZhRoutes(), getPagesRoutes()]);
+  const pageHierarchy = getPageHierarchy(enRoutes);
+
+  // During the pilot we only build translated pages (plus an optional list of
+  // fallback pages) so the build does not need every image in the repository.
+  // Unset ZH_PILOT_ONLY to build the complete Chinese site.
+  const pilotOnly = import.meta.env.ZH_PILOT_ONLY === '1';
+  const pilotFallback = (import.meta.env.ZH_PILOT_FALLBACK ?? '')
+    .split(',')
+    .map((slug) => slug.trim())
+    .filter(Boolean);
+  const routes = pilotOnly
+    ? allRoutes.filter((route) => route.zhEntry || pilotFallback.includes(route.slug))
+    : allRoutes;
+
+  const zhBySlug = new Map(
+    routes.filter((route) => route.zhEntry).map((route) => [route.slug, route.zhEntry]),
+  );
+
+  const sidebarData = convertNodesToSidebarData(pageHierarchy, {
+    linkPrefix: '/zh',
+    titleForSlug: (slug, fallback) => zhBySlug.get(slug)?.data.title ?? fallback,
+    suffixForSlug: (slug) => (zhBySlug.has(slug) ? '' : '（English · 未翻译）'),
+  });
+
+  return routes.map((route) => {
+    const slug = route.slug === 'index' ? undefined : route.slug;
+    const entry = route.zhEntry ?? route.enEntry;
+
+    const breadcrumbs = [{ label: '首页', slug: '/zh/' }];
+    if (route.slug !== 'index') {
+      const parts = route.slug.split('/');
+      let pathSoFar = '';
+      for (let i = 0; i < parts.length; i++) {
+        pathSoFar += (i === 0 ? '' : '/') + parts[i];
+        const node = findPageNodeBySlug(pathSoFar, pageHierarchy);
+        breadcrumbs.push({
+          label:
+            zhBySlug.get(pathSoFar)?.data.title ??
+            node?.fileData?.title ??
+            parts[i],
+          slug: `/zh/${pathSoFar}/`,
+        });
+      }
+    }
+
+    return {
+      params: { slug },
+      props: {
+        entry,
+        translated: Boolean(route.zhEntry),
+        sourceUrl:
+          route.zhEntry?.data.sourceUrl ??
+          `https://blog.mbedded.ninja/${route.slug === 'index' ? '' : route.slug + '/'}`,
+        sidebarData,
+        breadcrumbs,
+      },
+    };
+  });
+}
+
+const { entry, translated, sourceUrl, sidebarData, breadcrumbs } = Astro.props;
+
+Astro.locals.breadcrumbs = breadcrumbs;
+
+const { Content, headings } = await render(entry);
+const globalMdxComponents = getGlobalMdxComponents();
+---
+<StarlightPage
+  frontmatter={{ ...entry.data }}
+  headings={headings}
+  sidebar={sidebarData.items as any}
+  customFrontmatter={entry.data}
+>
+  {!translated && <ZhFallbackNotice sourceUrl={sourceUrl} />}
+  <Content components={globalMdxComponents} />
+</StarlightPage>

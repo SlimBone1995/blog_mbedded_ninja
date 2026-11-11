@@ -42,7 +42,12 @@ const docsCollection = defineCollection({
 const pagesCollection = defineCollection({
   // The negations replicate the legacy collections behavior of ignoring any
   // file or directory whose name starts with "_" (e.g. the _assets/ dirs).
-  loader: glob({ pattern: ['**/*.{md,mdx}', '!**/_*/**', '!**/_*.{md,mdx}'], base: './src/content/pages' }),
+  // Chinese translations live beside the English source as `*.zh.mdx` and are
+  // loaded by the separate `pagesZh` collection below, so exclude them here.
+  loader: glob({
+    pattern: ['**/*.{md,mdx}', '!**/*.zh.mdx', '!**/_*/**', '!**/_*.{md,mdx}'],
+    base: './src/content/pages',
+  }),
   schema: ({image}) => z.object({
     aliases: z.array(z.string()).optional(), // Used to setup dynamic redirects. This is done in [...slug].astro
     authors: z.array(z.string()),
@@ -54,6 +59,42 @@ const pagesCollection = defineCollection({
     tags: z.array(z.string()).optional(),
     title: z.string(),
   }),
+});
+
+//=========================================================
+// PAGES ZH COLLECTION
+//=========================================================
+// Simplified Chinese translations. Each translation sits beside the English
+// source as `<name>.zh.mdx` (e.g. `index.mdx` + `index.zh.mdx`) so relative
+// image imports keep working without copying `_assets/`.
+//
+// The glob loader would give `index.zh.mdx` an id ending in `.zh`; the route
+// layer normalizes that back to the English id (see src/js/ZhCollections.ts).
+const pagesZhCollection = defineCollection({
+  loader: glob({
+    pattern: ['**/*.zh.mdx', '!**/_*/**'],
+    base: './src/content/pages',
+  }),
+  schema: ({ image }) =>
+    z.object({
+      aliases: z.array(z.string()).optional(),
+      authors: z.array(z.string()),
+      date: z.date(),
+      description: z.string().optional(),
+      draft: z.boolean().default(false),
+      image: image().optional(),
+      lastUpdated: z.date(),
+      tags: z.array(z.string()).optional(),
+      title: z.string(),
+      // Translation provenance, used by scripts/zh/status.mjs and the checker.
+      sourcePath: z.string(),
+      sourceCommit: z.string(),
+      sourceHash: z.string(),
+      sourceUrl: z.url().optional(),
+      translatedAt: z.coerce.date(),
+      translator: z.string().default('SlimBone1995'),
+      translationStatus: z.enum(['draft', 'reviewed', 'stale']).default('draft'),
+    }),
 });
 
 //=========================================================
@@ -107,6 +148,7 @@ const testCollection = defineCollection({
 export const collections = {
   docs: docsCollection,
   pages: pagesCollection,
+  pagesZh: pagesZhCollection,
   updates: updatesCollection,
   authors: authorsCollection,
   test: testCollection,

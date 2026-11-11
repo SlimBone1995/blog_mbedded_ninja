@@ -24,6 +24,11 @@ export default defineConfig({
     }),
     starlight({
       title: 'mbedded.ninja',
+      defaultLocale: 'en',
+      locales: {
+        en: { label: 'English', lang: 'en' },
+        zh: { label: '简体中文', lang: 'zh-CN' },
+      },
       logo: {
         src: './src/assets/logo.jpg',
       },

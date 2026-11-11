@@ -1,0 +1,27 @@
+---
+interface Props {
+  sourceUrl?: string;
+}
+const { sourceUrl } = Astro.props;
+---
+<div class="zh-fallback-notice" role="note">
+  <strong>⚠ 本文尚未翻译</strong>，当前显示英文原文。
+  {sourceUrl && (
+    <a href={sourceUrl} target="_blank" rel="noopener noreferrer">查看原站页面 ↗</a>
+  )}
+</div>
+
+<style>
+  .zh-fallback-notice {
+    margin: 0 0 1.5rem;
+    padding: 0.75rem 1rem;
+    border-left: 4px solid var(--sl-color-orange);
+    background: var(--sl-color-bg-nav);
+    border-radius: 0.25rem;
+    font-size: var(--sl-text-sm);
+  }
+
+  .zh-fallback-notice a {
+    margin-left: 0.5rem;
+  }
+</style>

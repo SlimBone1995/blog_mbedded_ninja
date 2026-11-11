@@ -131,6 +131,20 @@ interface SidebarData {
 }
 
 /**
+ * Optional hooks used by the Chinese site to render translated titles and to
+ * prefix every sidebar link with the locale (`/zh`).
+ */
+export interface SidebarOptions {
+  linkPrefix?: string;
+  titleForSlug?: (slug: string, fallback: string) => string;
+  suffixForSlug?: (slug: string) => string;
+}
+
+function stripSlashes(slug: string): string {
+  return slug.replace(/^\/+|\/+$/g, '');
+}
+
+/**
  * Converts our custom page hierarchy structure into the format that Starlight expects for the sidebar prop.
  * 
  * This function has to change what is returned when Starlight updated to v0.26.0, due to the sidebar data structure 
@@ -138,7 +152,7 @@ interface SidebarData {
  * @param node The root PageNode of the page hierarchy to convert to sidebar data.
  * @returns An object that StarlightPage expects for the sidebar prop.
  */
-export function convertNodesToSidebarData(node: PageNode) : SidebarData {
+export function convertNodesToSidebarData(node: PageNode, options: SidebarOptions = {}) : SidebarData {
   let label;
   // Use node.fileData.title if it exists (title set in frontmatter of .mdx file), otherwise use the node.label (path part)
   if (node.fileData !== null && node.fileData.title !== undefined) {
@@ -148,9 +162,22 @@ export function convertNodesToSidebarData(node: PageNode) : SidebarData {
     label = node.label;
   }
 
+  const normalizedSlug = node.slug ? stripSlashes(node.slug) : undefined;
+  if (normalizedSlug && options.titleForSlug) {
+    label = options.titleForSlug(normalizedSlug, label);
+  }
+
+  const suffix =
+    normalizedSlug && node.children.length === 0 && options.suffixForSlug
+      ? options.suffixForSlug(normalizedSlug)
+      : '';
+  const linkPrefix = options.linkPrefix ?? '';
+
   if (node.children.length === 0) {
-    // Must be a leaf node
-    return { label, link: node.slug };
+    // Must be a leaf node. Starlight prefixes `link` entries with the current
+    // locale, so keep this unprefixed. Group headers (below) are not processed
+    // by Starlight, so they do need the explicit prefix.
+    return { label: `${label}${suffix}`, link: node.slug };
   }
 
   // Must not be a leaf node
@@ -178,7 +205,7 @@ export function convertNodesToSidebarData(node: PageNode) : SidebarData {
 
   const items = [];
   for (let i = 0; i < sortedChildren.length; i++) {
-    items.push(convertNodesToSidebarData(sortedChildren[i]));
+    items.push(convertNodesToSidebarData(sortedChildren[i], options));
   }
 
   // If this non-root branch node has its own page, encode the slug into the label
@@ -187,7 +214,7 @@ export function convertNodesToSidebarData(node: PageNode) : SidebarData {
   // schema validation strips any extra properties from group objects.
   let finalLabel = label;
   if (node.label !== 'root' && node.slug) {
-    finalLabel = `${label}\x00${node.slug}`;
+    finalLabel = `${label}${suffix}\x00${linkPrefix}${node.slug}`;
   }
 
   // Make sure that all branch nodes are collapsed by default. Client side

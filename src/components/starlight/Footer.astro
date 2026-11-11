@@ -12,6 +12,13 @@ import { Icon } from '@astrojs/starlight/components';
     <!-- License code generated with https://chooser-beta.creativecommons.org/ -->
     <!--@ts-ignore -->
     <p xmlns:cc="http://creativecommons.org/ns#" xmlns:dct="http://purl.org/dc/terms/"><a property="dct:title" rel="cc:attributionURL" href="https://blog.mbedded.ninja/">blog.mbedded.ninja</a> by <a rel="cc:attributionURL dct:creator" property="cc:attributionName" href="https://github.com/gbmhunter">Geoffrey Hunter</a> is licensed under <a href="https://creativecommons.org/licenses/by/4.0/?ref=chooser-v1" target="_blank" rel="license noopener noreferrer" style="display:inline-block;">CC BY 4.0<img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/cc.svg?ref=chooser-v1" alt=""><img style="height:22px!important;margin-left:3px;vertical-align:text-bottom;" src="https://mirrors.creativecommons.org/presskit/icons/by.svg?ref=chooser-v1" alt=""></a></p>
+		{Astro.url.pathname.startsWith('/zh') && (
+			<p class="translation-note">
+				本文为 <a href="https://blog.mbedded.ninja/">blog.mbedded.ninja</a> 的非官方简体中文翻译，已对原文进行翻译和格式调整。
+				原作品由 <a href="https://github.com/gbmhunter">Geoffrey Hunter</a> 以 <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="license noopener noreferrer">CC BY 4.0</a> 授权；本译文同样以 CC BY 4.0 发布。
+				<a href="https://github.com/SlimBone1995/blog_mbedded_ninja/blob/master/ATTRIBUTION.md">归属说明</a>
+			</p>
+		)}
 		<EditLink {...Astro.props} />
     <!-- We don't need the LastUpdated component as we show the created and last modified dates at the top of the page -->
 		<!-- <LastUpdated {...Astro.props} /> -->
@@ -43,6 +50,12 @@ import { Icon } from '@astrojs/starlight/components';
 	}
 	.meta > :global(p:only-child) {
 		margin-inline-start: auto;
+	}
+
+	.translation-note {
+		flex-basis: 100%;
+		margin: 0;
+		line-height: 1.6;
 	}
 
 	.kudos {
