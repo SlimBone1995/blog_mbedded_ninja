@@ -4,7 +4,30 @@ import { Image } from 'astro:assets';
 
 import NinjaTermLogo from './ninjaterm-logo.png';
 import NinjaCalcLogo from './ninjacalc-logo.png';
+
+// Language switcher. The Chinese site is served under /zh/; every English
+// page has a /zh/ counterpart (translated or English fallback). Updates pages
+// are English-only, so they switch to the Chinese homepage.
+const pathname = Astro.url.pathname;
+const isZh = pathname === '/zh' || pathname.startsWith('/zh/');
+let switchHref;
+if (isZh) {
+  switchHref = pathname.replace(/^\/zh/, '') || '/';
+} else if (pathname === '/') {
+  switchHref = '/zh/';
+} else if (pathname.startsWith('/updates')) {
+  switchHref = '/zh/';
+} else {
+  switchHref = `/zh${pathname}`;
+}
+const switchLabel = isZh ? 'English' : '中文';
+const switchLang = isZh ? 'en' : 'zh-CN';
 ---
+
+<!-- Language switch -->
+<a class="lang-switch" href={switchHref} hreflang={switchLang} lang={switchLang}>
+  {switchLabel}
+</a>
 
 <!-- Custom NinjaTerm/NinjaCalc links before the normal social icons -->
 <a class="header-link" href="https://ninjaterm.mbedded.ninja/" target="_blank">
@@ -23,6 +46,27 @@ import NinjaCalcLogo from './ninjacalc-logo.png';
 <Default {...Astro.props}><slot /></Default>
 
 <style>
+  .lang-switch {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 0.5rem;
+    font-size: var(--sl-text-sm);
+    line-height: 1.4;
+    text-decoration: none;
+    color: var(--sl-color-gray-2);
+    white-space: nowrap;
+    margin-inline-end: 0.4rem;
+  }
+
+  .lang-switch:hover {
+    background: var(--link-background-color);
+    border-color: var(--sl-color-gray-2);
+    color: var(--sl-color-white);
+  }
+
   .header-link {
     text-decoration: none;
     color: inherit;

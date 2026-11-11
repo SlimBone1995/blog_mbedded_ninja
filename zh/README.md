@@ -1,3 +1,5 @@
+[English README](../README.md) | [中文 README](../README.zh.md)
+
 # 中文翻译工作区
 
 本目录保存翻译基础设施。译文本身与英文原文放在同一目录，文件名为

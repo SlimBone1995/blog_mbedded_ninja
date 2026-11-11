@@ -1,3 +1,5 @@
+[English](README.md) | [简体中文](README.zh.md)
+
 # mbedded.ninja blog
 
 This repo contains the source code which is used to build the embedded engineering blog at https://blog.mbedded.ninja.
