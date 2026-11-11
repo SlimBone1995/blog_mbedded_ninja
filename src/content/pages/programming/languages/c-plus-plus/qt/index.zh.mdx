@@ -1,0 +1,242 @@
+---
+authors: [gbmhunter]
+date: 2017-09-28
+description: 关于 Qt 软件框架/库的信息，包括线程、串口等内容。
+lastUpdated: 2019-08-18
+tags: [programming, programming languages, C++, Qt, QSerialPort, signals, slots, QObject, PySide2, file names, FAT32, Qt Creator]
+title: Qt
+type: page
+sourcePath: programming/languages/c-plus-plus/qt/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:47d733b386ad8ca1368c6fac6b17bc2162cb8f54feaa4783dac631d54b69a86c
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/qt/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+Qt 是一个面向 GUI 开发的软件框架和库。它的主要 API 以 C++ 暴露，但也通过 QML API 提供了用 JavaScript（或至少部分地）编写 UI 的能力，并借助官方支持的 PySide2 绑定提供 Python 绑定。
+
+## 安装
+
+无论你在哪个平台上安装 Qt Creator，所需的磁盘空间都可能非常大，具体取决于所选的“套件（kits）”。
+
+### Linux
+
+在类 Debian 系统上（例如 Ubuntu）：
+
+```bash
+$ sudo apt install qt5-default
+```
+
+### macOS
+
+你至少需要安装 Xcode 命令行工具，这样 Qt Creator 才能找到并使用 C++ 编译器。
+
+<Image src={import('./qt-creator-you-need-to-install-xcode-command-line-tools.png')} width="200px">Qt 安装程序警告你需要安装 Xcode 和 Xcode 命令行工具。注意，只安装命令行工具也可以。</Image>
+
+你可以从 Apple 应用商店下载 Xcode 和 Xcode 命令行工具。
+
+Xcode 命令行工具可以通过以下命令安装：
+
+```bash
+$ xcode-select --install
+```
+
+macOS 可用的 Qt 套件：
+
+* Desktop Qt x.x.x clang 64bit
+
+Qt 通常会安装到你的用户目录中，并为 Qt 版本和所用的套件各建一个目录。例如，使用 `v5.13.0` 和 Clang 64 位套件时，默认安装路径大致为 `/Users/<user_name>/Qt/5.13.0/clang_64/`。
+
+### Windows
+
+套件：
+
+* MSVC2017 64-bit
+* MinGW
+* Android
+
+## 线程
+
+Qt 围绕事件/监听器范式设计（它称之为 _信号_ 和 _槽_），这种范式鼓励事件驱动设计，而不是阻塞式方法调用。
+
+所有 UI 交互都必须在一个线程中发生（默认的 UI 线程）。不建议在该线程中加入阻塞调用，因为线程阻塞期间 UI 会失去响应。
+
+## 允许文件名包含大写字母
+
+默认情况下 Qt Creator 不允许文件名包含大写字母，这看起来有点奇怪。这样做大概是为了避免在使用 FAT32 文件系统（例如较旧版本的 Windows）时出现问题，因为这些文件系统不区分大小写（但*保留大小写*）。然而，C++ 的许多常见文件命名规范以及许多第三方库都会使用大写字母。幸运的是，你可以在 Qt Creator 设置中启用/允许文件名使用大写字母：
+
+1. 在顶部菜单栏点击 _Tools_，然后点击 _Options_。
+
+<Image src={import('./qt-creator-menu-tools-options.png')} width="300px"></Image>
+
+1. 取消勾选 _Lower case file names_ 复选框。
+
+<Image src={import('./qt-creator-uncheck-lower-case-filenames.png')} width="700px"></Image>
+
+1. 完成！
+
+## 串口（QSerialPort）
+
+Qt 允许你通过 `QSerialPort` 类访问机器上的串口。注意，读写等串口操作必须在同一个线程中完成。因此，如果你确实需要同时读写，最好不要对读取采用阻塞方式，因为你无法既阻塞在读取调用上又同时发送数据。更好的替代方案是使用 readyRead 信号
+
+## 与 std 库的兼容性
+
+**Qt 线程与 std::condition_variable**
+
+根据我的经验，`std::condition_variable` 在 Qt 线程中使用似乎没有任何问题。
+
+## 未使用参数 'xxx'
+
+当函数参数未被使用时，Qt 会给出警告。这本来是件好事，但当你刻意忽略某些函数参数时，它会很烦人，并且使编译输出变得杂乱。
+
+```c++    
+void doSomething(QObject* parent) {
+    ...
+}
+```
+
+要消除此警告，你可以从函数定义中删除未使用参数的名称：
+
+```c++    
+void doSomething(QObject* /* unused */) {
+    ...
+}
+```
+
+或者使用 `Q_UNUSED()` 宏：
+
+```c++    
+void doSomething(QObject* parent) {
+    Q_UNUSED(parent);
+    ...
+}
+```
+
+## 连接信号与槽
+
+在 Qt5 之前，你必须在调用 `connect()` 时使用 `SIGNAL()` 和 `SLOT()` 宏：
+
+```c++    
+connect(&a, SIGNAL(MySignal(int)), &b, SLOT(MySlot(int));
+```
+
+Qt5 引入了连接信号与槽的新语法：
+
+```c++    
+connect(&a, a::MySignal, &b, b::MySlot);
+```
+
+`connect()` 的新语法有以下优点：
+
+* 如果信号/槽不存在，会产生编译错误（这是一个非常好的优势）
+* 如果类型不匹配，会产生编译错误（另一个优点！）
+* 无需指定输入参数（不过当信号或槽被重载时这也有缺点，见下文）
+
+我建议尽可能使用 Qt5 的新语法！
+
+然而，如果存在多个同名信号（即重载信号），这种语法就不起作用了。例如 `QComboBox::activated()` 信号就有以下两个重载：
+
+```c++    
+void activated(int index)
+void activated(const QString& text)
+```
+
+如果你想把 `activated(int index)` 信号连接到自定义处理函数，就必须这样做：
+
+```c++    
+class A {
+signals:
+    HandleActivated(int index) : public QObject {
+        std::cout << "Handler called!" << std::endl;
+    }
+};
+
+int main() {
+    QComboBox qComboBox;
+    A a;
+
+    // This won't work, will throw compiler error!
+    connect(&qComboBox, &QComboBox::activated, &a, &A::HandleActivated); 
+
+    // Instead, you have to cast to the specific overload of activated that
+    // you wish to use
+    connect(&qComboBox, static_cast<void (QComboBox::*)(int)>(&QComboBox::activated), this, &A::HandleActivated);
+}
+```
+
+## QWidget GUI 布局
+
+Qt 中的 GUI 布局由 `QWidget` 和 `QLayout` 对象共同完成。GUI 基于 `QWidget` 对象的层级结构。`Qwidget` 对象可以拥有多个 `QWidget` 子元素。你可以创建 `QLayout` 对象并赋给 `QWidget` 对象（使用 `my_widget->setLayout()`），然后 `QLayout` 对象将控制 `QWidget` 子元素的布局。
+
+<Aside type="note">
+`QLayout` 对象不能作为 `QWidget` 对象的子对象。`QWidget` 对象是 GUI 层级树中唯一允许的对象，每个 `QLayout` 都必须赋给一个 `QWidget`。
+</Aside>
+
+### 布局选项
+
+QHBoxLayout
+
+## GUI 对象
+
+标准 Qt GUI 应用中的所有 GUI 元素都继承自基类 `QWidget`。
+
+你不必手动删除自己创建的 `QWidget` 对象，只要它们有一个会被删除的 `QWidget` 父对象。
+
+### QScrollArea
+
+`QScrollArea` 继承自 `QWidget`，提供一个块状 UI 元素，当子控件超出 `QScrollArea` 边界时允许用户滚动。
+
+向 `QScrollArea::setWidgetResizeable()` 传入 `true` 会赋予滚动区域调整其子控件大小的权限。这意味着 `child_widget.resize()` 可能不会产生任何效果。
+
+### QTextEdit
+
+**监视文本变化**
+
+.hpp：
+
+```c++
+private slots:
+    void onTextChanged();
+```
+
+.cpp：
+
+```c++
+MainWindow::MainWindow(QWidget *parent) :
+    QMainWindow(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    connect(ui->textEdit1, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
+}
+
+void MainWindow::onTextChanged() {
+    qDebug() << "Text changed!";
+}
+```
+
+## 构建/部署
+
+什么是应用程序包（app bundle）？
+
+哪些 CI/CD 服务支持 macOS？Azure 确实支持用于构建/部署应用的 macOS worker，而 TravisCI 目前不支持。
+
+### Linux
+
+开源程序 `linuxdeployqt`（可从[这里](https://github.com/probonopd/linuxdeployqt)获取）旨在模仿 `macdeployqt` 的功能，只不过面向 Linux 而非 macOS。它试图把所有依赖打包在一起，生成单个可执行文件。
+
+### macOS
+
+Qt 安装中包含一个名为 `macdeployqt` 的可执行文件（位于 `<Qt install dir>/bin/`）。这个命令行程序可用于从应用程序包创建磁盘映像（`.dmg`）文件。
+
+<Image src={import('./macdeployqt-cli-screenshot.png')} width="500px">Qt macdeployqt CLI 工具的截图。</Image>
+
+要创建 `.dmg` 文件：
+
+```bash
+$ <Qt install dir>/macdeployqt <path to app bundle> -dmg
+```
+
+### Windows

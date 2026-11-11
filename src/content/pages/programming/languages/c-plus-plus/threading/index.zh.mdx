@@ -1,0 +1,390 @@
+---
+authors: [gbmhunter]
+date: 2017-05-08
+lastUpdated: 2026-07-08
+tags: [C++, threading]
+title: 线程
+type: page
+sourcePath: programming/languages/c-plus-plus/threading/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:c03b21a182f3110187cf0064bfb72c2cddb59b5c06318652e82e43360d620a70
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/threading/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 条件变量
+
+`std::condition_variable` 来自 `#include <condition_variable>`，是一种**用于线程间通知的同步对象**。注意，要实现线程间通知，除条件变量外还需要两个共享变量：一个互斥锁和一个布尔变量（也称为_条件标志_）。
+
+```c++    
+#include <condition_variable>
+#include <iostream>
+#include <mutex>
+#include <thread>
+
+std::mutex mutex_;
+std::condition_variable cv_;
+bool wakeup_ = false;
+
+
+void Worker() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    std::lock_guard<std::mutex> lock(mutex_);
+    // wakeup_ must be set before the notify!
+    wakeup_ = true;
+    cv_.notify_one();
+}
+
+int main() {
+    std::cout << "main() called." << std::endl;
+    std::thread t1(&Worker);
+    
+    std::cout << "Waiting for notification..." << std::endl;
+    std::unique_lock<std::mutex> lock(mutex_);
+    while(!wakeup_)
+        cv_.wait(lock);
+        
+    std::cout << "Notification received." << std::endl;
+    
+    t1.join();
+}
+```
+
+在 [http://cpp.sh/7es7i](http://cpp.sh/7es7i) 上运行这段代码。
+
+上面的程序应输出：
+
+```  
+main() called.
+Waiting for notification...
+Notification received.
+```
+
+进入时，`wait()` 方法会同时解锁互斥锁并等待条件；退出时，`wait()` 方法会重新锁定互斥锁。
+
+<Aside type="caution">
+注意这里使用了名为 wakeup_ 的布尔变量。它用于防范_虚假唤醒（spurious wakeup）_。虚假唤醒是指等待条件变量的线程在并未收到通知的情况下被唤醒。代码会检查该布尔变量，如果仍为 false，就再次调用 `wait()` 重新休眠。
+</Aside>
+
+**如何改进条件变量（也就是创建信号量！）**
+
+在我看来，直接使用 `std::condition_variable` 是**在整个代码库中使用起来非常别扭的对象**。如果用它做线程间通知，那么每个 `std::condition_variable` 都还需要配一个 `std::mutex` 和一个 `bool`，而且别忘了以正确的方式使用/设置所有内容！改进办法之一是把所有东西封装到一个自定义对象中，这种对象通常称为**_信号量_**。下面的代码展示了一个仅头文件的 Semaphore 类实现。
+
+```c++    
+/// \details    This class is neither movable nor copyable. Use a smart pointer if you need copy/move like
+///             capabilities.
+class Semaphore {
+public:
+
+    Semaphore() : count_(0) {
+
+    }
+
+    void Notify() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        count_++;
+        cv_.notify_one();
+    }
+
+    /// \brief      Blocks indefinitely until Notify() is called.
+    void Wait() {
+        std::unique_lock<std::mutex> lock(mutex_);
+        while(count_ == 0) {
+            cv_.wait(lock);
+        }
+
+        count_--;
+    }
+
+    /// \brief      Blocks until either Notify() is called, or a timeout occurs.
+    /// \returns    Returns true if Notify() was called before timeout occurred, otherwise false.
+    bool TryWait(std::chrono::milliseconds timeout) {
+        std::unique_lock<std::mutex> lock(mutex_);
+        if(!cv_.wait_for(lock, timeout, [&] {
+            return count_ != 0;
+        })) {
+            return false;
+        }
+
+        return true;
+    }
+
+private:
+    uint32_t count_;
+    std::mutex mutex_;
+    std::condition_variable cv_;
+
+};
+```
+
+现在，我们只需这样写：
+
+```c++    
+#include <iostream>
+#include "Semaphore.hpp"
+
+Semaphore semaphore;
+
+void Worker() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    semaphore.Notify();
+}
+
+int main() {
+    std::cout << "main() called." << std::endl;
+    std::thread t1(&Worker);
+    
+    std::cout << "Waiting for notification..." << std::endl;
+    semaphore.Wait();
+        
+    std::cout << "Notification received." << std::endl;
+    
+    t1.join();
+}
+```
+
+简单多了！对吧？这段代码也可以在 [GitHub 上的 CppUtils 仓库](https://github.com/gbmhunter/CppUtils)中找到。
+
+注意：如果你想在线程之间做的不仅仅是发送通知，而是真正传递数据，可以考虑实现一个队列，或者改用 future/promise。
+
+## 锁
+
+锁是 C++ 对象，**在加锁和解锁互斥锁时提供安全性和便利性**（你也可以称它们为_互斥锁包装器_）。C++ 中主要的两种锁是 `std::unique_lock` 和 `std::lock_guard`，均来自 `#include <mutex>`。
+
+**唯一锁（Unique Lock）**
+
+可以指示 `std::unique_lock` 获取互斥锁的所有权。当它被手动解锁（例如通过 `unlock()`）或离开作用域被销毁时，会释放互斥锁。
+
+创建 `std::unique_lock` 时，可以通过延迟加锁的方式指示它不要锁定互斥锁：
+
+```c++   
+std::unique_lock<std::mutex> lock(mutex, std::defer_lock);
+```
+
+**锁守卫（Lock Guard）**
+
+`lock_guard` 在创建时尝试获取互斥锁的所有权。当控制流离开创建 lock_guard 的作用域时，`lock_guard` 被销毁，互斥锁随之释放。
+
+**唯一锁与锁守卫的比较**
+
+建议：除非你需要在不必依赖 `lock_guard` 离开作用域的情况下手动释放互斥锁，否则请使用 `lock_guard`。
+
+## 互斥锁
+
+C++11 引入了 `std::mutex`，它被设计为多线程应用中的基本同步对象。
+
+**使用 mutable 关键字**
+
+std::mutex 可能遇到的一个问题，是把它与定义为 const 的方法一起使用。考虑下面的方法：
+
+```c++    
+class MyClass {
+public:
+    int GetCount() const {
+        return count_;
+    }
+};
+```
+
+当你想从多个线程调用 `GetCount()` 时会发生什么？你可能会从并发工具箱里拿出一个 `std::mutex`：
+
+```c++    
+class MyClass {
+public:
+    int GetCount() const {
+        std::unique_lock<std::mutex> lock(mutex_); // This won't compile!
+        return count_;
+    }
+private:
+    std::mutex mutex_;
+};
+```
+
+问题在于锁定互斥锁不是一项 [const](/programming/languages/c-plus-plus/const-correctness/) 操作，因此上面的代码无法编译。解决办法是把 `mutex_` 声明为 mutable：
+
+```c++    
+class MyClass {
+public:
+    int GetCount() const {
+        std::unique_lock<std::mutex> lock(mutex_); // This will now compile!
+        return count_;
+    }
+private:
+    mutable std::mutex mutex_;
+};
+```
+
+这是应该使用 `mutable` 关键字的少数场景之一。
+
+## 线程
+
+`std::thread` 自 C++11 起成为 C++ 语言的一部分。它的引入标准化了 C++ 中线程的使用方式，因为在此之前只能使用平台特定的实现（例如 POSIX 系统上的 `pthread`）。
+
+**一个基本示例**
+
+```c++    
+#include <string>
+#include <iostream>
+#include <thread>
+
+// The function we want to execute on the new thread.
+void task1() {
+    std::cout << "Thread says hello!" << std::endl;
+}
+
+int main() {
+    // Constructs the new thread (and runs it). This does not block the current thread.
+    std::thread myThread(task1);
+
+    // This makes the main thread wait for the new thread to finish (return from the task1() function). This means the main() thread gets "blocked" until the thread finishes.
+    myThread.join();
+}
+```
+
+线程对象一创建就开始执行（没有 `thread.start()`）。
+
+**分配线程函数的不同方法**
+
+下面的代码展示了创建 std::thread 并为其指定要运行的函数（或方法）的多种方式。
+
+```c++
+int main() {
+    // Call a C style function
+    std::thread t1(ACStyleFunction);
+
+    // Call a member of a class instance
+    std::thread t2(&MyClass::MyMethod, this);
+
+    // Create a lambda on the fly
+    std::thread t3([] {
+        std::cout << "Lambda-style thread function!" << std::endl;
+    });
+}
+```
+
+**优先级**
+
+**遗憾的是，截至 C++14，还没有设置/修改线程优先级的标准化方法**。如果你习惯使用 FreeRTOS 之类的底层操作系统，可能会惊讶于这里竟然没有这项功能。但如果你了解 C/C++ 标准的历史，就不会感到意外。很长一段时间里，两者都把线程视为实现特定的问题，不应由标准来处理。直到 C++11 开始，标准才引入了 `std::thread` 的概念，消除了创建基本线程时对平台特定代码的需求。
+
+不过也不全是坏消息！你**仍然可以通过** `thread.native_handle()` **管理 Linux 和 Windows 等常见操作系统的线程优先级**。这个函数**有望**返回指向原生线程对象的指针（例如 Linux 中的 pthread），然后可以用操作系统特定的 API 来设置优先级。
+
+下面的代码展示了如何为运行在 Linux 操作系统上的 `std::thread` 设置优先级：
+
+```c++    
+#include <thread>
+#include <pthread.h>
+#include <iostream>
+#include <cstring>
+
+void SetPriority(std::thread& thread, int policy, int priority) {
+    sched_param schedParam;
+    schedParam.sched_priority = priority;
+    if(pthread_setschedparam(thread.native_handle(), policy, &schedParam))
+        std::cerr << "Failed to set thread priority. Error = " << std::strerror(errno) << std::endl;    
+}
+```
+
+<Aside type="caution">
+这不是平台无关的代码！
+</Aside>
+
+**常见错误**
+
+**_terminate called without an active exception_**
+
+这个运行时错误通常出现在程序试图结束但仍存在运行中的线程时。
+
+你通常会看到以下终端输出：
+
+```text
+<previous program output>
+terminate called without an active exception
+gbmhunter@ubuntu:~$
+```
+
+要修复它，请确保为程序创建的所有线程调用 `join()`。
+
+**Actor 模型实现**
+
+处理多线程设计时会出现并发问题。应对方法之一是使用 **_Actor 模型_**，其中**每个线程等待命令队列上到达的传入命令**。
+
+下面的示例使用 [`std::shared_ptr<void>`](/programming/languages/c-plus-plus/smart-pointers/) 作为数据类型。这样每条命令都可以传递不同的数据类型（或者不传数据）。巧妙之处在于，数据可以被[转换](/programming/languages/c-plus-plus/special-casts/)为该类型并通过队列传递，而在没有更多引用时仍会被安全销毁。这种方法的缺点是你必须记住每条不同命令对应的数据类型，并将其转换回去。
+
+```c++    
+#include <iostream>
+#include <memory>
+#include <string>
+#include <thread>
+
+#include "ThreadSafeQueue.hpp"
+
+using namespace mn::CppUtils;
+
+struct Cmd {
+    std::string name;
+    std::shared_ptr<void> data;
+};
+
+// We require a thread-safe queue, which is not part of the standard!
+// See https://github.com/gbmhunter/CppUtils/blob/master/include/CppUtils/ThreadSafeQueue.hpp
+ThreadSafeQueue<Cmd> queue_;
+
+void ThreadFn() {
+    Cmd cmd;
+
+    while(true) {
+        queue_.Pop(cmd);
+        std::cout << "Received command. cmd.name = " << cmd.name << std::endl;
+        
+        if(cmd.name == "CMD_1") {          
+            auto data = std::static_pointer_cast<std::string>(cmd.data); // Cast back to exact data type
+            std::cout << "Received data (as string) = \"" << *data << "\"" << std::endl;
+        } else if(cmd.name == "CMD_2") {
+            // Do stuff with cmd.data
+        } else if(cmd.name == "QUIT") {
+            // Break from infinite while loop, which will mean that
+            // this function will return and then thread.join() will
+            // return
+            break;  
+        } else
+            throw std::runtime_error("Command name not recognized.");
+    }
+}
+
+int main() {
+    std::thread t(ThreadFn);
+    
+    auto data = std::shared_ptr<std::string>(new std::string("hello"));
+    
+    Cmd cmd;
+    cmd.name = "CMD_1";
+    cmd.data = std::static_pointer_cast<void>(data); // Cast away the exact data type
+    queue_.Push(cmd);
+    
+    cmd.name = "QUIT";
+    cmd.data = nullptr; // Some commands may not need data!
+    queue_.Push(cmd);
+    
+    t.join();
+}
+```
+
+这段代码可以在 [https://wandbox.org/permlink/KkL4A89Z60GJdva3](https://wandbox.org/permlink/KkL4A89Z60GJdva3) 找到并在线运行。
+
+注意，上面的代码使用了一个 `ThreadSafeQueue` 类，它既不属于 `std`，也不包含在上面的代码中。该类实现了一个线程安全队列。其代码可在 [https://github.com/gbmhunter/CppUtils/blob/master/include/CppUtils/ThreadSafeQueue.hpp](https://github.com/gbmhunter/CppUtils/blob/master/include/CppUtils/ThreadSafeQueue.hpp) 找到。
+
+## Future 与 Promise
+
+`std::future` 和 `std::promise` 对象允许一个线程等待另一个线程上执行的进程返回数据。
+
+参见 [https://wandbox.org/permlink/gAq8i3HMcPMe6AMS](https://wandbox.org/permlink/gAq8i3HMcPMe6AMS)。
+
+## volatile 关键字
+
+下面这段话来自 Microsoft 的 [Common Visual C++ ARM Migration Issues 页面](https://msdn.microsoft.com/en-us/library/jj635841.aspx)：
+ 
+> 尽管 volatile 在 x86 和 x64 上获得了一些可用于实现有限形式线程间通信的属性，但这些额外属性不足以实现一般的线程间通信。C++ 标准建议改用适当的同步原语来实现此类通信。
+
+ARM 的“弱”内存模型不支持 x86 和 x64 架构所支持的_强顺序_。

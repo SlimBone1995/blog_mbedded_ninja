@@ -1,0 +1,98 @@
+---
+authors: [gbmhunter]
+date: 2014-01-24
+lastUpdated: 2014-01-24
+tags: [programming, C]
+title: 非局部跳转（setjmp()、longjmp()）
+type: page
+sourcePath: programming/languages/c/non-local-jumps-setjmp-longjmp/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:ba3adc302633579c19b62f3ce8da192dd3b180567848a570008e3e0f9b706158
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/non-local-jumps-setjmp-longjmp/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+C 函数 `setjmp()` 和 `longjmp()` 能够执行非局部跳转（non-local jump）。非局部跳转是指在两个独立函数之间跳转代码执行。与之相对的是局部跳转，即 goto，只要仍在同一函数内就可以执行跳转。
+
+非局部跳转有其复杂性，因为在两个独立函数之间切换上下文时，需要保存/修改栈（stack）。
+
+## 定义
+
+`setjmp()` 和 `longjmp()` 定义如下：
+
+```c
+int setjmp(jmp_buf env);
+void longjmp(jmp_buf env, int val);
+```
+
+`setjmp()` 用于声明一个将来某个时刻要跳回的位置。`setjmp()` 接受一个 `jmp_buf` 类型的变量作为输入。这个 `jmp_buf` 用于保存栈的状态。
+
+必须先调用 `setjmp()`，再调用 `longjmp()`。
+
+## 需要包含哪些头文件？
+
+`setjmp()` 和 `longjmp()` 都定义在 setjmp.h 中。
+
+```c    
+#include <setjmp.h>
+```
+
+## 在 C 中实现自己的异常处理程序
+
+`setjmp()` 和 `longjmp()` 的一个妙处在于，它们可用来在 C 中实现自己的异常处理（exception handling）。如果你用过任何高级 OOP 语言，可能已经熟悉异常处理程序的概念：使用 try/catch/throw 关键字（或类似关键字）运行“可能不工作”的代码，并捕获可能发生的错误。
+
+```c    
+try {
+    // May not work code goes here
+}
+catch(SomeExceptionType e) {
+    // Deal with error here
+}
+```
+
+C 没有原生异常支持，但可以通过巧妙使用 `setjmp()`、`longjmp()` 和预处理器宏来实现自己的异常处理。
+
+```c    
+#include <stdio.h>		// printf()
+#include <setjmp.h>		// setjmp(), longjmp()
+
+// Preprocessor macros for creating basic exception support
+#define TRY do{ jmp_buf excepBuf; if( !setjmp(excepBuf) ){		// This part creates the varable excepBuf, used for storing stack state
+#define CATCH } else {
+#define END_TRY } }while(0)										// We have to have a macro of ending the try loop 
+#define THROW longjmp(excepBuf, 1)
+
+int main(int argc, char** argv)
+{
+    TRY
+    {
+        printf("We are now in a try statement.\r\n");
+        // Lets throw an exception for testing!
+        THROW;
+        printf("This will never be printed.\r\n");
+    }
+    CATCH
+    {
+        printf("Caught exception!\r\n");
+    }
+    END_TRY;
+
+    return 0;
+}
+```
+
+这个基础示例不支持不同的异常类型。
+
+注意，这种原始的异常处理形式并不具备高级语言中的全部先进功能。例如，当对象的构造函数抛出异常时，高级语言会自动释放内存（不过 C 里本来也没有对象）。
+
+如果你对此感兴趣并希望了解更多，参见 [http://www.di.unipi.it/~nids/docs/longjump_try_trow_catch.html](http://www.di.unipi.it/~nids/docs/longjump_try_trow_catch.html) 的一个基础实现。[http://www.on-time.com/ddj0011.htm](http://www.on-time.com/ddj0011.htm) 也有一些不错的解释和完整教程代码。
+
+[https://code.google.com/p/exceptions4c/](https://code.google.com/p/exceptions4c/) 是一个基于 C 的异常库。
+
+## 给 C++ 用户的提醒
+
+C 标准对于 `setjmp()` 和 `longjmp()` 函数并不保证：对于在 `setjmp()`（即 `TRY`）之后、`longjmp()`（即 `CATCH`）之前创建的对象（本质上就是将被“展开”的那部分代码），其析构函数会被调用。事实上，这些情况下的行为是未定义的（undefined behavior）。
+
+因此，在 C++ 中使用这些函数可能非常危险，会导致意外行为和内存泄漏。我曾研究过用它们替代嵌入式微控制器的传统异常机制，但由于这个问题而放弃了。

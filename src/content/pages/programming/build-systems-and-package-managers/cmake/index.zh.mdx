@@ -1,0 +1,202 @@
+---
+authors: [gbmhunter]
+date: 2016-12-07
+description: CMake 是用于构建应用的跨平台工具，常与 C 和 C++ 配合使用。它通过 CMakeLists.txt 文件配置，这些文件通常位于相应代码的源代码目录中。本节涵盖 CMake 基础、外部项目、查找包、安装、特定于操作系统的代码等内容。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-01
+tags: [CMake]
+title: CMake
+type: page
+sourcePath: programming/build-systems-and-package-managers/cmake/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:37504b7e0017cea68fafb6ded51ba816809260650729759531218ef7dc436b9c
+sourceUrl: https://blog.mbedded.ninja/programming/build-systems-and-package-managers/cmake/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+**cmake** 是用于构建应用的跨平台工具，常与 C 和 C++ 配合使用。该程序通过 CMakeLists.txt 文件配置，这些文件位于相应代码的源代码目录中。
+
+<Image src={import('./_assets/cmake-logo.webp')} width="400px">CMake 标志[^kitware-cmake-homepage]。</Image>
+
+cmake 的输出是标准的构建/工程文件（例如面向 GNU [make](/programming/makefiles/) 时的 Makefile）。随后使用标准构建命令运行这些构建文件，生成最终的二进制文件/可执行文件。
+
+## 子页面
+
+<ChildPages />
+
+## 语法快速概览
+
+cmake 与其他“语言”的一个不同之处是：它要求传入函数的所有变量按名称关联，而不是按顺序关联。
+
+## 常用生成器（构建系统）
+
+cmake 常用于为以下系统生成构建文件：
+
+- make
+- Apple 的 XCode
+- Eclipse
+- Microsoft Visual Studio
+- Ninja
+
+cmake 把将 cmake 代码转换为这些不同构建系统的模块称为**生成器（generators）**。
+
+## 设置变量
+
+在 cmake 中可以用 `set()` 函数创建并赋值变量，例如：
+
+```cmake
+set(SOURCES foo.cpp)
+```
+
+这会创建一个名为 `SOURCES` 的新变量。
+
+`set()` 也可用于创建列表变量。列表中的每个元素应以空格分隔。
+
+```cmake
+set(SOURCES foo1.cpp foo2.cpp)
+```
+
+`set()` 可以创建普通变量、缓存变量或环境变量。上述所有示例设置的都是普通变量（这是默认行为）。
+
+普通变量对其所在的 `CMakeLists.txt` 文件可见，也对其调用的所有内容（`add_subdirectory()`、`include()`、`macro()` 和 `function()`）可见。
+
+你也可以设置属性。
+
+## 添加子目录
+
+使用 `add_subdirectory()` 添加一个包含另一个 `CMakeLists.txt` 和需要构建的代码的目录。语法如下：
+
+```cmake    
+add_subdirectory(<folder_path>)
+```
+
+如果 `<folder_path>` 是相对路径，则相对于调用该函数的 `CMakeLists.txt` 文件。不过它也可以是绝对路径（这种情况下 `add_subdirectory()` 这个名称有点名不副实）。
+
+## 添加库
+
+可以用以下命令添加库：
+
+```cmake
+add_library(<name> [STATIC | SHARED | MODULE]
+[EXCLUDE_FROM_ALL]
+source1 [source2 ...])
+```
+
+例如，以下命令从源文件 `src.cpp` 创建名为 `my_library` 的静态库。
+
+```cmake    
+add_library(my_library STATIC src.cpp)
+```
+
+库名必须是项目中唯一的新名称。可以在 `add_library()` 之后使用 `target_link_libraries()` 指定这个新创建的库需要链接哪些其他库。
+
+## 链接库
+
+用 `add_library()` 添加库之后，还需要把它们链接起来。通常使用 `target_link_libraries()` 或 `link_libraries()` 来完成（更推荐前者）。
+
+`link_libraries()` 会让 `CMakeLists.txt` 中后续的所有目标都链接到该库。
+
+## 复制文件
+
+可以在构建过程中使用以下语法复制文件：
+
+```cmake
+file(COPY files... DESTINATION <dir>)
+```
+
+可以指定 glob 或正则表达式模式，只复制特定文件。下面的示例只复制头文件（`.h`）：
+
+```cmake
+file(COPY src/ DESTINATION include/myproj
+FILES_MATCHING PATTERN "*.h")
+```
+
+## 添加预处理器定义
+
+可以使用以下 cmake 命令添加预处理器定义：
+
+```cmake
+add_definitions(-DMY_DEF_1 -DMY_DEF_2)
+```
+
+`add_definitions` 命令实际上可以添加任意编译器标志，但它只适用于添加定义（以 `-D` 开头的标志）。
+
+该命令会把标志添加到当前目录及以下目录中的所有源文件。
+
+## add_custom_target()
+
+自定义目标总是会被构建。由于没有输出文件，它们被视为始终过期，因此总会被重新构建。
+
+## add_custom_command()
+
+`add_custom_command()` 用于根据一条或多条命令行 COMMAND 指定如何生成定义的 OUTPUT 文件。
+
+`add_custom_target()` 常与 `add_custom_command()` 同时使用。
+
+`.stamp` 文件扩展名常用于创建空占位文件，作为 `add_custom_command()` 的 `OUTPUT`。随后这些文件可以作为其他构建目标的依赖项。
+
+## 缓存
+
+cmake 会创建一个名为 `CMakeCache.txt` 的全局缓存，位于构建文件夹的根目录。
+
+缓存可用于创建和存储具有全局、持久作用域的变量。这意味着项目中的任何 `CMakeLists.txt` 文件都可以读取/设置它们，并且它们在多次 cmake 调用之间保留之前的值。
+
+## 数学运算
+
+可以在 `CMakeLists.txt` 文件中通过 `math()` 函数进行基础数学运算（加法、减法等）。例如，要递增计数器，可以使用以下语法：
+
+```cmake
+math(EXPR count "${count} + 1")
+```
+
+`EXPR` 用于告诉 cmake 你希望求值该表达式。它目前是唯一支持的数学操作。
+
+## 添加 .cmake 文件
+
+可以使用 `include()` 函数把 .cmake 文件代码包含到 `CMakeLists.txt` 文件中。cmake 会扫描 `CMAKE_MODULE_PATH` 来查找 `.cmake` 文件。
+
+## 运行 cmake
+
+这完全取决于你要构建的源代码结构，但通常遵循与下面示例类似的做法。
+
+```bash
+$ mkdir build
+$ cd build/
+$ cmake ..
+$ make
+```
+
+这当然假设采用源外构建（out-of-source build）方式（推荐做法！）。[OpenCV](https://opencv.org/) 就使用这种标准构建方式。
+
+## 运行特定于操作系统的代码
+
+在 CMake 中可以使用 `if(CMAKE_HOST_WIN32)` 和 `if(WIN32)` 表达式运行特定于操作系统的代码。如果运行 cmake 的机器是 Windows，`CMAKE_HOST_WIN32` 为真。如果你是为 Windows 编译，`WIN32` 为真（在 Windows 上为其他架构交叉编译时，`CMAKE_HOST_WIN32` 可能为真而 `WIN32` 为假）[^stack-overflow-platform-detection-in-cmake]。
+
+```cmake title="CMakeLists.txt"
+if(CMAKE_HOST_WIN32)
+    message(STATUS "Running on Windows.")
+else()
+    message(STATUS "Not running on Windows.")
+endif()
+
+if(WIN32)
+    message(STATUS "Compiling for Windows.")
+else()
+    message(STATUS "Not compiling for Windows.")
+endif()
+```
+
+当需要运行特定于操作系统的 shell 命令时（例如使用 `add_custom_command()` 函数时），这会很有用。
+
+<Aside type="tip">
+应尽量让 CMake 代码与操作系统无关（大多数人会期望 CMake 项目能在多个操作系统上构建）。只有在绝对必要时才使用特定于操作系统的代码。
+</Aside>
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^kitware-cmake-homepage]: Kitware。_CMake Homepage_。检索于 2024-10-17，来自 https://cmake.org/。
+[^stack-overflow-platform-detection-in-cmake]: StackOverflow。_Platform detection in CMake_ [论坛帖子]。检索于 2024-10-17，来自 https://stackoverflow.com/questions/9742003/platform-detection-in-cmake。

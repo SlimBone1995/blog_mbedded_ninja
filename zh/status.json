@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-11T08:18:00.316Z",
+  "generatedAt": "2026-11-11T09:09:36.720Z",
   "counts": {
-    "current": 95,
+    "current": 109,
     "stale": 0,
-    "missing": 1080,
+    "missing": 1066,
     "orphan": 0
   },
   "current": [
@@ -252,6 +252,14 @@
       "source": "pcb-design/testpoints/index.mdx"
     },
     {
+      "zh": "programming/bootloaders/index.zh.mdx",
+      "source": "programming/bootloaders/index.mdx"
+    },
+    {
+      "zh": "programming/build-systems-and-package-managers/cmake/index.zh.mdx",
+      "source": "programming/build-systems-and-package-managers/cmake/index.mdx"
+    },
+    {
       "zh": "programming/compilers/gcc/gnu-linker-scripts/index.zh.mdx",
       "source": "programming/compilers/gcc/gnu-linker-scripts/index.mdx"
     },
@@ -262,6 +270,10 @@
     {
       "zh": "programming/languages/c/arrays/index.zh.mdx",
       "source": "programming/languages/c/arrays/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/assertions-assert/index.zh.mdx",
+      "source": "programming/languages/c/assertions-assert/index.mdx"
     },
     {
       "zh": "programming/languages/c/bit-fields-and-bit-manipulation-masking/index.zh.mdx",
@@ -288,12 +300,24 @@
       "source": "programming/languages/c/header-guards/index.mdx"
     },
     {
+      "zh": "programming/languages/c/non-local-jumps-setjmp-longjmp/index.zh.mdx",
+      "source": "programming/languages/c/non-local-jumps-setjmp-longjmp/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/object-orientated-c/index.zh.mdx",
+      "source": "programming/languages/c/object-orientated-c/index.mdx"
+    },
+    {
       "zh": "programming/languages/c/pointers/index.zh.mdx",
       "source": "programming/languages/c/pointers/index.mdx"
     },
     {
       "zh": "programming/languages/c/preprocessor/index.zh.mdx",
       "source": "programming/languages/c/preprocessor/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/string-manipulation-in-c/index.zh.mdx",
+      "source": "programming/languages/c/string-manipulation-in-c/index.mdx"
     },
     {
       "zh": "programming/languages/c/structures/index.zh.mdx",
@@ -308,6 +332,10 @@
       "source": "programming/languages/c/unions/index.mdx"
     },
     {
+      "zh": "programming/languages/c-plus-plus/callbacks/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/callbacks/index.mdx"
+    },
+    {
       "zh": "programming/languages/c-plus-plus/classes/index.zh.mdx",
       "source": "programming/languages/c-plus-plus/classes/index.mdx"
     },
@@ -318,6 +346,14 @@
     {
       "zh": "programming/languages/c-plus-plus/containers/index.zh.mdx",
       "source": "programming/languages/c-plus-plus/containers/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/cpp-on-embedded-systems/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/cpp-on-embedded-systems/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.mdx"
     },
     {
       "zh": "programming/languages/c-plus-plus/exceptions/index.zh.mdx",
@@ -332,12 +368,20 @@
       "source": "programming/languages/c-plus-plus/one-definition-rule-odr/index.mdx"
     },
     {
+      "zh": "programming/languages/c-plus-plus/qt/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/qt/index.mdx"
+    },
+    {
       "zh": "programming/languages/c-plus-plus/references/index.zh.mdx",
       "source": "programming/languages/c-plus-plus/references/index.mdx"
     },
     {
       "zh": "programming/languages/c-plus-plus/smart-pointers/index.zh.mdx",
       "source": "programming/languages/c-plus-plus/smart-pointers/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/threading/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/threading/index.mdx"
     },
     {
       "zh": "programming/languages/c-plus-plus/virtual-methods/index.zh.mdx",
@@ -364,6 +408,10 @@
       "source": "programming/operating-systems/freertos/the-idle-task/index.mdx"
     },
     {
+      "zh": "programming/operating-systems/zephyr/bluetooth/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/bluetooth/index.mdx"
+    },
+    {
       "zh": "programming/operating-systems/zephyr/cpp/index.zh.mdx",
       "source": "programming/operating-systems/zephyr/cpp/index.mdx"
     },
@@ -380,12 +428,20 @@
       "source": "programming/operating-systems/zephyr/index.mdx"
     },
     {
+      "zh": "programming/operating-systems/zephyr/installation/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/installation/index.mdx"
+    },
+    {
       "zh": "programming/operating-systems/zephyr/logging/index.zh.mdx",
       "source": "programming/operating-systems/zephyr/logging/index.mdx"
     },
     {
       "zh": "programming/operating-systems/zephyr/shell/index.zh.mdx",
       "source": "programming/operating-systems/zephyr/shell/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/state-machine-framework/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/state-machine-framework/index.mdx"
     }
   ],
   "stale": [],
@@ -946,7 +1002,6 @@
     "programming/artificial-intelligence/the-sigmoid-function/index.mdx",
     "programming/artificial-intelligence/understanding-logistic-regression/index.mdx",
     "programming/bootloaders/das-u-boot/index.mdx",
-    "programming/bootloaders/index.mdx",
     "programming/build-systems-and-package-managers/a-c-cpp-build-system-package-manager-comparison/index.mdx",
     "programming/build-systems-and-package-managers/buck/index.mdx",
     "programming/build-systems-and-package-managers/buckaroo/index.mdx",
@@ -956,7 +1011,6 @@
     "programming/build-systems-and-package-managers/cmake/how-to-automatically-run-unit-tests-using-cmake/index.mdx",
     "programming/build-systems-and-package-managers/cmake/how-to-install-your-program-using-cmake/index.mdx",
     "programming/build-systems-and-package-managers/cmake/how-to-make-your-library-support-find_package/index.mdx",
-    "programming/build-systems-and-package-managers/cmake/index.mdx",
     "programming/build-systems-and-package-managers/conan/index.mdx",
     "programming/build-systems-and-package-managers/gradle/index.mdx",
     "programming/build-systems-and-package-managers/index.mdx",
@@ -1071,11 +1125,8 @@
     "programming/languages/c-plus-plus/a-brief-history-of-cpp/index.mdx",
     "programming/languages/c-plus-plus/auto-specifier/index.mdx",
     "programming/languages/c-plus-plus/boost-libraries/index.mdx",
-    "programming/languages/c-plus-plus/callbacks/index.mdx",
     "programming/languages/c-plus-plus/clocks-and-timing/index.mdx",
     "programming/languages/c-plus-plus/code-checkers/index.mdx",
-    "programming/languages/c-plus-plus/cpp-on-embedded-systems/index.mdx",
-    "programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.mdx",
     "programming/languages/c-plus-plus/google-benchmark/index.mdx",
     "programming/languages/c-plus-plus/index.mdx",
     "programming/languages/c-plus-plus/inheritance/index.mdx",
@@ -1084,11 +1135,9 @@
     "programming/languages/c-plus-plus/magic-statics/index.mdx",
     "programming/languages/c-plus-plus/openmp-tutorial/index.mdx",
     "programming/languages/c-plus-plus/operator-overloading/index.mdx",
-    "programming/languages/c-plus-plus/qt/index.mdx",
     "programming/languages/c-plus-plus/special-casts/index.mdx",
     "programming/languages/c-plus-plus/streams/index.mdx",
     "programming/languages/c-plus-plus/strings/index.mdx",
-    "programming/languages/c-plus-plus/threading/index.mdx",
     "programming/languages/c-plus-plus/type-conversion/index.mdx",
     "programming/languages/c-plus-plus/unit-testing-and-mocking/index.mdx",
     "programming/languages/c-plus-plus/warning-and-error-message-help/index.mdx",
@@ -1105,7 +1154,6 @@
     "programming/languages/c-sharp/using-installsheild/index.mdx",
     "programming/languages/c-sharp/windows-office-application-interface/index.mdx",
     "programming/languages/c/arithmetic-operators/index.mdx",
-    "programming/languages/c/assertions-assert/index.mdx",
     "programming/languages/c/bss-section/index.mdx",
     "programming/languages/c/c-naming-conventions/index.mdx",
     "programming/languages/c/c-related-file-extensions/index.mdx",
@@ -1120,13 +1168,10 @@
     "programming/languages/c/linux-bash-commands-for-c/index.mdx",
     "programming/languages/c/local-jumps-goto/index.mdx",
     "programming/languages/c/logical-operators/index.mdx",
-    "programming/languages/c/non-local-jumps-setjmp-longjmp/index.mdx",
-    "programming/languages/c/object-orientated-c/index.mdx",
     "programming/languages/c/processing-command-line-input/index.mdx",
     "programming/languages/c/reading-user-input/index.mdx",
     "programming/languages/c/reducing-code-execution-time/index.mdx",
     "programming/languages/c/standards-and-versions/index.mdx",
-    "programming/languages/c/string-manipulation-in-c/index.mdx",
     "programming/languages/c/system-calls/index.mdx",
     "programming/languages/c/the-confusing-differences-between-struct-and-typedef-struct/index.mdx",
     "programming/languages/c/variadic-functions/index.mdx",
@@ -1336,12 +1381,9 @@
     "programming/operating-systems/windows/windows-driver-development/index.mdx",
     "programming/operating-systems/windows/windows-subsystem-for-linux-wsl/index.mdx",
     "programming/operating-systems/zephyr/adding-a-custom-board/index.mdx",
-    "programming/operating-systems/zephyr/bluetooth/index.mdx",
-    "programming/operating-systems/zephyr/installation/index.mdx",
     "programming/operating-systems/zephyr/mcuboot/index.mdx",
     "programming/operating-systems/zephyr/nfc/index.mdx",
     "programming/operating-systems/zephyr/peripherals/index.mdx",
-    "programming/operating-systems/zephyr/state-machine-framework/index.mdx",
     "programming/programming-microcontrollers-an-overview/index.mdx",
     "programming/segger-j-link/index.mdx",
     "programming/serialization-formats/a-comparison-of-serialization-formats/index.mdx",

@@ -1,0 +1,436 @@
+---
+authors: [gbmhunter]
+date: 2016-02-04
+description: 如何用 C 编写面向对象（OO）风格的代码，包括封装、方法、构造函数、继承和多态，并以一个 GPIO 驱动示例说明如何让嵌入式代码易于测试。
+lastUpdated: 2026-07-06
+tags: [C, programming, object-orientated]
+title: 面向对象的 C
+type: page
+sourcePath: programming/languages/c/object-orientated-c/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:304c4ef78afa44f7f8d1c757ced99b1dd8cd90e5c5dc28546ababebd9eb53c0a
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/object-orientated-c/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+尽管 C 通常不被视为面向对象的语言，但它的灵活性确实允许编写**面向对象风格的代码**，只是语法比 C++ 这类“面向对象”语言略显冗长。为什么要这样做？原因有很多：
+
+- **组织性**：人类倾向于以对象及其交互来思考世界。用同样的风格编写代码可以更易于理解。它有助于把数据和操作这些数据的函数打包到同一批文件中，使其更易于维护。
+- **测试**：继承结合依赖注入可以让你编写更易于测试的代码（详见下文）。
+- **灵活性**：以面向对象风格编写代码，自然易于创建对象的多个实例；而在命令式语言中，如果依赖文件局部变量或全局变量，这就比较困难。
+- **清晰的数据所有权**：使用 OO 风格意味着你更可能把数据打包进 `structs`，而不太可能依赖定义在 `.c` 文件中任何函数之外的文件局部变量或全局变量。这是好事。文件局部或全局数据会让你更难理解调用函数时发生了什么，也更容易引入 bug，例如多个线程在未同步的情况下访问同一数据。当数据被打包进对象后，你就必须把对象传递给所有需要它的函数，从而让开发者清楚哪些数据在何处使用。
+
+面向对象代码是对多种不同编码思想的统称，包括：
+
+- _封装_（Encapsulation）。对象封装其所有数据与函数（在面向对象世界里称为方法）。
+- _抽象_（Abstraction）。对象的使用者只能看到并使用其公共接口，对其内部实现一无所知。
+- _多态_（Polymorphism）。
+- _继承_（Inheritance）。
+
+上述各点都能在 C 中实现，只是成功程度和简洁程度不一。你还会失去编译器强制的封装与抽象。
+
+## 定义基本对象
+
+在 C 中，可以用[_结构体_](/programming/languages/c/structures/)（`typedef struct`）表示“对象”。下面是一段 C 代码，定义了一个非常简单的对象，它只保存数据，不包含函数。可以把 C 中的 `struct` 看作专用 OO 语言中的 `class`。
+
+```c
+typedef struct {
+    double real;
+    double imag;
+} ComplexNum;
+```
+
+然后我们用下面的代码创建对象的实例：
+
+```c 
+int main(void) {
+    ComplexNum myComplexNum;
+    myComplexNum.real = 3.4;
+    myComplexNum.imag = 5.7;
+    return 0;
+}
+```
+
+注意，以上代码本身并不太面向对象，因为即使是非 OO 风格的 C 也会大量使用结构体。这正是方法（属于对象的函数）的用武之地。
+
+## 方法
+
+方法只是**属于对象的函数**的一个名称。所谓“属于”，是指该函数可以**操作数据**，或调用某个对象实例的其他方法。
+
+在更强的 OO 语言中，方法作为 _class_ 的一部分声明，指向当前对象实例的指针（关键字 `this`）会自动传入每个方法。C 中没有这种便利，因此我们必须把方法声明为普通函数，并显式传入指向对象实例的指针。为保持一致性，通常应把它作为第一个参数。这里我们简单地称它为 `obj`。
+
+```c
+double ComplexNum_GetMagnitude(ComplexNum const * obj) {
+    return sqrt(obj->real * obj->real + obj->imag * obj->imag);
+}
+```
+
+传入这个“方法”的第一个（本例中也是唯一一个）参数，是指向你要操作的 `ComplexNum` 对象实例的指针。**对象的所有非静态方法都会把它作为第一个参数。**
+
+<Aside type="caution">
+最好不要用变量名 `this` 来传入对象，因为它是 C++ 中的保留字。[^uni-of-missouri-cpp-reserved-words]
+</Aside>
+
+## 等等，构造函数呢？
+
+在 OO 世界里，构造函数是一种特殊方法，在创建对象新实例时自动运行。遗憾的是，在 C 中无法强制让某个方法在创建 `struct` 对象时运行（好吧，你可以把结构体的创建包装进一个[宏](/programming/languages/c/preprocessor/)，并同时调用一个方法）。
+
+实现类似构造函数行为的一种简单方法是创建一个 `Init()` 方法。
+
+```c
+void ComplexNum_Init(ComplexNum * obj) {
+    obj->real = 0.0;
+    obj->imag = 0.0;
+}
+```
+
+缺点是，每次创建新的 `ComplexNum` 对象时，我们都必须记得调用它。
+
+```c
+int main(void) {
+    ComplexNum myComplexNum;
+    // We have to remember to call the "constructor"
+    // If we forget, bad things could happen
+    ComplexNum_Init(&myComplexNum);
+    return 0;
+}
+```
+
+## 继承与多态
+
+继承是指能够定义一个新对象/类，它是现有对象/类的修改（扩展）版本。继承允许多态，即能够以相似的方式对待不同的对象。对嵌入式 C 而言，继承/多态的一个绝佳用例是让代码可测试。继承可用于把硬件相关的实现从你想在（比如）Linux 上测试的代码中抽象出来——Linux 无法访问 GPIO 和其他硬件外设（在真实硬件上，这些外设通过特殊的内存映射寄存器访问）。
+
+下图展示了示例 GPIO 驱动的基本继承结构。
+
+<Image src={import('./_assets/gpio-inheritance-diagram.svg')} width="600px">一张示意图，展示如何用继承把硬件相关的实现从你想在（比如）Linux 上测试的代码中抽象出来——Linux 无法访问 GPIO 和其他硬件外设（在真实硬件上通过特殊的内存映射寄存器访问）。</Image>
+
+下面的泳道图展示了真实应用和测试应用如何启动、创建相应的 GPIO 对象并将其传给模块。
+
+<Image src={import('./_assets/gpio-real-vs-testing-swimlane-diagram.svg')} width="700px">一张泳道图，展示真实硬件与测试环境之间的差异。</Image>
+
+注意，该模块不依赖任何一个子类，这意味着它既能在真实硬件上运行，也能在 Linux 测试环境中正常运行。嵌入式应用与测试应用使用不同的 `main()` 函数来构建。这样各自都能创建相应 GPIO 类的实例。这个 GPIO 实例随后被传给模块（这称为依赖注入）。传递时，你可以只传 `struct` 的 `.base` 部分，也可以把整个 `struct` 强制转换为基类类型（之所以可行，是因为 `.base` 部分是 `struct` 的第一个成员）。模块随后会调用 `get()` 和 `set()`；由于多态，这两个函数会根据实例是 `GpioReal` 还是 `GpioFake` 而调用不同的函数。
+
+我们首先在 `GpioBase.h` 中定义基“类”（因为用的是 C，所以是 `struct`）：
+
+```c title="GpioBase.h"
+#include <stdint.h>
+
+// Forward declaration
+typedef struct GpioBase GpioBase;
+
+struct GpioBase {
+    void (*set)(GpioBase *self, uint8_t value);
+    uint8_t (*get)(GpioBase *self);
+};
+
+void GpioBase_Init(GpioBase *self);
+```
+
+由于我们计划把它当作接口使用，实际上并不希望任何人创建 `GpioBase` 的实例（它存在的唯一目的就是被继承以创建子类）。因此，我们其实不需要为它定义构造函数，也不需要任何 `set()` 或 `get()` 方法。不过，为了在所有“类”之间保持一致，我确实创建了一个构造函数。但我确保了调用基类方法时会触发 [`assert()`](/programming/languages/c/assertions-assert/)。
+
+```c title="GpioBase.c"
+#include <assert.h>
+#include <stdio.h>
+
+#include "GpioBase.h"
+
+// Private function declarations
+void GpioBase_set(GpioBase *self, uint8_t value);
+uint8_t GpioBase_get(GpioBase *self);
+
+void GpioBase_Init(GpioBase *self) {
+    self->set = GpioBase_set;
+    self->get = GpioBase_get;
+}
+
+void GpioBase_set(GpioBase *self, uint8_t value) {
+    printf("GpioBase_set() called. This should never happen!\n");
+    assert(0);
+}
+
+uint8_t GpioBase_get(GpioBase *self) {
+    printf("GpioBase_get() called. This should never happen!\n");
+    assert(0);
+    return 0;
+}
+```
+
+然后我们可以在 `GpioReal.h` 中定义 `GpioReal` 类，它继承自 `GpioBase`：
+
+```c title="GpioReal.h"
+#include "GpioBase.h"
+
+typedef struct {
+    GpioBase base;
+    uint32_t pinNumber;
+} GpioReal;
+
+void GpioReal_Init(GpioReal *self, uint32_t pinNumber);
+```
+
+<Aside type="tip">
+基类在子类结构体中必须是有名字的成员（本例中名为 `base`）。这没问题，但意味着在调用基类方法时必须写 `self->base`。幸运的是，有一个编译器标志（`-fms-extensions`）可以把基结构体直接嵌入子结构体。详见下文。
+</Aside>
+
+注意我们给 `struct` 增加了一个新成员 `pinNumber`。这是必要的，因为该类在调用硬件相关的 GPIO 驱动函数时需要传入引脚号。我们还为该类声明了一个构造函数。
+
+然后我们可以在 `GpioReal.c` 中定义该类的方法：
+
+```c title="GpioReal.c"
+#include "GpioReal.h"
+
+void GpioReal_set(GpioBase *self, uint8_t value);
+uint8_t GpioReal_get(GpioBase *self);
+
+void GpioReal_Init(GpioReal *self, uint32_t pinNumber) {
+    // Initialize the base class
+    GpioBase_Init(&self->base);
+    // Override the set and get methods
+    self->base.set = GpioReal_set;
+    self->base.get = GpioReal_get;
+    // Initialize the pin number
+    self->pinNumber = pinNumber;
+}
+
+void GpioReal_set(GpioBase *self, uint8_t value) {
+    GpioReal *gpioReal = (GpioReal *)self;
+    printf("Real GPIO set() called. This is where you would make hardware calls.\n");
+    // gpio_set(gpioReal->pinNumber, value);
+}
+
+uint8_t GpioReal_get(GpioBase *self) {
+    GpioReal *gpioReal = (GpioReal *)self;
+    printf("Real GPIO get() called. This is where you would make hardware calls.\n");
+    // return gpio_get(gpioReal->pinNumber);
+    return 0;
+}
+```
+
+注意，在 `set()` 和 `get()` 方法中，我们做的第一件事就是把 `self` 指针从基类类型强制转换为子类类型。这样做是安全的，因为我们知道传入的 `self` 指针一定是子类类型（它必定是用该类的构造函数初始化的）。转换后我们就能访问子类成员，从而获取硬件相关数据，以便发出正确的 [HAL](/programming/languages/c-plus-plus/designing-a-hal-in-cpp/) 调用（或者直接操作寄存器，如果你够胆的话！）。
+
+举个更贴近实际的例子：假设你要为[Zephyr 框架/RTOS](/programming/operating-systems/zephyr/)编写一个 `GpioReal` 类。你很可能希望让 `GpioReal_Init()` 接收一个指向设备树中 Zephyr GPIO 设备的指针（`struct gpio_dt_spec`），并把它保存到 GpioReal 的 `struct` 中。然后你可以在 `set()` 方法中发出相应调用（`gpio_pin_set_dt(&self->gpioDtSpec, value)`），在 `get()` 方法中类似处理（`return gpio_pin_get_dt(&self->gpioDtSpec)`）。
+
+现在 `GpioReal` 类已完成，我们在 `GpioFake.h` 和 `GpioFake.c` 中编写 `GpioFake` 类。
+
+```c title="GpioFake.h"
+#include "GpioBase.h"
+
+typedef struct {
+    GpioBase base;
+    uint8_t state;
+    uint32_t numSetCalls;
+    uint32_t numGetCalls;
+} GpioFake;
+
+void GpioFake_Init(GpioFake *self);
+```
+
+注意，我们用一个新变量 `state` 扩展了该类，用来跟踪 GPIO 状态，因为我们没有硬件替我们做这件事。我们还增加了两个变量，用于跟踪 `set()` 和 `get()` 方法被调用的次数。
+
+下面是这些方法的实现：
+
+```c title="GpioFake.c"
+#include "GpioFake.h"
+
+void GpioFake_set(GpioBase *self, uint8_t value);
+uint8_t GpioFake_get(GpioBase *self);
+
+void GpioFake_Init(GpioFake *self) {
+    // Initialize the base class
+    GpioBase_Init(&self->base);
+    // Override the set and get methods
+    self->base.set = GpioFake_set;
+    self->base.get = GpioFake_get;
+    // Initialize the test state
+    self->state = 0;
+    self->numSetCalls = 0;
+    self->numGetCalls = 0;
+}
+
+void GpioFake_set(GpioBase *self, uint8_t value) {
+    GpioFake *gpioFake = (GpioFake *)self;
+    gpioFake->state = value;
+    gpioFake->numSetCalls++;
+    printf("Fake GPIO set() called. For testing, this is where you would keep track how many times the GPIO is set, when it was called, and what value.\n");
+}
+
+uint8_t GpioFake_get(GpioBase *self) {
+    GpioFake *gpioFake = (GpioFake *)self;
+    gpioFake->numGetCalls++;
+    printf("Fake GPIO get() called. This is where you would keep track how many times the GPIO is read, when, and you could fake return values.\n");
+    return gpioFake->state;
+}
+```
+
+我们的三个 `Gpio` 类就此完成！现在可以使用它们了。
+
+```c title="main.c"
+#include "GpioBase.h"
+#include "GpioFake.h"
+#include "GpioReal.h"
+
+// This function accepts either a GpioReal or a GpioFake!
+// This function does not depend on any specific GPIO nor hardware calls
+// (i.e. it could be in its own file and not import GpioReal.h or GpioFake.h)
+void functionWhichAcceptsAnyGpio(GpioBase *gpio) {
+    // Set the GPIO
+    gpio->set(gpio, 1);
+
+    // Read back the GPIO
+    gpio->get(gpio);
+}
+
+int main() {
+    // Create an instance of GpioReal. 13 is the pin number.
+    GpioReal gpioReal;
+    GpioReal_Init(&gpioReal, 13);
+    functionWhichAcceptsAnyGpio(&gpioReal.base);
+
+    // Create an instance of GpioFake
+    GpioFake gpioFake;
+    GpioFake_Init(&gpioFake);
+    functionWhichAcceptsAnyGpio(&gpioFake.base);
+
+    return 0;
+}
+```
+
+注意，`functionWhichAcceptsAnyGpio()` 接受并操作 `GpioBase` 接口。这个函数示例说明了如何编写既能在真实嵌入式硬件上、也能在 Linux 测试环境中运行的代码。该函数可以放在自己的文件里，而不导入 `GpioReal.h` 或 `GpioFake.h`。根据传入的子类不同，会调用不同的 `set()` 和 `get()` 方法（这就是多态）。
+
+运行该代码的输出如下：
+
+```bash
+gbmhunter@geoff-laptop:~/personal/c-inheritance-example/build$ ./c-inheritance-example 
+Real GPIO set() called. This is where you would make hardware calls.
+Real GPIO get() called. This is where you would make hardware calls.
+Fake GPIO set() called. For testing, this is where you would keep track how many times the GPIO is set, when it was called, and what value.
+Fake GPIO get() called. This is where you would keep track how many times the GPIO is read, when, and you could fake return values.
+```
+
+### 将基类嵌入子类
+
+如上所述，基类在子类结构体中必须是有名字的成员（本例中名为 `base`）。这没问题，但意味着在调用基类方法时必须写 `self->base`。
+
+如果你想绕开这一点，可以添加 `-fms-extensions` 编译器标志。GCC 和 Clang 都支持该标志（该标志代表“Microsoft extensions”，这种嵌入特性最早由微软实现——MSVC 开箱即支持）。这允许你这样写：
+
+```c
+typedef struct {
+    GpioBase; // NOTE: No name!
+    uint32_t pinNumber;
+} GpioReal;
+```
+
+要嵌入基类，只需写出类型，但不给它命名。使用 `-fms-extensions` 标志后，你就可以直接在子类实例上访问基类方法。注意，由于基类成员不再有名字，我们不能再写 `&self->base`——而是把子类指针强制转换为基类类型（这是合法的，因为基类是子结构体的第一个成员）：
+
+```c
+void GpioReal_Init(GpioReal *self, uint32_t pinNumber) {
+    GpioBase_Init((GpioBase *)self);
+    self->set = GpioReal_set; // No base prefix needed!
+    self->get = GpioReal_get; // No base prefix needed!
+    self->pinNumber = pinNumber;
+}
+```
+
+你可以在 GitHub 的 [gbmhunter/c-inheritance-example](https://github.com/gbmhunter/c-inheritance-example) 上看到这段代码的完整可运行示例。
+
+## 与命令式代码对接
+
+你也许乐在其中，把所有 C 代码都写成 OO 风格。但当你需要与用标准 C“命令式”风格编写的第三方代码（或以前写的代码）对接时，该怎么办？
+
+我将以 [PSoC 系列微控制器](/programming/microcontrollers/psoc/)为例。在 PSoC Creator IDE 中通过图形化原理图编辑器为微控制器新建 UART 时，PSoC 库会提供一组用于控制该 UART 的相关函数（例如，如果你将 UART 组件命名为 `CyUart1`，就会得到 `CyUart1_Start()`、`CyUart1_Read()` 等函数）。这些函数并非以 OO 风格编写。
+
+我提出的解决方案是：创建你自己的面向对象 UART 驱动，在命令式风格的 PSoC UART 函数与其余 OO 代码之间提供接口。
+
+下面是一个完整、可运行的示例：
+
+```c
+#include <stdio.h>
+#include <stdint.h>
+
+//========== MOCK CYPRESS API FOR UART ================//
+
+void CyUart1_Start(void) {
+    printf("CyUart1_Start() called.\r\n");
+}
+
+void CyUart1_Stop(void) {
+    printf("CyUart1_Stop() called.\r\n");
+}
+
+uint8_t CyUart1_Read(void) {
+    printf("CyUart1_Read() called.\r\n");
+    return 0;
+}
+
+void CyUart1_Write(uint8_t byte) {
+    printf("CyUart1_Write() called.\r\n");
+}
+
+//=============== OUR UART DRIVER ================//
+
+typedef struct {
+    void (* CyUart_Start)(void);
+    void (* CyUart_Stop)(void);
+    uint8_t (* CyUart_Read)(void);
+    void (* CyUart_Write)(uint8_t byte);
+} uart_t;
+
+void Uart_Init(uart_t * obj,
+    void (* CyUart_Start)(void),
+    void (* CyUart_Stop)(void),
+    uint8_t (* CyUart_Read)(void),
+    void (* CyUart_Write)(uint8_t byte)) {
+    
+    obj->CyUart_Start = CyUart_Start;
+    obj->CyUart_Stop = CyUart_Stop;
+    obj->CyUart_Read = CyUart_Read;
+    obj->CyUart_Write = CyUart_Write;
+            
+}
+
+void Uart_Start(uart_t * obj) {
+    obj->CyUart_Start();
+}
+
+void Uart_Stop(uart_t * obj) {
+    obj->CyUart_Stop();
+}
+
+uint8_t Uart_Read(uart_t * obj) {
+    return obj->CyUart_Read();
+}
+
+void Uart_Write(uart_t * obj, uint8_t byte) {
+    obj->CyUart_Write(byte);
+}
+
+#define GET_CY_UART_FUNCTIONS(prefix) \
+    prefix##_Start, \
+    prefix##_Stop, \
+    prefix##_Read, \
+    prefix##_Write
+
+//=============== MAIN PROGRAM ================//
+
+int main(void) {
+    
+    uart_t myUart;
+    
+    Uart_Init(&myUart, GET_CY_UART_FUNCTIONS(CyUart1));
+    
+    Uart_Start(&myUart);
+    uint8_t byte = Uart_Read(&myUart);
+    Uart_Write(&myUart, 0x2A);
+    Uart_Stop(&myUart);
+
+    return 0;
+}
+```
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^uni-of-missouri-cpp-reserved-words]: 密苏里大学圣路易斯分校。_C++ Reserved Words_ [网站]。检索于 2024-11-11，来自 https://www.umsl.edu/~lawtonb/224/oview2a.html。

@@ -1,0 +1,396 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: Zephyr 为嵌入式系统提供全面的蓝牙 API，主要由 Nordic Semiconductor 为其 nRF52、nRF53、nRF54 和 nRF91 MCU 系列贡献。本页介绍如何把 MCU 配置为蓝牙外设，以及如何使用 Nordic UART Service（NUS），包括蓝牙 NUS shell。
+lastUpdated: 2026-07-01
+tags: [programming, operating systems, Zephyr, Bluetooth, Bluetooth NUS, Nordic UART Service, Bluetooth NUS shell, shells, terminals, NinjaTerm]
+title: Zephyr 蓝牙
+type: page
+sourcePath: programming/operating-systems/zephyr/bluetooth/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:16c0d22b9983bf3829ed7c31c82e66b1b3f46885920180654b1e388a3af52cbb
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/bluetooth/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+自从把 Zephyr 作为 nRF52、nRF53、nRF54 和 nRF91 MCU 系列的官方平台以来，Nordic 为 Zephyr 中的[蓝牙（Bluetooth）](/electronics/communication-protocols/bluetooth/) API 做出了重大贡献。
+
+要在 Zephyr 项目中启用蓝牙，需要在 `prj.conf` 文件中通过 `CONFIG_BT=y` 启用蓝牙子系统。
+
+```python title="prj.conf"
+CONFIG_BT=y
+```
+
+## 角色
+
+### 外设
+
+大多数基于 Zephyr 的蓝牙应用会充当外设（peripheral）。外设是既进行广播又允许连接的蓝牙设备。通过设置 `CONFIG_BT_PERIPHERAL` 配置选项即可启用外设角色。
+
+```python title="prj.conf"
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_DEVICE_NAME="MY_DEVICE"
+CONFIG_BT_DEVICE_APPEARANCE=1280
+```
+
+设备外观（device appearance）是一个描述设备类型的分配编号。完整的分配编号列表见[此处](https://www.bluetooth.com/specifications/assigned-numbers/)。
+
+<Image src={import('./_assets/nrf52-showing-up-in-nrf-bluetooth-app.webp')} width="500px">把 nRF52 MCU 配置为蓝牙外设后，经扫描出现在 nRF 蓝牙手机应用中的截图。</Image>
+
+让蓝牙外设开始广播（并可连接）的最简 C 代码如下：
+
+```c title="main.c"
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/kernel.h>
+
+#define DEVICE_NAME     CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN (sizeof(DEVICE_NAME) - 1)
+
+static const struct bt_data ad[] = {
+    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+    BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+static const struct bt_data sd[] = {
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_SRV_VAL),
+};
+
+int main(void)
+{
+    int err;
+    err = bt_enable(NULL);
+    __ASSERT(err == 0, "Failed to enable bluetooth: %d\n", err);
+
+    err = bt_le_adv_start(BT_LE_ADV_CONN, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+    __ASSERT(err == 0, "Failed to start advertising: %d\n", err);
+
+    while (1) {
+        k_sleep(K_MSEC(1000));
+    }
+}
+```
+
+## Nordic UART Service
+
+Nordic UART Service（NUS）是一项允许通过蓝牙收发串行数据的服务。可以这样启用：
+
+```python title="prj.conf"
+CONFIG_BT=y
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_DEVICE_NAME="Nordic_UART_Service"
+CONFIG_BT_MAX_CONN=1
+CONFIG_BT_MAX_PAIRED=1
+
+# Enable the NUS service
+CONFIG_BT_NUS=y
+```
+
+下面的 C++ 代码展示了一个最简示例：把 MCU 配置为蓝牙外设并广播 Nordic UART Service。
+
+```cpp
+#include <bluetooth/services/nus.h>
+#include <zephyr/bluetooth/bluetooth.h>
+
+static void bt_receive_cb(
+    struct bt_conn *conn,
+    const uint8_t *const data,
+    uint16_t len)
+{
+    int err;
+    char addr[BT_ADDR_LE_STR_LEN] = {0};
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, ARRAY_SIZE(addr));
+
+    LOG_INF("Received data from: \"%s\".", addr);
+}
+
+static struct bt_nus_cb nus_cb = {
+    .received = bt_receive_cb,
+};
+
+static const struct bt_data ad[] = {
+    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+    BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+static const struct bt_data sd[] = {
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
+};
+
+int main(void)
+{
+    int err = bt_enable(NULL);
+    __ASSERT(err == 0, "bt_enable() failed with error %d.", err);
+
+    err = bt_nus_init(&nus_cb);
+    __ASSERT(err == 0, "bt_nus_init() failed with error %d.", err);
+
+    err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+    __ASSERT(err == 0, "bt_le_adv_start() failed with error %d.", err);
+
+    return 0;
+}
+
+```
+
+<Image src={import('./_assets/nordic-uart-service-showing-up-in-nrf-scanner-app.webp')} width="300px">MCU 广播 Nordic UART Service 后，在（Android 上的）nRF Scanner 应用中出现的截图。</Image>
+
+## 蓝牙 NUS shell
+
+Nordic 提供了一个示例项目，让你可以把蓝牙 NUS 服务配置为使用 [Zephyr shell](/programming/operating-systems/zephyr/shell/)。这样就能通过蓝牙收发 shell 命令并查看日志（就像基于标准串口的 shell 一样）。
+
+用下面所示的配置更新 `prj.conf` 文件。注意，大部分基础蓝牙配置与上面的基础蓝牙 NUS 示例相同，只是把 `CONFIG_BT_NUS=y` 换成 `CONFIG_SHELL_BT_NUS=y`。
+
+```python title="prj.conf"
+CONFIG_BT=y
+CONFIG_BT_PERIPHERAL=y
+CONFIG_BT_DEVICE_NAME="Nordic_UART_Service"
+CONFIG_BT_MAX_CONN=1
+CONFIG_BT_MAX_PAIRED=1
+
+# Enable the BT NUS shell
+CONFIG_SHELL_BT_NUS=y
+
+# Don't enable this unless you need to debug the NUS shell logic, and watch out for infinite loops (see below)!
+# CONFIG_SHELL_BT_NUS_LOG_LEVEL_DBG=y
+
+# Set the most verbose log level for any logs emitted across the Bluetooth NUS shell. Can also be _ERR, _WRN, _INF or _NONE.
+CONFIG_SHELL_BT_NUS_INIT_LOG_LEVEL_DBG=y
+```
+
+<Aside type="caution">
+有两个与 NUS shell 相关的日志级别需要注意：
+
+1. `CONFIG_SHELL_BT_NUS_LOG_LEVEL_XXX=y`：设置 `nrf/subsys/shell/shell_bt_nus.c` 中 shell 逻辑所输出日志的编译期最高详细级别。大多数情况下无需设置（保持默认即可）。
+1. `CONFIG_SHELL_BT_NUS_INIT_LOG_LEVEL_XXX=y`：设置整个蓝牙 NUS shell 所输出日志的最高详细级别。这很可能是更重要的日志级别。默认设置为 `LOG_MAX_LEVEL`。我在测试时发现，默认情况下蓝牙 NUS shell 只打印 `ERR` 级别的消息。
+
+如果你把 `CONFIG_SHELL_BT_NUS_INIT_LOG_LEVEL_XXX` 设为 `_NONE` 以外的值，我建议不要把 `CONFIG_SHELL_BT_NUS_LOG_LEVEL_XXX` 设为 `_NONE`。否则可能陷入无限循环：一条日志消息导致 shell 逻辑发出日志消息，又递归地导致另一条日志消息，如此反复。
+</Aside>
+
+虽然为了提高效率，你可能会考虑在发送大日志消息时增大 MTU，但我发现使用默认 MTU 也能正常工作，因为它被当作串行流处理（大日志消息会被拆分，并通过许多较小的蓝牙数据包发送）。
+
+### C++ 示例代码
+
+下面是在 C++ 项目中设置蓝牙 NUS shell 的示例。把以下内容添加到 `Bluetooth.hpp` 文件。
+
+<Aside type="note">
+注意，我们使用了单例模式，因为 NUS shell API 回调无法提供“用户数据”（或上下文指针）来保存指向类实例的指针（Zephyr 的部分回调 API 支持“用户数据”参数，但很遗憾 NUS shell 不支持）。因此需要一个 `Bluetooth` 类的静态实例，供这些 C 风格回调函数访问。
+</Aside>
+
+```cpp title="Bluetooth.hpp"
+#pragma once
+
+namespace my_firmware {
+
+class Bluetooth {
+
+public:
+    ~Bluetooth();
+
+    static Bluetooth& getInstance();
+
+    void startAdvertising();
+    void onConnect(struct bt_conn *conn, uint8_t err);
+    void onDisconnect(struct bt_conn *conn, uint8_t reason);
+    void onRecycled();
+
+private:
+    struct bt_conn* m_currentConn = nullptr;
+    Bluetooth();
+};
+
+} // namespace my_firmware
+```
+
+把以下内容添加到 `Bluetooth.cpp` 文件：
+
+```cpp title="Bluetooth.cpp"
+// 3rd party includes
+#include <bluetooth/services/nus.h>
+#include <shell/shell_bt_nus.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/hci.h>
+#include <zephyr/logging/log.h>
+
+// Local includes
+#include "Bluetooth.hpp"
+
+LOG_MODULE_REGISTER(Bluetooth, LOG_LEVEL_INF);
+
+namespace my_firmware {
+
+#define DEVICE_NAME CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN	(sizeof(DEVICE_NAME) - 1)
+
+static void bt_receive_cb(
+    struct bt_conn *conn,
+    const uint8_t *const data,
+    uint16_t len)
+{
+    int err;
+    char addr[BT_ADDR_LE_STR_LEN] = {0};
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, ARRAY_SIZE(addr));
+
+    LOG_INF("Received data from: \"%s\".", addr);
+}
+
+static struct bt_nus_cb nus_cb = {
+    .received = bt_receive_cb,
+};
+
+static const struct bt_data ad[] = {
+    BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
+    BT_DATA(BT_DATA_NAME_COMPLETE, DEVICE_NAME, DEVICE_NAME_LEN),
+};
+
+static const struct bt_data sd[] = {
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL),
+};
+
+static void connected(struct bt_conn *conn, uint8_t err)
+{
+    Bluetooth::getInstance().onConnect(conn, err);
+}
+
+static void disconnected(struct bt_conn *conn, uint8_t reason)
+{
+    Bluetooth::getInstance().onDisconnect(conn, reason);
+}
+
+static void recycled_cb(void)
+{
+	Bluetooth::getInstance().onRecycled();
+}
+
+BT_CONN_CB_DEFINE(conn_callbacks) = {
+    .connected        = connected,
+    .disconnected     = disconnected,
+    .recycled         = recycled_cb,
+};
+
+Bluetooth& Bluetooth::getInstance()
+{
+    static Bluetooth instance;
+    return instance;
+}
+
+Bluetooth::Bluetooth() 
+{
+    LOG_INF("Initialising Bluetooth...");
+    int err = bt_enable(NULL);
+    __ASSERT(err == 0, "bt_enable() failed with error %d.", err);
+
+    LOG_INF("Initialising the shell BT NUS service...");
+    err = shell_bt_nus_init();
+    __ASSERT(err == 0, "shell_bt_nus_init() failed with error %d.", err);
+
+    startAdvertising();
+}
+
+Bluetooth::~Bluetooth()
+{
+}
+
+void Bluetooth::startAdvertising()
+{
+    LOG_INF("Starting advertising...");
+    int err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2, ad, ARRAY_SIZE(ad), sd, ARRAY_SIZE(sd));
+    __ASSERT(err == 0, "bt_le_adv_start() failed with error %d.", err);
+}
+
+void Bluetooth::onConnect(struct bt_conn *conn, uint8_t err)
+{
+    char addr[BT_ADDR_LE_STR_LEN];
+
+    if (err) {
+        LOG_ERR("Connection failed, err 0x%02x %s", err, bt_hci_err_to_str(err));
+        return;
+    }
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+    LOG_INF("Connected to \"%s\".", addr);
+
+    m_currentConn = bt_conn_ref(conn);
+
+    // Enable the shell through the NUS service
+    shell_bt_nus_enable(conn);
+}
+
+void Bluetooth::onDisconnect(struct bt_conn *conn, uint8_t reason)
+{
+    char addr[BT_ADDR_LE_STR_LEN];
+
+    bt_addr_le_to_str(bt_conn_get_dst(conn), addr, sizeof(addr));
+
+    LOG_INF("Disconnected from \"%s\". Reason: 0x%02x (\"%s\").", addr, reason, bt_hci_err_to_str(reason));
+
+    if (m_currentConn) {
+        bt_conn_unref(m_currentConn);
+        m_currentConn = NULL;
+    }
+
+    shell_bt_nus_disable();
+}
+
+void Bluetooth::onRecycled()
+{
+    LOG_INF("Connection object available from previous conn. Disconnect is complete. Restarting advertising...");
+    startAdvertising();
+}
+
+} // namespace my_firmware
+```
+
+需要注意的几个关键函数：
+
+1. `shell_bt_nus_init()`：初始化蓝牙 NUS shell。在 `Bluetooth` 类的构造函数中调用。
+2. `shell_bt_nus_enable()`：启用蓝牙 NUS shell。在连接回调中调用。
+3. `shell_bt_nus_disable()`：禁用蓝牙 NUS shell。在断开连接回调中调用。
+
+然后在 `main.cpp` 文件中：
+
+```cpp title="main.cpp"
+#include <zephyr/kernel.h>
+
+// Local includes
+#include "Bluetooth.hpp"
+
+int main(void)
+{
+    // This will initialise the Bluetooth instance and start the advertising
+    my_firmware::Bluetooth::getInstance();
+
+    while (1) {
+        k_sleep(K_MSEC(1000));
+    }
+}
+```
+
+另一个示例项目见 [nrf-sdk GitHub 仓库](https://github.com/nrfconnect/sdk-nrf/tree/main/samples/bluetooth/shell_bt_nus)（名为 `shell_bt_nus`）。
+
+如果想从计算机连接这个蓝牙 NUS shell 外设，可以使用 [NinjaTerm](https://ninjaterm.mbedded.ninja/) 终端应用。它支持把[低功耗蓝牙（Bluetooth LE）](/electronics/communication-protocols/bluetooth/bluetooth-low-energy/)作为连接类型，并能自动检测和监听常见的蓝牙串行服务与特征 UUID，例如 Nordic UART Service（NUS）。
+
+<Image src={import('./_assets/bluetooth-nus-shell-message-screenshot-ninjaterm.webp')} width="900px">在 NinjaTerm 中通过蓝牙 NUS shell 接收日志消息和 shell 提示符的截图。</Image>
+
+与此外设通信的另一种方式是使用 Nordic 提供的桌面 Python 脚本，可在[此处](https://github.com/nrfconnect/sdk-nrf/blob/main/scripts/shell/bt_nus_shell.py)找到。
+
+## 更新 LE 连接间隔
+
+连接后，可以调用 `bt_conn_le_param_update()` 更新蓝牙连接间隔。如果你在不需要频繁收发数据时希望通过增大连接间隔来省电，这会很有用。
+
+```c
+struct bt_le_conn_param conn_param = { .interval_min = (708), .interval_max = (800), .latency = (0), .timeout = (400), };
+int rc = bt_conn_le_param_update(conn, &conn_param);
+__ASSERT_NO_MSG(rc == 0);
+```
+
+`conn` 是指向连接对象 `struct bt_conn` 的指针。这里假设你手头有它可传入！连接间隔以 1.25ms 为单位，因此上面的代码把连接间隔最小值设为 885ms、最大值设为 1000ms。默认的最小值和最大值分别为 15ms 和 30ms，因此这是一次显著的放慢，能为小型电池供电设备带来很好的省电效果。超时以 10ms 为单位，因此上面的代码把超时设为 4s。如果需要，可以使用辅助宏 `BT_LE_CONN_PARAM()` 创建 `struct bt_le_conn_param` 对象。
+
+如果你是蓝牙中心设备，这些设置会生效。如果你是外设，这些设置只是“建议”：它们被发送给中心设备，由中心设备决定是否接受。中心设备可能拒绝它们或选择其他值。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}

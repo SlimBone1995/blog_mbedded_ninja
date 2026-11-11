@@ -1,0 +1,563 @@
+---
+authors: [gbmhunter]
+date: 2024-12-02
+lastUpdated: 2026-07-06
+tags: [C++, programming, dynamic polymorphism, static polymorphism, concepts, templates, CRTP, firmware, GPIO, HAL, hardware abstraction layer]
+title: 在 C++ 中设计 HAL
+type: page
+sourcePath: programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:8231079dffb1b639f2cd90244b4ca41ebb2dfb40b265b994302b6508659c5ff3
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/designing-a-hal-in-cpp/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+正在[为嵌入式系统使用 C++](/programming/languages/c-plus-plus/cpp-on-embedded-systems/)？很好！某个时候你可能会发现需要在硬件外设之上实现（或想要实现）一个硬件抽象层（HAL）（例如，对不熟悉的人来说，HAL 通常包含 GPIO 驱动、UART 驱动等）。为什么？也许你的 MCU 厂商没有提供（尽管如今这很少见），也许现有的 HAL 不好用（不幸的是这并不少见），也许它不容易提供[为测试而 mock](/programming/languages/c-plus-plus/unit-testing-and-mocking/) 的能力（非常常见）。你对 HAL 应具备的能力可能有特定要求。厂商或框架提供的 HAL 层可能难以测试。
+
+目标：
+
+- 提供适当的抽象层次。
+- 必须易于 mock 并能在 Linux 上运行。
+- 必须易于支持不同的硬件平台。
+- 必须提供良好的开发者体验。
+- 必须易于理解。
+
+在考察用 C++ 实现 HAL 的不同方式时，我们将以一个简单的 GPIO HAL 驱动为例。我们主要关注如何编写 HAL，使固件既能在真实硬件上运行，也能在硬件被 mock 的 Linux 机器上运行。
+
+<Aside type="note">
+下文中的许多概念都可以在 GitHub 上的 [gbmhunter/designing-hal-in-cpp](https://github.com/gbmhunter/designing-hal-in-cpp) 找到可运行的示例。
+</Aside>
+
+## 替换 .cpp 文件
+
+搭建可 mock 的 HAL 最简单的方法之一，是在头文件中定义接口，然后根据是为真实硬件还是为测试构建，替换 `.cpp` 文件中的实现。例如，如果你使用 [CMake](/programming/build-systems-and-package-managers/cmake/)，真实硬件的 `CMakeLists.txt` 会包含与测试用的 `CMakeLists.txt` 不同的 `.cpp` 文件。
+
+这种方法在 C 中同样容易实现。
+
+如果你在头文件中定义函数（使用模板时无法避免），这种方法就不起作用。
+
+## 生成桩函数
+
+mock 硬件的一种方法是使用 [CppUMock](https://cpputest.github.io/mocking_manual.html)（适用于 C++）或 [CMock](https://www.throwtheswitch.org/cmock)（适用于 C）之类的库来生成 mock 函数。
+
+CppUMock 可以与本文描述的其他方法（如动态多态和静态多态）配合使用。在这些场景中，可以用 CppUMock 确认特定函数是否被调用，以及传入了什么参数。
+
+## 继承与虚函数
+
+[继承](/programming/languages/c-plus-plus/inheritance/)和[虚函数](/programming/languages/c-plus-plus/virtual-methods/)允许我们通过运行时多态来创建 HAL 的真实实现和 mock 实现。过程如下：
+
+1. 定义一个充当接口的基类，命名为 `GpioBase` 之类。为接口定义虚函数，例如 `void set(uint8_t value)` 和 `uint8_t get()`。
+1. 应用的通用部分会接收指向 `GpioBase` 对象的指针。
+1. 创建为特定平台实现该接口的派生类，例如 `GpioReal` 和 `GpioFake`。
+1. 在 `main()` 中为目标平台创建相应的派生类。
+1. 将它们作为 `GpioBase*` 传入应用的通用部分。
+
+<Aside type="tip">
+尽管实现继承和虚函数更适合 C++ 这类面向对象优先的语言，但在 C 中仍然可以做到。如果你想看 C 中的示例，请参阅[面向对象的 C 页面](/programming/languages/c/object-orientated-c/)。
+</Aside>
+
+我们先定义一个基类：
+
+```c++ title="GpioBase.hpp"
+class GpioBase {
+public:
+    virtual void set(uint8_t value) = 0;
+};
+```
+
+注意 `virtual` 和 `= 0` 的用法。`virtual` 表示我们可以在派生类中重写该方法，`= 0` 表示该方法必须在派生类中实现，即不存在默认实现。两者合在一起构成了所谓的抽象类——这种类本身不能被实例化，只能实例化派生类。
+
+<Aside type="note">
+为简洁起见，这些示例省略了常见的 `#include` 和其他样板代码。
+</Aside>
+
+现在为真实 GPIO 引脚创建一个派生类：
+
+```c++ title="GpioReal.hpp"
+#include <SomeHardwareDependency.h>
+#include "GpioBase.hpp"
+
+class GpioReal : public GpioBase {
+public:
+    void set(uint8_t value) override {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+        // realHardwareGpioSet(value);
+    }
+};
+```
+
+注意，在 `GpioReal` 中可以包含仅在为真实硬件构建时有效的头文件，并调用真正设置 GPIO 引脚的函数（你也可以在这里直接修改内存映射寄存器，随你便！）。
+
+再为假 GPIO 创建一个类似的派生类：
+
+```c++ title="GpioFake.hpp"
+#include "GpioBase.hpp"
+
+class GpioFake : public GpioBase {
+public:
+    void set(uint8_t value) override {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+};
+```
+
+在 `GpioFake` 中，我们不包含也不依赖任何硬件特定的头文件，也就是说，我们希望这段代码能在 Linux 上运行。我们可以像这里的示例那样让 `set()` 只打印，也可以增加一个计数器来确认 `set()` 确实被调用过（你可以把 `counter` 作为 `GpioFake` 的成员变量）。
+
+现在我们可以编写一个不关心使用的是真实还是假 GPIO 的应用类。为此，让它接收 `GpioBase` 对象的引用，而不是任何具体实现。注意，这意味着它只能调用 `GpioBase` 中定义的方法，但这正是我们想要的，因为接口就定义在那里。
+
+```c++ title="App.hpp"
+#include "GpioBase.hpp"
+
+class App {
+public:
+    App(GpioBase &gpio) : gpio(gpio) {}
+
+    void run() {
+        gpio.set(1);
+    }
+
+private:
+    GpioBase& gpio;
+};
+```
+
+我们简陋的 `App` 类只是把 GPIO 引脚置高，但这已足以演示该概念。
+
+我们可以用下面的 `main()` 函数把这一切串起来：
+
+```c++ title="main.cpp"
+#include "App.hpp"
+#include "GpioFake.hpp"
+#include "GpioReal.hpp"
+
+int main() {
+    // If we were in the real main()
+    {
+        GpioReal realGpio;
+        App app(realGpio);
+        app.run();
+    }
+
+    // If we were in the test main()
+    {
+        GpioFake fakeGpio;
+        App app(fakeGpio);
+        app.run();
+    }
+
+    return 0;
+}
+```
+
+输出如下：
+
+```
+virtual void GpioReal::set(uint8_t)() called with value: 1
+virtual void GpioFake::set(uint8_t)() called with value: 1
+```
+
+对于任何规模较大的实际项目，把许多 GPIO 对象（以及 ADC、DAC、定时器等所有其他 HAL 对象）作为单独参数传给 App 会非常繁琐。我们可以改为创建一个包装所有这些对象的 `Hal` 对象，只把一个 `Hal` 对象传给 App。
+
+```c++ title="Hal.hpp"
+class Hal {
+public:
+    GpioBase* gpio1;
+    GpioBase* gpio2;
+    GpioBase* gpio3;
+    GpioBase* gpio4;
+    GpioBase* gpio5;
+
+    Hal() : gpio1(nullptr), gpio2(nullptr), gpio3(nullptr), gpio4(nullptr), gpio5(nullptr) {}
+};
+```
+
+然后在 `main()` 中，我们可以创建一个 `Hal` 对象，用目标平台相应的 GPIO 对象填充它，再传给 App（App 的构造函数现在接收 `Hal&` 而不是 `GpioBase&`）：
+
+```c++ title="main.cpp"
+#include "App.hpp"
+#include "GpioReal.hpp"
+#include "Hal.hpp"
+
+int main() {
+    GpioReal gpio1;
+    GpioReal gpio2;
+    // ...and so on for the other GPIOs
+
+    Hal hal;
+    hal.gpio1 = &gpio1;
+    hal.gpio2 = &gpio2;
+    // ...and so on for the other GPIOs
+
+    App app(hal);
+    app.run();
+
+    return 0;
+}
+```
+
+## 通过模板实现静态多态
+
+运行时多态的缺点之一是可能带来额外的 CPU 开销，原因有两个：
+
+1. 编译器需要在运行时查找要调用的正确虚函数，它通过 `vtable` 来完成。其代价基本上是一级间接寻址。
+1. 由于这种间接寻址，编译器无法优化对该方法的调用。这可能比单级间接寻址更严重，因为编译器无法内联调用或进行其他优化。
+
+静态多态旨在编译期而非运行时完成查找。它有时被称为_早期绑定_。[^medium-using-crtp-and-cpp20-concepts-for-static-polymorphism] 实现方式之一是使用模板和 CRTP（奇异递归模板模式，Curiously Recurring Template Pattern）。
+
+我们先定义一个基类：
+
+```c++ title="templates/GpioBase.hpp"
+namespace templates {
+
+template <typename T>
+class GpioBase {
+public:
+    void set(uint8_t value) {
+        // This is where the magic happens
+        // NOTE Intellisense will not be able to give you any help on what properties the class T has,
+        // this is one of the disadvantages of template polymorphism.
+        static_cast<T*>(this)->set(value);
+    }
+};
+
+} // namespace templates
+```
+
+现在为真实 GPIO 创建一个派生类：
+
+```c++ title="templates/GpioReal.hpp"
+#pragma once
+
+#include <cstdio>
+
+#include "GpioBase.hpp"
+
+namespace templates {
+
+// We inherit from ourselves (sort of!). This is called CRTP (Curiously Recurring Template Pattern).
+class GpioReal : public GpioBase<GpioReal> {
+public:
+    void set(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+};
+
+} // namespace templates
+```
+
+<Aside type="note">
+注意，派生类定义了一个与基类同名的函数——派生的 `set()` _遮蔽_ 了基类方法，因此基类中的 `static_cast<T*>(this)->set(value);` 调用会解析到派生实现。但要小心：如果在派生类中忘记实现 `set()`，基类方法就会调用自身，导致无限递归。这很可能耗尽栈空间，并可能引发段错误。避免这一陷阱的一种方法是给派生类中的函数起不同的名字（例如 `set_impl()`），如下面的 concept 示例所示。
+</Aside>
+
+再为假 GPIO 创建一个类似的派生类：
+
+```c++ title="templates/GpioFake.hpp"
+#include "GpioBase.hpp"
+
+namespace templates {
+
+class GpioFake : public GpioBase<GpioFake> {
+public:
+    void set(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+};
+
+} // namespace templates
+```
+
+下面的 `main()` 函数可以演示这一点。类模板实参推导（CTAD）需要 C++17 或更高版本。
+
+```c++ title="templates/main.cpp"
+#include <cstdio>
+
+#include "templates/App.hpp"
+#include "templates/GpioFake.hpp"
+#include "templates/GpioReal.hpp"
+
+namespace tpl = templates;
+
+int main() {
+    // If we were in the real main()
+    {
+        tpl::GpioReal realGpio;
+        tpl::App app(realGpio); // Template parameter deduction, no <GpioReal> needed!
+        app.run();
+    }
+
+    // If we were in the test main()
+    {
+        tpl::GpioFake fakeGpio;
+        tpl::App app(fakeGpio);
+        app.run();
+    }
+
+    return 0;
+}
+```
+
+输出如下：
+
+```
+void templates::GpioReal::set(uint8_t)() called with value: 1
+void templates::GpioFake::set(uint8_t)() called with value: 1
+```
+
+注意，我们获得了与虚函数相同的多态能力，但这些操作在编译期完成，不应有额外的运行时开销。
+
+由于把 `this` 转换为指向 `T` 的指针在大型基类中会非常常见，我们可以添加一个名为 `self()` 的辅助方法来简化操作（我是在 Stack Overflow 上看到这个想法的）：[^stackoverflow-confusion-around-crtp-static-polymorphism]
+
+```c++
+template <typename T>
+class GpioBase {
+public:
+    T& self() { return static_cast<T&>(*this); }
+
+    void set(uint8_t value) {
+        // This is where the magic happens
+        // NOTE Intellisense will not be able to give you any help on what properties the class T has,
+        // this is one of the disadvantages of template polymorphism.
+        self().set(value);
+    }
+};
+```
+
+## C++ 概念（Concepts）
+
+C++ 概念（concept）让我们能够扩展使用模板实现静态多态的思路。它可以强制派生类实现所需的方法，就像 `virtual my_func() = 0` 对动态多态所做的那样。
+
+在没有概念的情况下，上面的模板示例中编译器唯一能强制的是：派生类有一个 `set()` 方法，并且可以向它传入 `uint8_t`。如果你恰好把派生函数定义为 `void set(int32_t value)`，它仍然能正常工作。同样，如果你添加返回值并将其定义为 `bool set(int32_t value)`，它也会欣然接受。你开始能看出，对派生类 API 的约束是多么宽松。概念可以帮助收紧这一点！
+
+[Roger Booth](https://medium.com/@rogerbooth/using-the-crtp-and-c-20-concepts-to-enforce-contracts-for-static-polymorphism-a27d93111a75) 展示了一种将概念与继承结合使用以提供更好编译器错误的方法。然而，即使你已经在概念中定义了函数，也必须在基类中定义它们，并且还必须在派生类中定义。[^medium-using-crtp-and-cpp20-concepts-for-static-polymorphism] Thomas Sedlmair 展示了一种不涉及继承的方法，也避开了在基类中定义函数的麻烦。[^coding-with-thomas-crtp-and-concepts] 下面我们将比较这两种方法。
+
+### 带继承的 concept
+
+先来编写 `GpioBase` 类。
+
+```c++ title="concepts/GpioBase.hpp"
+template <typename T>
+concept Gpio = requires(T t, uint8_t value) {
+    { t.set_impl(value) } -> std::same_as<void>;
+};
+
+// Empty base class, the concept will force the derived class to implement the set method
+template <typename T>
+class GpioBase {
+public:
+    GpioBase() {
+        // This static assertion will fail if the derived class does not both:
+        // 1. Implement the set_impl() method
+        // 2. Inherit from GpioBase
+        static_assert(Gpio<T> && std::derived_from<T, GpioBase>);
+    }
+
+    void set(uint8_t value) {
+        static_cast<T&>(*this).set_impl(value);
+    }
+};
+```
+
+上面代码中的 `concept` 部分是本例的关键。它用于强制派生类实现 `set_impl()` 方法，该方法接收 `uint8_t` 参数并且不返回任何内容（`void`）。然后，在 `GpioBase` 构造函数的 `static_assert` 中检查这个概念。
+
+<Aside type="note">
+我们不能以 `template <Gpio T>` 这种自然方式使用概念，因为编译器会抱怨类型不完整。因此，只能退而求其次，在 `GpioBase` 的构造函数中使用 `static_assert`。[^medium-using-crtp-and-cpp20-concepts-for-static-polymorphism]
+</Aside>
+
+现在定义派生类 `GpioReal` 和 `GpioFake`。首先是 `GpioReal`：
+
+```c++ title="GpioReal.hpp"
+#include "GpioBase.hpp"
+
+class GpioReal : public GpioBase<GpioReal> {
+public:
+    void set_impl(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+};
+```
+
+然后是 `GpioFake`：
+
+```c++ title="GpioFake.hpp"
+#include "GpioBase.hpp"
+
+class GpioFake : public GpioBase<GpioFake> {
+public:
+    void set_impl(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+};
+```
+
+以及一个不关心使用的是真实还是假 GPIO 的 `App` 类：
+
+```c++ title="App.hpp"
+#include "GpioBase.hpp"
+
+template <typename T>
+class App {
+public:
+    App(GpioBase<T>& gpio) : gpio(gpio) {}
+
+    void run() {
+        gpio.set(1);
+    }
+
+private:
+    GpioBase<T>& gpio;
+};
+```
+
+最后是一个 `main.cpp`，演示 `App` 类同时配合 `GpioReal` 和 `GpioFake` 使用：
+
+```c++ title="main.cpp"
+int main() {
+    // Real main()
+    {
+        GpioReal realGpio;
+        App app(realGpio);
+        app.run();
+    }
+
+    // Test main()
+    {
+        GpioFake fakeGpio;
+        App app(fakeGpio);
+        app.run();
+    }
+
+    return 0;
+}
+```
+
+运行 main 产生以下输出：
+
+```text
+void GpioReal::set_impl(uint8_t)() called with value: 1
+void GpioFake::set_impl(uint8_t)() called with value: 1
+```
+
+可在[这里](https://github.com/gbmhunter/designing-hal-in-cpp/tree/main/src/concepts-inheritance)查看可运行的示例。
+
+### 不带继承的 concept
+
+现在我们再次使用概念，但这次不涉及继承。
+
+```c++ title="concepts/GpioBase.hpp"
+template <typename T>
+concept Gpio = requires(T t, uint8_t value) {
+    t.set(value);
+};
+
+// Empty base class, the concept will force the derived class to implement the set method
+template <Gpio T>
+class GpioBase : public T {};
+```
+
+然后定义一个真实的派生类：
+
+```c++ title="concepts/GpioReal.hpp"
+#include "GpioBase.hpp"
+
+class GpioRealImpl {
+public:
+    void set(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+
+};
+
+// This alias is important so we don't have to use GpioBase<GpioRealImpl> everywhere, and it means this
+// concept will be checked even if it's not used anywhere.
+using GpioReal = GpioBase<GpioRealImpl>;
+```
+
+注意，类名末尾加了 `Impl`，因为我们最终不会在其他代码中使用该类，而是使用别名 `GpioReal`。
+
+再以类似方式定义假 GPIO：
+
+```c++ title="concepts/GpioFake.hpp"
+#include "GpioBase.hpp"
+
+class GpioFakeImpl {
+public:
+    void set(uint8_t value) {
+        printf("%s() called with value: %d\n", __PRETTY_FUNCTION__, value);
+    }
+
+};
+
+using GpioFake = GpioBase<GpioFakeImpl>;
+```
+
+我们的 `App.hpp` 可以与上面非概念模板示例中使用的完全相同：
+
+```c++ title="concepts/App.hpp"
+#include "GpioBase.hpp"
+
+template <typename T>
+class App {
+public:
+    App(GpioBase<T>& gpio) : gpio(gpio) {}
+
+    void run() {
+        gpio.set(1);
+    }
+
+private:
+    GpioBase<T>& gpio;
+};
+```
+
+我们的 `main.cpp` 看起来与其他示例非常相似：
+
+```c++ title="main.cpp"
+#include "GpioBase.hpp"
+#include "GpioReal.hpp"
+#include "GpioFake.hpp"
+#include "App.hpp"
+int main() {
+    // If we were in the real main()
+    {
+        GpioReal realGpio;
+        App app(realGpio);
+        app.run();
+    }
+
+    // If we were in the test main()
+    {
+        GpioFake fakeGpio;
+        App app(fakeGpio);
+        app.run();
+    }
+
+    return 0;
+}
+```
+
+## 总结
+
+我们考察了多种为嵌入式系统用 C++ 实现 HAL 的方式。通过继承和虚函数实现的动态多态感觉最自然、最易理解，但有 `vtable` 查找的运行时负担。这是否会成为你的 HAL 实现的顾虑，需要你来决定。
+
+我们可以通过模板和 CRTP 实现静态多态，从而消除虚函数的运行时开销。考虑到嵌入式系统上的 HAL 所有类型都在编译期已知，失去运行时多态并不是大问题。最大的缺点是代码写起来略显笨拙，而且你得不到 `virtual my_func() = 0` 所提供的“你忘记实现此方法”的自动编译期错误。
+
+C++ 概念在一定程度上改善了静态多态的开发者体验。
+
+一些其他语言（如 [Rust](/programming/languages/rust/)）默认使用编译期多态（由 Rust 的 Trait 和泛型提供）。在 Rust 中，编译期多态比在 C++ 中感觉更自然、更简洁（Rust 也通过 Trait 对象和 `dyn` 关键字提供动态多态）。[^matt-oswalt-polymorphism-in-rust]
+
+在现有 HAL 之上实现一个易于 mock 的 HAL（例如上述任何运行时多态或模板多态示例，前提是现有 HAL 不支持这种做法）会带来维护负担。在考虑是否值得这样做时，请记住这一点。如果你觉得不值得，那么替换 `.cpp` 文件的方法，或使用覆盖现有函数的方法，可能是最好的选择。
+
+## 延伸阅读
+
+[GuillaumeDua/cpp_legacy_inheritance_vs_std_variant.md](https://gist.github.com/GuillaumeDua/0239fda353264b67ddcb39b5d9a01105) 很好地概述了标准动态多态与通过 CRTP 实现的静态多态。它涵盖了基类的最佳实践，例如将构造函数设为私有、将基类设为派生类的 `friend`。它还介绍了使用 `std::variant` 和 `std::visit` 创建可容纳任何派生类型的容器。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^medium-using-crtp-and-cpp20-concepts-for-static-polymorphism]: Roger Booth（2024 年 2 月 2 日）。_Using the CRTP and C++20 Concepts to Enforce Contracts for Static Polymorphism_ [博客文章]。Medium。检索于 2024-12-03，来自 https://medium.com/@rogerbooth/using-the-crtp-and-c-20-concepts-to-enforce-contracts-for-static-polymorphism-a27d93111a75。
+[^coding-with-thomas-crtp-and-concepts]: Thomas Sedlmair（2024 年 9 月 24 日）。_[C++] Static, Dynamic Polymorphism, CRTP and C++20’s Concepts_ [博客文章]。Coding with Thomas。检索于 2024-12-03，来自 https://www.codingwiththomas.com/blog/c-static-dynamic-polymorphism-crtp-and-c20s-concepts。
+[^stackoverflow-confusion-around-crtp-static-polymorphism]: Stack Overflow（2021 年 1 月 11 日）。_Confusion about CRTP static polymorphism_ [论坛帖子]。检索于 2024-12-04，来自 https://stackoverflow.com/questions/43821541/confusion-about-crtp-static-polymorphism。
+[^matt-oswalt-polymorphism-in-rust]: Matt Oswalt（2021 年 6 月 22 日）。_Polymorphism in Rust_ [博客文章]。检索于 2024-12-04，来自 https://oswalt.dev/2021/06/polymorphism-in-rust/。

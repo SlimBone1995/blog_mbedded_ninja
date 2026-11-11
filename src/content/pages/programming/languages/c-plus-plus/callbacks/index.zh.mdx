@@ -1,0 +1,704 @@
+---
+authors: [gbmhunter]
+date: 2014-01-17
+description: 如何处理 C++ 中棘手的回调问题（包括如何把成员函数提供给 C 风格回调），尤其是在嵌入式环境中。
+image: ./_assets/cpp-callbacks.png
+lastUpdated: 2026-07-05
+tags: [programming, languages, C++, callbacks, methods, functors, functions, Vlpp, libsigc++, signals, slots, callee, embedded, functional, "std::bind", bind]
+title: C++ 回调（以及把成员函数提供给 C 风格回调）
+type: page
+sourcePath: programming/languages/c-plus-plus/callbacks/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:c362562c5ca4347afe58f12794e833dbf35678b56175b4f5ce516eaabf6661f5
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/callbacks/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+回调（callback）是传递给其他函数（或模块、库等）、由后者自行决定何时调用的函数（更一般地说，是任何可调用对象）。它们有助于消除模块之间的依赖，例如库可以通过回调来调用你的应用代码。
+
+<Image src={import('./_assets/callback.png')} width="500px"/>
+
+C++ 是强类型的面向对象语言，因此处理回调比在 C（非面向对象）或 JavaScript/Python（面向对象但非强类型）中更棘手。当你想把非静态成员函数作为回调调用时，这种复杂性就出现了。隐式的 `this` 指针意味着仅有独立的函数指针是不够的，你还需要“捕获”要在其上调用成员函数的实例。成员函数的类型也特定于其所属的类，这意味着需要类型擦除才能不透明地调用任意成员函数。
+
+我们来探讨 C++ 中处理回调的不同方式，特别关注在[嵌入式系统](/programming/languages/c-plus-plus/cpp-on-embedded-systems/)中的使用。最后我们还会对不同的技术进行基准测试，看看它们运行得有多快。
+
+下文所有示例的可运行代码都可以在 [https://github.com/gbmhunter/blog-cpp-callbacks](https://github.com/gbmhunter/blog-cpp-callbacks) 找到。
+
+## 术语
+
+首先，澄清一些术语：
+
+<table>
+  <colgroup>
+    <col span="1" style={{ width: '100px' }}/>
+    <col span="1" style={{ width: '400px' }}/>
+  </colgroup>
+  <thead>
+    <tr>
+      <th>术语</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>被调用者</td>
+      <td>由调用者调用的函数/方法/对象。</td>
+    </tr>
+    <tr>
+      <td>调用者</td>
+      <td>接收回调函数并调用（执行）它的对象。</td>
+    </tr>
+    <tr>
+      <td>函数</td>
+      <td>不需要类实例即可运行的基本函数（例如标准 C 风格函数或静态成员函数）。</td>
+    </tr>
+    <tr>
+      <td>仿函数</td>
+      <td>在 C++ 和编程语境中，仿函数（又称函数对象）是可以像函数一样调用的对象。这种特性通过创建类并重载 `operator()` 实现。与普通函数不同，它可以携带状态。不要与范畴论中的 functor 概念混淆，那是完全不同的东西。[^wikipedia-functor]</td>
+    </tr>
+    <tr>
+      <td>方法</td>
+      <td>属于某个类的函数，需要类实例才能运行（即 `this` 指针）。也称为成员函数。</td>
+    </tr>
+    <tr>
+      <td>信号</td>
+      <td>事件/监听器系统中用于表示“事件”的术语。</td>
+    </tr>
+    <tr>
+      <td>槽</td>
+      <td>事件/监听器系统中用于表示监听信号对象的术语。它们通常用回调系统实现。</td>
+    </tr>
+  </tbody>
+</table>
+
+## 最原始的 C++ 回调：调用者知道被调用者的类型
+
+问题出现在你想把非静态方法（属于某个类、需要该类实例的函数）作为回调传给库的时候。方法是对象的成员函数。要调用方法，你不能只知道函数的内存地址并调用它，还必须知道该函数所属的对象（`this` 指针！）。
+
+这意味着，对于最原始形式的 C++ 方法回调，**调用者必须知道函数所属对象的类型**。例如：
+
+```c++ title="main.cpp"
+#include <cstdio>
+
+class MyClass {
+public:
+    // This is our application callback handler for when a message is received, we will
+    // pass this into the library which deals with message parsing
+    void onMsg(int num1, int num2) {
+        printf("onMsg() called with num1=%i, num2=%i\n", num1, num2);
+    }
+};
+
+class LibraryClass {
+public:
+    // For the library class to call the onMsg, it has to be passed both an instance
+    // of MyClass and a pointer to the member function to call
+    // Note that MyClass has to be known here! This creates undesired coupling...in
+    // reality your library should never have to know about MyClass
+    void passACallbackToMe(MyClass* myClass, void (MyClass::* onMsg)(int num1, int num2)) {
+        // Call the callback function
+        (myClass->*onMsg)(1, 2);
+    }
+};
+
+int main() {
+    MyClass myClass;
+    LibraryClass libraryClass;
+
+    // Provide the instance and function to call
+    libraryClass.passACallbackToMe(&myClass, &MyClass::onMsg);
+}
+```
+
+## 使用静态方法或非成员函数（C 风格）
+
+如果你不得不使用 C 风格回调，就没有直接办法调用非静态成员函数（即以 `this` 指针作为隐含第一个参数的函数）。不过，你可以轻松调用静态成员函数（它们的类型签名与 C 风格函数没有区别）：
+
+```c++ title="main.cpp"
+#include <cstdio>
+
+class MyClass {
+public:
+    // This is our application callback handler for when a message is received, we will
+    // pass this into the library which deals with message parsing
+    // The "static" keyword makes it easy, as now this function does not
+    // take a this pointer and has the same signature as a plain C function
+    static void onMsg(int num1, int num2) {
+        printf("onMsg() called with num1=%i, num2=%i\n", num1, num2);
+        // NOTE: Can't call any non-static method functions here!
+    }
+};
+
+class LibraryClass {
+public:
+    // Because the callback is now a plain function pointer, the library no longer
+    // needs to know anything about MyClass. The coupling problem from the previous
+    // example is gone
+    void passACallbackToMe(void (*onMsg)(int num1, int num2)) {
+        // Call the callback function
+        onMsg(1, 2);
+    }
+};
+
+int main() {
+    MyClass myClass;
+    LibraryClass libraryClass;
+
+    // Provide the static function to call (no instance needed)
+    libraryClass.passACallbackToMe(&MyClass::onMsg);
+}
+```
+
+注意，上述方法的主要限制是无法调用任何非静态成员函数。这限制了你用软件/固件架构实现“面向对象”的程度。
+
+## 通过标准 C 函数调用成员函数
+
+如前所述，如果你不得不使用 C 风格回调，就没有直接办法调用成员函数。不过，既然我们可以调用静态方法（如上所示），就可以利用共享变量（例如文件作用域变量）从该静态函数中调用特定实例。当你需要调用 C++ 类成员函数却只能提供 C 风格回调时，这差不多是最好的办法了。
+
+我们来看一个例子。这次使用标准 C 函数而不是静态成员函数，纯粹是为了说明两者可以互换：
+
+```c++
+#include <cstdio>
+
+class LibraryClass {
+public:
+    void passACallbackToMe(int (*callback)(int num1, int num2)) {
+        // Now invoke (call) the callback
+        int o = callback(1, 2);
+        printf("Value: %i\n", o); // We might be on an embedded system, use printf() and not std::cout
+    }
+};
+
+class MyClass {
+public:
+      int methodToCallback(int num1, int num2) {
+          return num1 + num2;
+      }
+};
+
+// Global pointer to an instance of our class so the C style callback
+// wrapper can invoke the callback on a particular instance (yuck!)
+MyClass * myClassPtr;
+int cStyleWrapper(int num1, int num2) {
+    return myClassPtr->methodToCallback(num1, num2);
+}
+
+int main()
+{
+    MyClass myClass;
+    // Make the global variable point to our new instance. Obviously, this
+    // way does not scale well, as you have to make global variable and C-style
+    // function for every instance (and what if you don't know how many instances you will
+    // need!?!)
+    myClassPtr = &myClass; 
+    
+    LibraryClass libraryClass;
+    libraryClass.passACallbackToMe(&cStyleWrapper);
+}
+```
+
+## 对成员函数和实例进行模板化
+
+如果你能控制接收回调的模块，一种可选方案是对传入的回调成员函数和实例进行模板化。例如：
+
+```c++
+#include <cstdio>
+
+template <typename T, typename U>
+class LibraryClass {
+public:
+    LibraryClass(T callback, U& instance) : callback(callback), instance(instance) {}
+
+    void run() {
+        // Take the instance and call its member function
+        (instance.*callback)(1, 2);
+    }
+private:
+    T callback;
+    U& instance;
+};
+
+class MyClass {
+public:
+    void methodToCallback(int num1, int num2) {
+        printf("methodToCallback() called with num1=%i, num2=%i\n", num1, num2);
+    }
+};
+
+int main() {
+    MyClass myClass;
+    LibraryClass libraryClass(&MyClass::methodToCallback, myClass);
+    libraryClass.run();
+}
+```
+
+`LibraryClass` 在两个参数上模板化：成员函数指针类型 `T` 和类的类型 `U`。构造 `LibraryClass` 对象时，编译器会自动推导它们。
+
+这种方法的优缺点如下：
+
+- 优点：不依赖 `std::function`、`std::bind` 或 lambda。
+- 优点：快——在下面的基准测试中，开启优化时性能与 `function_ref` 相当，关闭优化时则快得多。
+- 缺点：库类必须针对所有将用作回调的类类型和成员函数进行模板化。对于上面展示的基本示例问题不大，但若有几个不同的回调，很快就会失控（尤其是当你想调用不同用户类的成员函数时！）。
+- 缺点：不能把基本 C 函数用作回调，这种方法强制使用成员函数。`std::function` 和 `function_ref` 几乎支持任何“可调用”对象。
+
+## 使用继承的回调接口
+
+如果你能控制接收回调的模块，另一种方法是使用[继承](/programming/languages/c-plus-plus/inheritance/)——由一个接口类定义回调签名。例如：
+
+```c++
+#include <cstdio>
+
+/**
+ * This defines the interface of the "callbackable" class.
+ */
+class CallbackInterface {
+public:
+    virtual void methodToCallback(int num1, int num2) = 0;
+};
+
+class LibraryClass {
+public:
+    LibraryClass(CallbackInterface* callback) : callback(callback) {}
+    void run() {
+        // Call the callback function
+        callback->methodToCallback(1, 2);
+    }
+private:
+    CallbackInterface* callback;
+};
+
+/**
+ * Our class inherits from the interface.
+ */
+class MyClass : public CallbackInterface {
+public:
+    void methodToCallback(int num1, int num2) {
+        printf("methodToCallback() called with num1=%i, num2=%i\n", num1, num2);
+    }
+};
+
+int main() {
+    MyClass myClass;
+    LibraryClass libraryClass(&myClass);
+    libraryClass.run();
+}
+```
+
+`CallbackInterface` 是纯虚类，定义了回调接口。`LibraryClass` 接受指向该接口实例的指针，并调用 `methodToCallback` 方法。要创建回调，`MyClass` 继承 `CallbackInterface` 并实现 `methodToCallback` 方法。
+
+- 优点：易于理解和实现（可以说比“对成员函数和实例进行模板化”方法更易读）。
+- 优点：快！尽管存在[虚函数调用](/programming/languages/c-plus-plus/virtual-methods/)（即 vtable 查找），该方法在基准测试中仍胜过许多其他方法（见下文）。
+- 缺点：不能把基本 C 函数用作回调，这种方法强制使用成员函数。`std::function` 和 `function_ref` 几乎支持任何“可调用”对象。
+- 缺点：库类必须定义回调接口和回调方法的确切名称。这使你无法任意提供任何函数作为回调，是一种相当僵化的方法。
+- 缺点：对于多个回调，库有两种选择：要么在单个接口中定义所有回调，这会限制单个用户类实现所有回调；要么为每个回调定义新接口，这意味着若想让同一个类处理多个回调就需要多重继承。这两种方案都不理想。
+
+## 配合 std::bind 使用 std::function
+
+`std::function`（由 `<functional>` 头文件提供）是现代 C++ 中回调的常用类型。使用这种技术，你需要能够控制调用者，以便使用 `std::function` 类型（如果做不到，只能使用 C 风格回调类型，请参阅上面的章节）。从成员函数创建 `std::function` 对象主要有两种方式：一种是使用 `std::bind`，另一种是使用 lambda。我们先介绍 `std::bind` 技术。
+
+下面的代码示例展示了具体做法。回调类型不再是 `int (*callback)(int num1, int num2)`，而是改为 `std::function<int(int, int)>`。`<int(int, int)>` 定义了回调的类型签名，即一个接收两个 `int` 参数并返回 `int` 的函数。
+
+`std::bind` 用于把成员函数传给这个回调。注意其语法相当冗长，需要写成：`std::bind(<pointer-to-member-function>, <instance-of-class>, <input-1-placeholder>, <input-2-placeholder>)`。
+
+```c++
+#include <cstdio>
+#include <functional>
+
+class MyClass {
+public:
+    int methodToCallback(int num1, int num2) {
+        return num1 + num2;
+    }
+};
+
+void passACallbackToMe(std::function<int(int, int)> callback) {
+    int o = callback(1, 2);
+    printf("Value: %i\n", o);
+}
+
+int main()
+{
+    MyClass myClass;
+    passACallbackToMe(std::bind(&MyClass::methodToCallback, &myClass, std::placeholders::_1, std::placeholders::_2));
+}
+```
+
+尽管 `std::function` 很好，因为它几乎可以调用任何东西（静态函数、成员函数、lambda 等），但我并不太喜欢使用 `std::bind`，因为：
+
+- 创建 `std::function` 对象时似乎总是需要动态内存分配（调用时则不需要！）。
+- 调用速度非常慢（见下面的基准测试部分）。
+
+因此，我更倾向于将 lambda 与 `std::function` 配合使用（见下文）。
+
+## 配合 Lambda 使用 std::function
+
+除了使用 `std::bind` 把成员函数传给 `std::function`，另一种选择是改用 lambda。对于少量捕获变量（例如仅捕获 `this`），这种方法可能避免 `std::bind` 的动态内存分配。与 `std::bind` 类似，其缺点是必须在 lambda 定义中再次重复函数参数。
+
+下面的代码示例展示了具体做法：
+
+```c++
+#include <cstdio>
+#include <functional>
+
+class MyClass {
+public:
+    int methodToCallback(int num1, int num2) {
+        return num1 + num2;
+    }
+};
+
+void passACallbackToMe(std::function<int(int, int)> callback) {
+    int o = callback(1, 2);
+    printf("Value: %i\n", o);
+}
+
+int main()
+{
+    MyClass myClass;
+    
+    // Use a lambda to capture myClass and call the member method
+    passACallbackToMe([&myClass](int num1, int num2) -> int {
+        return myClass.methodToCallback(num1, num2);
+    });
+}
+```
+
+在我看来，这比上面的 `std::bind` 方法更易读。它执行起来也更快（见下面的基准测试部分），而且通常不需要动态内存分配（与 `std::bind` 不同）。但要注意，它仍然可能分配！这取决于捕获变量的数量。由于小缓冲区优化（SBO），如果你只捕获一两个东西（例如上面的例子只捕获 `myClass` 的引用），通常不会分配（请在你的架构上测试）。超过这个数量，就需要在堆上分配内存来保存捕获的变量。
+
+<Aside type="note">
+我还测试了 Naios/function2 库，它被设计为 `std::function` 的直接替代品。详情见下面的基准测试部分。
+</Aside>
+
+## 快得不可思议的委托
+
+Sergey Ryazanov 在 2005 年写过一篇小有名气的文章["The Impossibly Fast C++ Delegates"](https://www.codeproject.com/Articles/11015/The-Impossibly-Fast-C-Delegates)，描述了以无需任何动态内存分配的方式快速调用成员函数指针的代码。[^code-project-impossibly-fast-delegates] 2012 年，[Code Review Stack Exchange 上的一篇帖子](https://codereview.stackexchange.com/questions/14730/impossibly-fast-delegate-in-c11)将其代码现代化到 C++11。[^code-review-impossibly-fast-delegate-in-cpp11] 我们来看看这种方法与 `std::function` 相比如何！
+
+这里不贴库代码，因为它相当大；你可以从上面的链接或我为本篇文章创建的 [GitHub 仓库](https://github.com/gbmhunter/blog-cpp-callbacks/tree/main/impossibly-fast-delegates)获取。
+
+库的用法如下：
+
+```c++
+#include <cstdio>
+
+#include "ImpossiblyFastDelegates.hpp"
+
+class MyClass {
+public:
+    // This is our application callback handler for when a message is received, we will
+    // pass this into the library which deals with message parsing
+    int methodToCallback(int num1, int num2) {
+        printf("methodToCallback() called with num1=%i, num2=%i\n", num1, num2);
+        return num1 + num2;
+    }
+};
+
+class LibraryClass {
+public:
+    void passACallbackToMe(delegate<int(int, int)> callback) {
+        // Call the callback function
+        callback(1, 2);
+    }
+};
+
+int main() {
+    MyClass myClass;
+    LibraryClass libraryClass;
+
+    auto callback = delegate<int(int, int)>::from(&myClass, &MyClass::methodToCallback);
+
+    // Provide the instance and function to call
+    libraryClass.passACallbackToMe(callback);
+}
+```
+
+你会发现它与上面配合 `std::bind` 使用 `std::function` 的技术非常相似，只是不必为函数输入参数指定占位符！有趣的是，关闭优化时，这种方法比 `std::function` 技术更快；开启优化时，则与配合 lambda 的 `std::function` 技术速度大致相同。详情见下面的基准测试部分。
+
+## function_ref
+
+`function_ref` 是 `std::function` 的一种更快的替代方案，可避免动态内存分配。我用 `function_ref` 这个术语来指代一个概念，它有许多实现。第一个标准化版本将在 C++26 中进入标准库，但今天也有第三方实现可用（见下文）。
+
+`function_ref` 是一种非拥有型函数包装器。
+
+摘自 cppreference.com：
+
+> 类模板 `std::function_ref` 是一种非拥有型函数包装器。`std::function_ref` 对象可以存储并调用对可调用目标（Callable target）的引用——函数、lambda 表达式、bind 表达式或其他函数对象，但不能是成员函数指针和成员对象指针。[^cpp-reference-std-function-ref]
+
+下面的代码示例使用 `zhihaoy/nontype_functional` 库。
+
+```c++
+#include <cstdio>
+
+#include <std23/function_ref.h>
+
+class MyClass {
+public:
+      int methodToCallback(int num1, int num2) {
+          return num1 + num2;
+      }
+};
+
+void passACallbackToMe(std23::function_ref<int(int, int)> callback) {
+    int o = callback(1, 2);
+    printf("Value: %i\n", o); // We might be on an embedded system, use printf() and not std::cout
+}
+
+int main()
+{
+    MyClass myClass;
+    passACallbackToMe({std23::nontype<&MyClass::methodToCallback>, &myClass});
+}
+```
+
+注意，回调现在的类型是 `std23::function_ref<int(int, int)>`。要把成员函数传给这个回调，我们对成员函数指针使用 `std23::nontype`，并将它与要调用的类实例一起传入。这比两种 `std::function` 技术（`std::bind` 和 lambda）都有改进，因为你不必重复函数参数！
+
+### 第三方实现
+
+截至 2025 年年中，C++26 支持在主流编译器中尚未普及。而且，想让公司采用最前沿的标准？祝你好运。幸运的是，已经有一些第三方实现提供了与 `std::function_ref` 基本相同的东西。
+
+#### zhihaoy/nontype_functional
+
+GitHub 仓库 [zhihaoy/nontype_functional](https://github.com/zhihaoy/nontype_functional) 包含 `std::function`、`std::function_ref` 和 `std::move_only_function` 的完整实现，与 C++26 `<functional>` 头文件中的版本相当。[^github-zhihaoy-nontype-functional]
+
+使用 `FetchContent` 可以轻松将 zhihaoy/nontype_functional 纳入基于 CMake 的项目：
+
+```cmake title="CMakeLists.txt"
+include(FetchContent)
+FetchContent_Declare(
+  nontype_functional
+  GIT_REPOSITORY https://github.com/zhihaoy/nontype_functional
+  GIT_TAG        bdb098751ccdba3e03b429064473c70e228a885e # v1.0.2
+)
+FetchContent_MakeAvailable(nontype_functional)
+```
+
+使用 `zhihaoy/nontype_functional` 的可运行 `std::function_ref` 示例可在 [https://github.com/gbmhunter/blog-cpp-callbacks/tree/main/using-std-function-ref](https://github.com/gbmhunter/blog-cpp-callbacks/tree/main/using-std-function-ref) 找到。
+
+#### TartanLlama/function_ref
+
+如果需要更轻量的实现，GitHub 仓库 [TartanLlama/function_ref](https://github.com/TartanLlama/function_ref) 只提供 `tl::function_ref` 实现。它自称是“对可调用对象的轻量非拥有引用”。
+
+<Aside type="note">
+`TartanLlama/function_ref` 的 README 示例如下：
+
+当你不需要拥有可调用对象时，请使用 `tl::function_ref` 而不是 `std::function`。最常见的情况是那些不会被存储的函数参数：
+
+```c++
+void foo (function_ref<int(int)> func) {
+    std::cout << "Result is " << func(21); //42
+}
+
+foo([](int i) { return i*2; });
+```
+</Aside>
+
+#### abseil function_ref
+
+[Google 的 Abseil 库](https://github.com/abseil/abseil-cpp/)提供了 `function_ref` 实现。头文件可在[这里](https://github.com/abseil/abseil-cpp/blob/master/absl/functional/function_ref.h)找到。我无法让它按我想要的方式工作，因为它的 `function_ref` 要求可调用类作为模板参数，所以我猜测它不像其他 function_ref 实现那样执行相同的类型擦除。
+
+## 基准测试
+
+我对上面的一些回调技术进行了基准测试，以比较它们的运行速度。大多数时候你并不关心这些性能差异，因为回调并不属于某些关键执行路径。但在某些情况下你会关心！例如，回调在高带宽通信协议每收到一个字节时触发，或者回调属于某个快速运行的控制环路。
+
+<Aside type="caution">
+基准测试很难！它取决于编译器、优化级别、架构、标准库实现、测试代码在多大程度上代表实际使用情况等诸多因素。虽然我是在 x86-64 机器上进行基准测试的，但我希望相对性能在常见嵌入式架构（如 Armv7E-M，例如 Cortex M4 CPU 使用）上也会类似。
+
+YMMV！
+</Aside>
+
+基准测试使用 [Google Benchmark](/programming/languages/c-plus-plus/google-benchmark/) 进行。我们先看看关闭优化（`-O0`）时的表现。基准测试结果如下所示。
+
+<Image src={import('./_assets/callback-benchmarks-no-opt.png')} width="900px">关闭优化时不同回调技术的运行时间。</Image>
+
+<Aside type="caution">
+注意 y 轴是对数刻度！我这样做是因为运行时间差异太大。对数刻度能更清楚地显示较快方法之间的差异。
+</Aside>
+
+令人遗憾（但从某种意义上说并不意外）的消息是：如果你需要绝对最快的性能（前提是关闭优化！），没有什么能胜过 C 风格回调。如果你想调用成员函数，那么次优选择要么是调用静态函数再通过静态共享变量（例如全局变量或文件作用域变量）触达成员函数，要么是使用继承。在另一端，配合 `std::bind` 使用 `std::function` 的性能最慢，比 C 风格回调慢约 40 倍！
+
+如果让编译器优化代码呢？不同技术的相对性能会改变吗？我们来一探究竟！我使用 GCC 和 `-O3` 标志（尽可能针对速度优化）编译，并再次运行基准测试。结果如下所示。
+
+<Image src={import('./_assets/callback-benchmarks-opt.png')} width="900px">开启优化时不同回调技术的运行时间。</Image>
+
+局势变化真大！现在使用继承的回调接口成了最快的，甚至超过了基本的 C 回调技术。我也不知道为什么会这样。在慢的一端，配合 `std::bind` 的 `std::function` 仍然最慢，紧随其后的是快得不可思议的委托。我很惊讶，对成员函数和实例进行模板化仍然比 C 风格回调慢约 6 倍。我本以为它的性能会几乎一样快，因为唯一的区别应该只是多传一个 `this` 参数。
+
+## 回调技术总结与比较
+
+不幸的是，C++ 中做回调并没有唯一“正确”的方式。在 C++ 中选择合适的回调技术很大程度上取决于你的具体需求，例如与 C API 的兼容性、性能需求、期望的灵活性，以及你是否能使用现代 C++ 特性（如 `<functional>`）或外部库。
+
+下表总结了所讨论方法的关键特性：
+
+<table style={{tableLayout: 'fixed', width: '100%', fontSize: '0.9rem', wordBreak: 'break-word'}}>
+  <colgroup>
+    <col style={{width: '100px'}} /> {/* Technique */}
+    <col style={{width: '100px'}} /> {/* Performance* */}
+    <col style={{width: '150px'}} /> {/* Flexibility */}
+    <col style={{width: '150px'}} /> {/* Ease of Use */}
+    <col style={{width: '100px'}} /> {/* Dependencies */}
+    <col style={{width: '100px'}} /> {/* C API Compatibility */}
+    <col style={{width: '200px'}} /> {/* Key Drawback(s) */}
+  </colgroup>
+  <thead>
+    <tr>
+      <th>技术</th>
+      <th>性能*</th>
+      <th>灵活性（可调用类型）</th>
+      <th>易用性</th>
+      <th>依赖</th>
+      <th>C API 兼容性</th>
+      <th>主要缺点</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>静态/非成员（C 风格）</td>
+      <td className="good">极佳</td>
+      <td className="bad">低（仅自由函数/静态方法）</td>
+      <td className="good">容易</td>
+      <td className="good">无</td>
+      <td className="good">是（原生）</td>
+      <td>无法直接调用非静态成员，也不易管理实例状态。</td>
+    </tr>
+    <tr>
+      <td>通过 C 函数调用成员（全局指针）</td>
+      <td className="good">极佳</td>
+      <td className="bad">低（绑定到全局/共享状态）</td>
+      <td className="ok">中等（需要包装器 + 状态管理）</td>
+      <td className="good">无</td>
+      <td className="good">是（通过包装器）</td>
+      <td>使用全局/共享状态，不可扩展，容易出错。</td>
+    </tr>
+    <tr>
+      <td>模板化成员/实例</td>
+      <td className="good">良好</td>
+      <td className="bad">低（仅特定类型的成员函数）</td>
+      <td className="ok">中等（模板语法）</td>
+      <td className="good">无</td>
+      <td className="bad">否</td>
+      <td>调用者 API 需要模板，不够灵活（调用者与被调用者类型绑定），仅支持成员函数。</td>
+    </tr>
+    <tr>
+      <td>继承接口</td>
+      <td className="good">极佳</td>
+      <td className="bad">低（仅通过继承的特定成员函数）</td>
+      <td className="good">容易（标准 OOP）</td>
+      <td className="good">无</td>
+      <td className="bad">否</td>
+      <td>僵化（需要继承、方法名固定），可能存在多重继承问题。</td>
+    </tr>
+    <tr>
+      <td>std::function + std::bind</td>
+      <td className="bad">差</td>
+      <td className="good">高（大多数可调用对象）</td>
+      <td className="ok">中等（std::bind 语法冗长）</td>
+      <td className="good">标准（&lt;functional&gt;）</td>
+      <td className="bad">否</td>
+      <td>有性能开销（类型擦除、可能分配内存），语法冗长，需要 &lt;functional&gt;（某些嵌入式系统上可能不可用）。</td>
+    </tr>
+    <tr>
+      <td>std::function + Lambda</td>
+      <td className="ok">一般</td>
+      <td className="good">高（大多数可调用对象）</td>
+      <td className="ok">中等（lambda 语法比 bind 更清晰）</td>
+      <td className="good">标准（&lt;functional&gt;）</td>
+      <td className="bad">否</td>
+      <td>有性能开销（类型擦除，SBO 可能有所帮助），需要 &lt;functional&gt;。</td>
+    </tr>
+    <tr>
+      <td>快得不可思议的委托</td>
+      <td className="ok">一般</td>
+      <td className="good">高（大多数可调用对象）</td>
+      <td className="good">容易</td>
+      <td className="ok">外部仅头文件库</td>
+      <td className="bad">否</td>
+      <td>需要外部仅头文件库。不如 C 风格回调或继承接口快。</td>
+    </tr>
+    <tr>
+      <td>function_ref（例如 std23/tl）</td>
+      <td className="good">良好</td>
+      <td className="good">高（大多数可调用对象）</td>
+      <td className="ok">中等（特定库语法或 lambda）</td>
+      <td className="good">外部库（C++26 之前）/ 标准（C++26+）</td>
+      <td className="bad">否</td>
+      <td>非拥有型（生命周期管理至关重要！），需要库/现代编译器。</td>
+    </tr>
+  </tbody>
+</table>
+
+\* 性能评级基于基准测试部分的结果。实际性能可能因编译器、优化选项、架构和具体用法而有显著差异。
+
+建议：
+
+- 为了兼容 C API：使用 C 风格函数指针（静态/非成员，或通过 C 函数包装成员，但要注意后者的缺点）。
+- 为了最大灵活性和现代 C++：`std::function`（优先使用 lambda 而非 `std::bind`）用途广泛但有性能成本。如果你能处理好其非拥有特性和依赖，`function_ref` 是高性能的替代方案。
+- 为了性能和 API 控制权（不需要兼容 C）：继承可能快得惊人，但很僵化。`function_ref` 通常是兼顾性能且无需所有权的现代最佳选择。对调用者进行模板化也是一种选择，但会使调用者的 API 变得复杂。
+- “通过 C 函数调用成员（全局指针）”因可扩展性和安全性问题应谨慎使用。
+
+归根结底，请分析项目的约束和优先级，选择最合适的回调机制。
+
+## C++ 回调库
+
+### cpgf
+
+网站：<a href="http://www.cpgf.org/" target="_blank">http://www.cpgf.org/</a>
+
+- 使用信号与槽语法
+- 回调可以是函数、成员方法、虚函数……
+- 语法非常简单易用。
+- 功能强大。
+
+许可证：Apache License, Version 2.0
+  
+### libsigc++
+
+网站：<a href="http://libsigc.sourceforge.net/" target="_blank">http://libsigc.sourceforge.net/</a>
+
+- 支持信号与槽。
+- 功能众多。
+- 功能强大。
+- 使用高级 C++ 编译器特性。
+- 使用起来有些复杂
+
+许可证：GNU Library General Public License
+
+### Naios/function2
+
+网站：<a href="https://github.com/Naios/function2" target="_blank">https://github.com/Naios/function2</a>
+
+> “std::function 的直接替代品，支持仅可移动类型、多重重载等。”[^github-naios-function2]
+
+- 接口与 `std::function` 类似。
+- 具有与 `std::function` 相同的小缓冲区优化，即小型仿函数不会进行动态内存分配。
+- 支持（并测试于）Visual Studio 2017+、Clang 3.8+、GCC 5.4+。
+- 仅头文件库。
+- 使用 CMake 构建。
+
+### Vlpp
+
+[Vlpp 是一个开源 C++ 库](https://github.com/vczh-libraries/Vlpp)，为 `<functional>`（以及其他标准库）提供跨平台替代品。有时，C++ 标准库提供的 `<functional>` 库在嵌入式系统上无法工作（我在某些嵌入式平台上用得很好，在其他平台上则不行）。_Vlpp_ 可作为替代品，让你用 `vl::Func<void(void)>` 替换 `std::function<void(void)>`，从而在嵌入式平台上以此方式实现回调。
+
+### slotmachine-cpp
+
+网站：<a href="https://github.com/gbmhunter/slotmachine-cpp" target="_blank">https://github.com/gbmhunter/slotmachine-cpp</a>
+
+这是我多年前编写的一个开源 C++ 回调库！
+
+## 外部资源
+
+[Callbacks In C++ Using Template Functors](http://www.tutok.sk/fastgl/callback.html) 是一篇很好的文章，解释并分析了 C++ 中实现回调的各种不同方式，包括函数模型、单根层级、参数化调用者、被调用者 mix-in 以及仿函数（作者推荐的方式）。
+
+Code Project 上的 [The Type-safe Callbacks In C++](http://www.codeproject.com/Articles/6136/Type-safe-Callbacks-in-C) 库提供了一个出色、完整的 C++ 回调库，支持 0 到 5 个输入参数的回调。
+
+[Functors to Encapsulate C and C++ Function Pointers](http://www.newty.de/fpt/functor.html) 是一篇关于使用仿函数的简短教程。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^cpp-reference-std-function-ref]: cppreference.com。_std::function_ref_ [文档]。检索于 2025-04-25，来自 https://en.cppreference.com/w/cpp/utility/functional/function_ref。
+[^github-zhihaoy-nontype-functional]: GitHub。_zhihaoy/nontype_functional_ [仓库]。检索于 2025-04-25，来自 https://github.com/zhihaoy/nontype_functional。
+[^github-naios-function2]: GitHub。_Naios/function2_ [仓库]。检索于 2025-05-01，来自 https://github.com/Naios/function2。
+[^wikipedia-functor]: Wikipedia（2025 年 4 月 25 日）。_Functor_ [文章]。检索于 2025-05-01，来自 https://en.wikipedia.org/wiki/Functor。
+[^code-project-impossibly-fast-delegates]: Sergey Ryazanov（2005 年 7 月 18 日）。_The Impossibly Fast C++ Delegates_ [文章]。检索于 2025-05-02，来自 https://www.codeproject.com/Articles/11015/The-Impossibly-Fast-C-Delegates。
+[^code-review-impossibly-fast-delegate-in-cpp11]: Code Review Stack Exchange（2012）。_Impossibly Fast Delegate in C++11_ [论坛帖子]。检索于 2025-05-02，来自 https://codereview.stackexchange.com/questions/14730/impossibly-fast-delegate-in-c11。

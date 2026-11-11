@@ -1,0 +1,277 @@
+---
+authors: [gbmhunter]
+date: 2013-06-17
+description: 如何在嵌入式微控制器上使用运行时和编译期 assert()。
+lastUpdated: 2026-07-07
+tags: [C, programming, assert, asserts, exception, firmware, macro, pre-processor, GCC]
+title: 断言（assert()）
+type: page
+sourcePath: programming/languages/c/assertions-assert/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:46d5f8007e2e4a7434c0d8a5b327a83df1fc1b12772913ed0573fbac0e17cd2e
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/assertions-assert/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`assert()` 是一个实用工具，用于检查某些条件在运行时（runtime）是否成立。
+
+<Aside type="tip">
+你可以使用类似的 `assert()` 调用在编译期执行某些检查。详见下文！
+</Aside>
+
+`assert(bool_t value)` 的基本前提是：**宏/函数会检查并确保 value 为真。** 开发者在预期结果应为真的位置添加检查。如果该值不为真（即为假），软件/固件就采取特定动作。
+
+对于软件应用，这个“特定动作”可能是打印出触发 `assert()` 的文件名和行号，然后退出应用。对于固件应用，则可能是打印出触发 `assert()` 的文件名和行号，然后重启（在固件环境中“退出”没有意义）。
+
+## 该用哪种 assert？
+
+C 标准库通过 `assert.h` 提供了一个 `assert()` 函数/宏：
+
+```c
+#include <assert.h>
+
+int main(void) {
+  assert(0 == 1);
+}
+```
+
+它的标准行为是：对表达式求值，如果为假，则打印错误消息并中止。如果我在 Linux 上运行这个程序，会打印如下消息（并中止程序）：
+
+```text
+main: ./main.c:4: int main(void): Assertion `0 == 1' failed.
+```
+
+巧妙使用 `&&` 运算符，可以给这个断言添加自定义消息，如下所示：
+
+```c
+#include <assert.h>
+
+int main(void) {
+  assert(0 == 1 && "0 does not equal 1");
+}
+```
+
+它会打印：`main: ./main.c:4: int main(void): Assertion ``0 == 1 && "0 does not equal 1"' failed.`。这之所以有效，是因为你真正想测试的表达式会与字符串字面量的地址（指针）做逻辑与。有效指针永远不可能为 null，因此它必定为真，于是整个表达式就相当于 `0 == 1 && true`，在逻辑上等同于 `0 == 1`。
+
+如果定义了 `NDEBUG`，标准库断言会变成空操作（no-op）。因此，传给 `assert()` 的参数不应有副作用（详见下文）。
+
+你可能会问，在微控制器上触发断言会发生什么。在运行完整操作系统的软件上可以“中止”，但在 MCU 上这并不可行。通常的做法是重写其行为：把中止消息通过调试串口打印出来（和/或记录到某处），然后复位 MCU。**有时会在断言处理程序中、复位之前加入延时**，以防止快速“启动循环”（boot loop）。这有助于避免用户指示 LED 闪烁出无法辨认的图案、留出调试问题的时间，并防止闪存磨损（如果你在启动时写闪存）。
+
+不过，你可能想自己实现 `assert()`。
+
+如果你想要一个完整的 `assert()` 示例，可以查看 [http://ideone.com/CSX6wN](http://ideone.com/CSX6wN) 上可编译/可测试的 `assert()` 代码片段。
+
+## 应该用 assert() 做什么？
+
+断言通常用于检查致命的、“无法继续”的错误。例如，通常最好用断言确保指针不为 null。如果它是 `null`，说明固件中存在 bug，需要修复；这也通常意味着你无法继续执行。用断言检查温度传感器读数是否表明当前室温高于 20C，并不是好主意。
+
+断言通常应用于：
+
+- 分配内存后检查指针非 null
+- 在你自己的应用代码中检查函数参数是否在边界内（包括确保传入的指针非 null）
+
+断言通常不应应用于：
+
+- 在会被许多人使用的库中检查函数参数的边界（这种情况最好返回错误码）。
+- 验证用户输入
+- 验证很可能会失败的事情（例如断言接收到的数据包 CRC 正确，最好实现重试机制）。
+
+断言非常适合确保代码不会到达你认为不可达的位置。例如：
+
+```c
+typedef enum {
+    STATE_1,
+    STATE_2
+} myStates_t;
+
+void handleState(myStates_t state)
+{
+    switch (state)
+    {
+        case STATE_1:
+            break;
+        case STATE_2:
+            break;
+        default:
+            // We should never get here!
+            assert(false);
+    }
+}
+```
+
+这也适用于 `if/if else/else` 语句：如果你知道代码总应匹配前面的某个 `if/else if` 分支，就可以在最后的 `else` 中加入 `assert()`。
+
+尽管许多人建议在生产版本中禁用断言，但我个人认为，在嵌入式环境中，通常保留断言更有意义：这样可以尽早发现错误、以清晰的方式得到警告，并防止处理器跑飞进入未定义行为的荒野。在很多软件中，保留断言可能也有意义！
+
+## 用宏实现简单的 assert()
+
+**`assert()` 在 C 中通常用宏实现（而不是函数）**。这样可以自动跟踪诸如 `assert()` 所在的文件名和行号等信息。
+
+一个基本的断言宏可以定义如下：
+
+```c
+#define ASSERT(exp) (exp ? : assertFailed(__FILE__, __LINE__))
+```
+
+注意这里使用了三元运算符，而不是 if 语句。
+
+`assertFailed()` 是你必须编写的函数，用来处理任何被触发的 `assert()`。你只需在 ASSERT 宏所在的同一头文件中声明它存在，然后在某个 `.c` 文件中定义如下：
+
+```c
+void assertFailed(const char * filename, int lineNumber)
+{
+    // Assuming printf() sends the data to somewhere like a serial debug port on
+    // your embedded device
+    printf("ERROR: Assert raised in file %s at line number %i.", filename, lineNumber);
+}
+```
+
+然后可以这样使用它：
+
+```c
+ASSERT(myPtr); // Makes sure pointer is not null.
+ASSERT(x == 4); // Makes sure x == 4
+ASSERT(msgLength <= bufferSize); // A common use case is to check array sizes
+```
+
+## 关于 __FILE__ 和 __LINE__ 的说明
+
+`__FILE__` 和 `__LINE__` 是 C 语言规范定义的特殊 _标准预定义宏_（Standard Predefined Macros）[^geeks-for-geeks-predefined-macros-in-c-with-examples]。更多信息参见[预处理器页面的文件名和行号章节](/programming/languages/c/preprocessor/#file-names-and-line-numbers)。
+
+在闪存受限的嵌入式系统中，**可以从宏中移除 `__FILE__` 和 `__LINE__`**（存储文件名字符串会占用相当可观的闪存）。
+
+注意，使用 `__FILE__` **可能并不像你想象的那样占用大量闪存**，因为大多数开启任意优化的编译器都会把所有完全相同的字符串字面量合并为一个（即同一文件中的所有 `__FILE__` 指针都会指向同一个字符串字面量）。
+
+还有哪些有用的预处理器关键字？`__func__` 怎么样？它会被替换为一个 `const char *`，其中包含宏所在当前函数的名称。你也可以把这个信息加进去！
+
+## 打印失败的 assert() 条件
+
+比仅提供文件名和行号更有用的是，同时打印导致断言失败的表达式。幸运的是，这很容易做到，只需使用[预处理器字符串化符号](/programming/languages/c/preprocessor/#stringification) #。
+
+```c    
+#define ASSERT(exp) (exp ? : assertFailed(__FILE__, __LINE__, #exp))
+```
+
+处理失败 `assert()` 的函数则会有如下声明：
+
+```c
+void assertFailed(const char * filename, int lineNumber, const char * expression)
+{
+    // Assuming printf() sends the data to somewhere like a serial debug port on
+    // your embedded device
+    printf("ERROR: Assert expression %s failed in file %s at line number %i.", expression, filename, lineNumber);
+}
+```
+
+注意，这会比单独使用 `__FILE__` **消耗多得多的闪存**，因为几乎没有哪个 `const char *` 表达式字符串字面量会相同。
+
+## 防止副作用
+
+`assert()` 检查**不应有任何副作用**。也就是说，不应在 `assert()` 检查中嵌入赋值或带副作用的函数调用。这是为了防止在启用/禁用 `assert()` 时改变应用程序的逻辑。
+
+```c    
+// This is good
+assert(x == 3);
+
+// This is BAD
+// (this makes x = 1)
+assert(x = 1);
+
+// This is BAD...assuming myFunc()
+// has side effects. If myFunc() was a pure function, i.e.
+// only operated on it's inputs, contains no state, and returns a value
+// then this is ok
+assert(myFunc(x));
+```
+
+可以重写 `assert()` 宏，阻止开发者编写带副作用的 `assert()`。这可以通过**巧妙利用 C 逗号运算符**来实现（注意，这与函数调用中用作变量分隔符的逗号不同）。
+
+```c    
+#define ASSERT(exp)  ((void)(exp), (exp ? : assertFailed(__FILE__, __LINE__, #exp)))
+```
+
+如果使用 GCC 编译器，并且编写了带副作用的断言，你应该会得到以下错误：
+
+```c
+error: void value not ignored as it ought to be
+```
+
+注意，我遇到这个错误时使用的是 gcc-5.1。
+
+<Image src={import('./_assets/screenshot-of-compiler-error-disallowing-assert-side-effects.png')} width="700px">一张截图：当尝试在传给 assert() 的参数中执行赋值时，C 编译器抛出错误。</Image>
+
+## 完整代码示例
+
+我在 [http://ideone.com/CSX6wN](http://ideone.com/CSX6wN) 编写了一个可运行的 `assert()` 示例。它使用了上文描述的所有功能，包括报告文件名和行号、打印表达式，以及禁止在传给 `assert()` 的参数中使用赋值或函数调用的语法。
+
+<Image src={import('./_assets/assert-example-code-on-ide-one.png')} width="900px">Ideone 上的示例 assert() 代码（http://ideone.com/CSX6wN）。</Image>
+
+## 使用 printf() 风格消息的断言
+
+下面的宏允许你使用 `printf()` 风格的消息进行断言：
+
+```c    
+#define LOG_ERROR(M, ...) fprintf(stderr, "[ERROR] (%s:%d) " M "\r\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define assertf(A, M, ...) if(!(A)) { LOG_ERROR(M, ##__VA_ARGS__); assert(A); }
+```
+
+上述代码的可运行示例见 [https://ideone.com/DD1PJs](https://ideone.com/DD1PJs)。
+
+## 编译期断言
+
+你也可以在编译期而非运行时执行类似断言的检查。过去，人们会巧妙地编写自己的宏来做这些事（或由编译器提供）。自 C11 起，标准库提供了编写编译期检查断言的简便方法。在 C11 中，`<assert.h>` 引入了以下宏[^cppreference-c-static-assert]：
+
+```c
+#define static_assert _Static_assert
+```
+
+可以这样使用 `static_assert()`：
+
+```c
+#include <assert.h>
+
+#define MAX_MSG_LENGTH 20
+#define BUFFER_SIZE 30
+
+int main(void)
+{
+    // Check we can hold the message in the buffer
+    static_assert(MAX_MSG_LENGTH <= BUFFER_SIZE);
+
+    // You can check integer constants at compile time
+    static_assert(4 == 4);
+}
+```
+
+由于这些是编译期检查，因此无法检查那些直到运行时才可知的内容。
+
+```c
+#include <assert.h>
+ 
+int main(void)
+{
+    static_assert(3.14 == 3.14, "Is Pi Pi?"); // Won't work, can't check floats!
+    
+    const int x = 4;
+    static_assert(x == 4); // Can't check variables, even if they are declared const
+                           // You could in C++ with constexpr.
+
+    static_assert(myFunc()); // Can't check function return variables. You can in C++
+                             // with constexpr.
+}
+```
+
+在 C23 中，`static_assert()` 变成了关键字[^cppreference-c-static-assert]，因此你甚至不需要 `#include <assert.h>`！
+
+## 外部链接
+
+[Assert Yourself, by Niall Murphy](http://www.embedded.com/electronics-blogs/other/4023329/Assert-Yourself)，是一篇关于使用 assert() 宏的好文章。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^geeks-for-geeks-predefined-macros-in-c-with-examples]: GeeksforGeeks。_Predefined Macros in C with Examples_。检索于 2024-03-27，来自 https://www.geeksforgeeks.org/predefined-macros-in-c-with-examples/。
+[^cppreference-c-static-assert]: cppreference.com（2023 年 2 月 21 日）。_C - Error handling - static_assert_。检索于 2024-03-27，来自 https://en.cppreference.com/w/c/error/static_assert。

@@ -1,0 +1,194 @@
+---
+authors: [gbmhunter]
+date: 2015-01-09
+description: 引导程序是计算机或微控制器中在主应用之前运行的程序，通常负责配置基础硬件、启动主应用以及执行应用更新。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-01
+tags: [bootloaders, MCUboot Zephyr, firmware, microcontroller, memory, updates, DFU]
+title: 引导程序
+type: page
+sourcePath: programming/bootloaders/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:50ad7f7294a90eb7efbc998f4778b069cf82287baca51ee51954a20c2a8220b8
+sourceUrl: https://blog.mbedded.ninja/programming/bootloaders/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+_引导程序（bootloader）_ 是计算机内存中在主应用之前运行的程序。在嵌入式场景中，它通常负责：
+
+- 配置基础硬件（大部分硬件配置留给主应用，引导程序通常只配置它需要的时钟，或许还有看门狗）
+- 如果主应用尚未处于正确的执行位置，就把它加载到内存中（例如从外部闪存加载到主存）
+- 校验主应用的完整性（例如使用[校验和或哈希](/programming/checksums/)）
+- 执行主应用（通常先禁用中断，然后执行一条跳转到预定义内存地址的“跳转”指令）
+- 更新主应用（这是可选的；如果需要此功能，根据所选拓扑，它可能包含在引导程序或应用中）。
+
+它们通常被加入微控制器，用于更新主固件应用。引导程序会使用某种通信协议/传输方式从主机（例如通过线缆连接的笔记本电脑，或互联网上的服务器）“下载”新固件。常见的传输方式包括 [UART](/electronics/communication-protocols/uart-communication-protocol/)、[RS-232](/electronics/communication-protocols/rs-232-protocol/)、[I2C](/electronics/communication-protocols/i2c-communication-protocol/)、[CAN](/electronics/communication-protocols/can-protocol/)、[以太网](/electronics/communication-protocols/ethernet-protocol/)、WiFi 或[蓝牙](/electronics/communication-protocols/bluetooth/)。
+
+引导程序通常会在允许新版本固件运行之前，用校验和或哈希校验下载的镜像。随后，引导程序可以强制复位并启动新应用，也可以留到以后更方便的时机再启动。引导程序还可以要求应用“报到”并声明自身正常（通常在初始化完成后），否则就回退到上一版本。
+
+微控制器每次复位时，引导程序通常是第一个运行的程序。这使引导程序能够控制接下来启动哪个应用。
+
+## 子页面
+
+<ChildPages />
+
+## 内存布局
+
+下图展示了使用基础引导程序的微控制器可能的内存布局。_复位向量（Reset Vector）_ 是微控制器启动时执行的第一条指令，通常位于内存地址 `0x0000 0000`（Intel 8086 处理器是显著例外）。复位向量通常包含一条“goto”（跳转）指令，告诉 CPU 跳转到引导程序的入口点。引导程序随后开始执行。接着，引导程序可以初始化某种传输方式以下载新固件，例如通过 UART。然后它可能等待消息一段固定时间。10 秒后，下载固件的机会过去，引导程序便跳转到应用可执行文件的起始位置。
+
+<Image src={import('./_assets/basic-bootloader-memory-map.svg')} width="700px">使用引导程序时微控制器内存布局的基础示例。</Image>
+
+## 擦除次数
+
+[闪存](/electronics/components/memory/)的擦除次数有限，必须小心不要在设备寿命期内超过该次数。
+
+NOR 闪存的典型擦除次数上限为 1 万到 10 万次。对于大多数只在引导程序过程中更新固件版本时才擦写闪存的应用来说，这不成问题。但如果你在正常运行期间也写闪存（例如更新希望在掉电或重启后保留的配置数据/设置），就要小心了。
+
+## 多个应用镜像
+
+重定位会给内存带来麻烦。固件应用在编译期间经过链接步骤时，链接器会为代码中的所有函数和静态变量分配内存地址。为此，它需要知道可执行文件将被放到内存的哪个位置。但如果有两个需要不同偏移量的不同镜像呢？
+
+一种解决方案是交换算法。
+
+### Swap-Scratch 算法
+
+_Swap-Scratch_ 算法是一种在闪存中交换两个固件镜像的方法。
+
+暂存区（scratch）必须足够大，能容纳将要交换的最大扇区。
+
+### Swap-Move 算法
+
+<Image src={import('./_assets/swap-move-algorithm-mcuboot.webp')} width="900px">使用槽 0 中仅一个额外擦除扇区来交换两个固件镜像的 swap-move 算法示意图。</Image>
+
+- **a)：** 槽 0 中的所有段向上移动一段，先把段 3 复制到空扇区，再把段 2 复制到段 3 原来的位置，依此类推。这样空段就移到了槽 0 的开头。
+- **b)：** 槽 1 的第一个段向下移动到空段。
+- **c)：** 槽 0 的第一个段向上移动到槽 1 第一个段原来的位置。
+- **d)：** 现在对每个槽的第二个段重复 **b)** 和 **c)** 的过程。
+- **e)：** 持续进行，直到……
+- **f)：** 所有段都已完成交换，空段回到槽 0 的末尾。大功告成！注意，每个槽的内容已经互换。我保留了每个槽的旧名称，以强调它们已经移动。不过严格来说，槽 0 仍在原来的位置，只是现在装的是原来槽 1 的内容。
+
+<Aside type="note">
+为清楚说明示例，我们只展示了少量段。实际上，每个固件镜像会占用多得多的段。
+</Aside>
+
+槽 0 中的每个段被擦写两次，槽 1 中的每个段被擦写一次。相比 Swap-Scratch 算法（擦写次数与段数相同），这是显著的改进。
+
+## 安全性
+
+TODO：在此补充信息。
+
+## 黄金镜像
+
+黄金镜像是仅提供最基本固件更新支持的固件应用。如果通过空中下载（OTA）更新，则该镜像必须包含基础的无线通信支持。它通常存放在外部闪存或微控制器内部存储器的受保护区域中。当主应用出现故障时，由引导程序加载它；从这个意义上说，它是一个保证可用的备份应用。
+
+## 覆盖引导程序
+
+通常，你在项目开始时设计引导程序，并计划永远不需要更新它。但有时计划会变（或发现 bug），你就需要更新引导程序。通常可以这样做：用一个包含引导程序更新代码的应用版本进行引导加载（例如写入闪存中引导程序的内存空间来更新它）。这样做时必须小心，因为如果引导程序更新过程因任何原因中断或损坏，通常会导致设备变砖。
+
+你可以把要写入的引导程序代码打包进应用。在 C/C++ 中，可以使用 `objcopy` 把 `.bin` 文件的内容复制到 `.o` 文件中，再把它链接进应用的构建过程。
+
+```sh
+objcopy -I binary -B <architecture> -O elf32-little my_input.bin my_output.o
+```
+
+objcopy 创建 `.o` 文件时会自动创建三个符号，供应用引用该数据：
+
+- `_binary_my_input_bin_start`：二进制文件中数据的起始地址。
+- `_binary_my_input_bin_end`：二进制文件中数据的结束地址。
+- `_binary_my_input_bin_size`：二进制文件中数据的大小。
+
+<Aside type="note">
+输入文件名会按所示方式转换并嵌入符号名中。文件名中合法但在 C/C++ 变量名中不允许的特殊字符（例如句点、连字符和空格）会被转换为下划线。
+</Aside>
+
+然后，在构建过程中把这个 `my_output.o` 文件与应用的其他部分链接。在 C/C++ 代码中把它们声明为 `extern`，即可使用这些特殊符号：
+
+```c
+extern const unsigned char _binary_my_input_bin_start[];
+extern const unsigned char _binary_my_input_bin_end[];
+extern const unsigned int _binary_my_input_bin_size;
+
+void access_binary_data(void) {
+    const unsigned char* start_ptr = _binary_my_input_bin_start;
+    const unsigned char* end_ptr = _binary_my_input_bin_end;
+    unsigned int size = _binary_my_input_bin_size;
+
+    // Use the data (e.g., iterate from start_ptr to end_ptr)
+    // ...
+}
+```
+
+## 启用看门狗
+
+良好的做法是在 MCU 启动过程中尽早启用硬件[看门狗](/programming/mcu-peripherals/watchdogs/)，也就是在引导程序早期启用。如果等到应用启动后才启用看门狗，你可能偶尔会卡在引导程序中，且无法自动复位。从引导程序把控制权交给应用时，看门狗会保持活动。设计超时时间时，要给应用留出足够的初始化时间并开始喂狗，以免在切换过程中意外复位。幸运的是，跳转到应用通常很快，一般只需禁用中断，然后执行一条跳到应用起始位置的“跳转”指令。
+
+## Zynq 7000 启动流程
+
+BootROM 是第一个执行的程序。BootROM 在 Zynq 的第一个 A9 处理器核上运行。第二个 A9 执行“等待事件”（WFE）指令。[^amd-bootgen-user-guide]
+
+BootROM 的主要工作是配置系统，把第一阶段引导程序（FSBL）从启动设备（例如 QSPI 闪存）复制到片上存储器（OCM），然后执行 FSBL。
+
+BootROM 要求启动镜像采用 AMD 定义的特定格式。每个启动镜像包含：
+
+1. 启动头。它包含诸如启动镜像是否加密、FSBL 的大小/偏移/执行地址，以及镜像头表和分区头表偏移等信息。
+1. 寄存器初始化表：包含 256 个地址-值对，用于初始化 MIO 复用和闪存时钟所需的 PS 寄存器。[^amd-bootgen-user-guide]
+1. 镜像头表。
+1. 镜像头和分区头。
+1. 包含 FSBL 的分区 1。
+1. 包含主应用的可选附加分区。
+
+令人困惑的是，AMD 用“image”指代两种不同的东西。“启动镜像（boot image）”是上面定义的整个结构。这个“启动镜像”可以包含多个 image，后者被定义为创建启动镜像时 Bootgen 从文件（例如 ELF 文件、比特流、数据文件）中提取出的数据块。例如，FSBL 是一个 image，主应用也是一个 image[^amd-bootgen-user-guide]。整体启动镜像中的每个 image 可以包含一个或多个分区。一个用例是：ELF 文件可以包含多个可加载段——其中每个段都会成为一个分区。
+
+<Image src={import('./_assets/zynq-7000-boot-image-layout.webp')} width="700px">通常会写入连接到 Zynq 7000 SoC 的 QSPI 闪存的启动镜像布局。Zynq 7000 BootROM 知道如何读取它并加载 FSBL。[^amd-bootgen-user-guide]</Image>
+
+FSBL（或 BootROM 之后运行的其他应用）有一种方法可以让 BootROM 启动另一个启动镜像：FSBL 写入 `devcfg.MULTIBOOT_ADDR`，然后执行软件系统复位。[^amd-zynq-7000-trm] 例如，当 FSBL 检测到主应用损坏且存在可用的次级/备份启动镜像（或回滚到之前的稳定版本）时，这很有用。
+
+## 引导程序库
+
+### MCUboot
+
+MCUboot 是一款流行的开源安全引导程序，面向 32 位微控制器。截至 2024 年 1 月，它在 GitHub 上有 1.1k 星标、2,201 次提交，并且逐月保持活跃开发。它设计为从闪存运行。[^mcuboot-doc]
+
+<Image src={import('./_assets/mcuboot-homepage-screenshot.png')} width="700px">截至 2024 年 1 月的 MCUboot 主页截图。</Image>
+
+它目前支持以下框架/操作系统：
+
+- [Zephyr](/programming/operating-systems/zephyr/)
+- [Apache Mynewt](https://mynewt.apache.org/)
+- [Apache NuttX](https://nuttx.apache.org/)
+- [RIOT](https://www.riot-os.org/)
+- Mbed OS
+- Espressif
+- Cypress/Infineon
+- 模拟器（主要用于测试升级代码和时机不当的复位——用 Rust 编写[^mcuboot-sim-readme]）
+
+Zephyr 的 MCUboot 实现支持蓝牙引导加载。开发期间可以使用 Nordic nRF 应用进行引导加载。
+
+<Image src={import('./_assets/zephyr-mcuboot-shell-output-during-swap.png')} width="700px">下载新镜像、MCU 重启并由 MCUboot 执行镜像交换后，Zephyr shell 的输出。</Image>
+
+启动时，MCUboot 检查每个槽中的镜像，以确定要执行哪种类型的交换（如果有）。它会决定执行以下之一：[^mcuboot-doc-design]
+
+- `BOOT_SWAP_TYPE_NONE`：常规的“不升级”流程，MCUboot 启动主镜像。
+- `BOOT_SWAP_TYPE_TEST`：交换镜像，然后启动新的主镜像，但在下次复位时回退到旧镜像。这意味着 MCUboot 会在下次复位时把镜像交换回去。
+- `BOOT_SWAP_TYPE_PERM`：交换镜像，然后启动新的主镜像。
+- `BOOT_SWAP_TYPE_REVERT`：之前的测试交换未被永久化。
+- `BOOT_SWAP_TYPE_FAIL`：交换失败。
+- `BOOT_SWAP_TYPE_PANIC`：交换过程中发生不可恢复的错误。
+
+#### 魔数
+
+MCUboot 使用魔数检测某个槽中是否包含有效镜像。该魔数足够长且随机，除非有意写入，否则在统计上极不可能出现在内存中。魔数写入每个镜像槽的最后 16 个字节。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^mcuboot-doc]: MCUboot。_MCUboot - Secure boot for 32-bit Microcontrollers!_ [项目主页]。检索于 2024-01-27，来自 https://docs.mcuboot.com/。
+[^mcuboot-sim-readme]: MCUboot。_MCUboot simulator - README_。检索于 2024-01-27，来自 https://github.com/mcu-tools/mcuboot/blob/main/sim/README.rst。
+[^amd-bootgen-user-guide]: AMD。_UG1283 - Bootgen User Guide_。检索于 2024-08-16，来自 https://docs.amd.com/r/2023.1-English/ug1283-bootgen-user-guide/Introduction。
+[^amd-zynq-7000-trm]: AMD（2023 年 6 月 30 日）。_UG585 - Zynq 7000 SoC Technical Reference Manual_。检索于 2024-08-16，来自 https://docs.amd.com/r/en-US/ug585-zynq-7000-SoC-TRM/Zynq-7000-SoC-Technical-Reference-Manual。
+[^mcuboot-doc-design]: MCUboot。_MCUboot - Design_ [文档]。检索于 2025-08-28，来自 https://docs.mcuboot.com/design.html。

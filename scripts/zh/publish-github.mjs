@@ -28,7 +28,8 @@ const BRANCH = 'zh';
 const dryRun = process.argv.includes('--dry-run');
 const batch3 = process.argv.includes('--batch3');
 const batch4 = process.argv.includes('--batch4');
-const update = process.argv.includes('--update') || batch3 || batch4;
+const batch5 = process.argv.includes('--batch5');
+const update = process.argv.includes('--update') || batch3 || batch4 || batch5;
 
 function walk(dir) {
   const out = [];
@@ -205,13 +206,40 @@ BATCH4_FILES.push(
   'scripts/zh/publish-github.mjs',
 );
 
-const groupsToPublish = batch4
-  ? [{ message: 'feat(zh): translate 25 programming pages', files: BATCH4_FILES }]
-  : batch3
-    ? [{ message: 'feat(zh): translate 30 PCB component-package pages', files: BATCH3_FILES }]
-    : update
-      ? [{ message: 'feat(zh): add language switcher and Chinese README', files: UPDATE_FILES }]
-      : GROUPS;
+const BATCH5_FILES = [
+  'programming/languages/c/string-manipulation-in-c',
+  'programming/languages/c/object-orientated-c',
+  'programming/languages/c/assertions-assert',
+  'programming/languages/c/non-local-jumps-setjmp-longjmp',
+  'programming/languages/c-plus-plus/callbacks',
+  'programming/languages/c-plus-plus/cpp-on-embedded-systems',
+  'programming/languages/c-plus-plus/designing-a-hal-in-cpp',
+  'programming/languages/c-plus-plus/threading',
+  'programming/languages/c-plus-plus/qt',
+  'programming/operating-systems/zephyr/installation',
+  'programming/operating-systems/zephyr/state-machine-framework',
+  'programming/operating-systems/zephyr/bluetooth',
+  'programming/bootloaders',
+  'programming/build-systems-and-package-managers/cmake',
+].map((dir) => `src/content/pages/${dir}/index.zh.mdx`);
+
+BATCH5_FILES.push(
+  'zh/glossary/terms.csv',
+  'zh/translation-runs.csv',
+  'zh/status.json',
+  'zh/ZH_TODO.md',
+  'scripts/zh/publish-github.mjs',
+);
+
+const groupsToPublish = batch5
+  ? [{ message: 'feat(zh): translate 14 large programming pages', files: BATCH5_FILES }]
+  : batch4
+    ? [{ message: 'feat(zh): translate 25 programming pages', files: BATCH4_FILES }]
+    : batch3
+      ? [{ message: 'feat(zh): translate 30 PCB component-package pages', files: BATCH3_FILES }]
+      : update
+        ? [{ message: 'feat(zh): add language switcher and Chinese README', files: UPDATE_FILES }]
+        : GROUPS;
 
 function gh(args, input) {
   return execFileSync('gh', args, {

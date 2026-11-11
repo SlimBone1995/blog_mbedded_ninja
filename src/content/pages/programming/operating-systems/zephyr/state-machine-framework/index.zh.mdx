@@ -1,0 +1,354 @@
+---
+authors: [gbmhunter]
+date: 2024-10-02
+description: Zephyr 状态机框架（SMF）是 Zephyr 提供的框架（API），用于实现有限状态机（FSM）和分层状态机（HSM）。
+image: ./_assets/cover-image.webp
+lastUpdated: 2026-07-02
+tags: [zephyr, state machine framework, SMF, finite state machine, FSM, hierarchical state machine, HSM, state machines, states]
+title: Zephyr 状态机框架（SMF）
+type: page
+sourcePath: programming/operating-systems/zephyr/state-machine-framework/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:e88f5b8bcae3c253765ccd35af0e17d811df23726b9153534af63bb181e5293a
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/state-machine-framework/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+[Zephyr](/programming/operating-systems/zephyr/) 提供了状态机框架（SMF），可用于实现[有限状态机（FSM）](/programming/design-patterns/state-machines/)和[分层状态机（HSM）](/programming/design-patterns/state-machines/event-driven-hierarchical/)。SMF 在 `v2.7.0` 中加入 Zephyr。[^zephyr-release-notes-v2-7-0]
+
+<Image src={import('./_assets/basic-led-state-machine-diagram.svg')} width="800px">使用 Zephyr SMF 可以构建的基础分层 LED 状态机（HSM）示意图。</Image>
+
+## 构建 FSM
+
+首先需要在 `prj.conf` 中启用该框架：
+
+```ini
+CONFIG_SMF=y
+```
+
+然后就可以在 `.c` 文件中创建状态机。首先要确保包含 SMF 头文件：
+
+```c
+#include <zephyr/smf.h>
+```
+
+你很可能需要在状态机中访问数据。推荐的做法是创建一个 `struct` 来保存数据，并把特殊的 `struct smf_ctx ctx` 作为第一个成员。SMF 会把这个对象传给所有状态机函数，还会访问并修改 `ctx` 成员，以跟踪状态机的内部状态。
+
+```c
+typedef struct {
+    struct smf_ctx ctx;
+    // User defined data goes here
+    uint32_t event;
+} MyStateMachine;
+```
+
+还需要用枚举定义状态：
+
+```c
+typedef enum {
+    S1,
+    S2,
+} MyState;
+```
+
+接下来创建一些状态机函数。SMF 的设计允许每个状态最多有三个函数：
+
+1. **进入函数（entry）：** 每当状态机进入该状态时调用。
+2. **运行函数（run）：** 当状态机处于该状态且调用 `smf_run_state()` 时调用。
+3. **退出函数（exit）：** 每当状态机退出该状态时调用。
+
+下面创建一个简单的 FSM（没有分层状态），包含两个状态：`S1` 和 `S2`。
+
+```c
+static void s1_entry(void *data) {
+    printf("State 1 entry.\n");
+}
+
+static void s1_run(void *data) {
+    printf("State 1 run.\n");
+}
+
+static void s1_exit(void *data) {
+    printf("State 1 exit.\n");
+}
+
+static void s2_entry(void *data) {
+    printf("State 2 entry.\n");
+}
+
+static void s2_run(void *data) {
+    printf("State 2 run.\n");
+}
+
+static void s2_exit(void *data) {
+    printf("State 2 exit.\n");
+}
+```
+
+`void *data` 参数实际上是指向状态机对象的指针（在本例中类型为 `MyStateMachine *`）。你可以安全地把这个 `void *data` 指针转换为正确的类型，并访问状态机对象的“成员变量”。例如：
+
+```c
+static void s1_run(void *data) {
+    // Cast the data pointer to the correct type
+    MyStateMachine *obj = (MyStateMachine *)data;
+    // Now we can access member variables
+    printf("event: %d.\n", obj->event);
+}
+```
+
+### 在状态之间转换
+
+可以在状态的 `run()` 函数中调用 `smf_set_state()` 函数，转换到其他状态。下面的示例在 `MyStateMachine` 对象的 `event` 成员被设为 `1` 时，让状态机从 `S1` 转换到 `S2`。
+
+```c
+static void s1_run(void *data) {
+    MyStateMachine *obj = (MyStateMachine *)data;
+    if (obj->event == 1) {
+        smf_set_state(SMF_CTX(obj), &l_myStateTable[S2]);
+        // We are now in state S2!
+        return;
+    }
+}
+```
+
+<Aside type="tip">
+注意，状态转换不会排队，而是立即发生。因此，在 `smf_set_state()` 返回时，相应的状态转换 `exit()` 和 `entry()` 函数已经被调用。通常应确保在调用 `smf_set_state()` 后 `return`，或通过其他方式确保不再执行旧状态的其他逻辑。
+</Aside>
+
+我们需要用状态表注册所有这些函数。可以使用 `SMF_CREATE_STATE()` 宏方便地创建状态表。它接受 5 个参数：
+
+```c
+SMF_CREATE_STATE(entry_function, run_function, exit_function, parent, initial)
+```
+
+`parent` 参数是可选的，可用于创建分层状态机（详见下文）。`initial` 参数是可选的，可用于设置状态机的初始状态。
+
+```c
+// Populate state table
+static const struct smf_state l_myStateTable[] = {
+        [S1] = SMF_CREATE_STATE(s1_entry, s1_run, s1_exit, NULL, NULL),
+        [S2] = SMF_CREATE_STATE(s2_entry, s2_run, s2_exit, NULL, NULL),
+};
+```
+
+<Aside type="caution">
+如果为某个状态创建了枚举值（例如 `S3`），却忘记把它加入状态表，那么使用 `smf_set_state()` 尝试转换到该状态时会发生段错误。
+</Aside>
+
+然后就可以运行状态机了！
+
+```c
+int main(void)
+{
+    // Create state machine object
+    MyStateMachine sm;
+
+    // Set initial state
+    smf_set_initial(SMF_CTX(&sm), &l_myStateTable[S1]);
+
+    // Run the state machine
+    while(1) {
+        int32_t ret = smf_run_state(SMF_CTX(&sm));
+        if (ret) {
+            // State machine terminates if a non-zero value is returned
+            break;
+        }
+        k_msleep(1000);
+    }
+}
+```
+
+注意，上面的示例并不太理想，因为它在每次调用当前状态的 `run()` 函数之间睡眠 1 秒，这会让状态机显得响应迟钝。如果缩短睡眠时间，状态机会显得更灵敏，但会无谓地消耗 CPU 周期。在多线程应用或需要关注低功耗的场合，这会成为问题。更好的做法是在状态机之外构建事件系统：事件到达时由状态机处理。事件可以由中断、定时器或其他线程产生。由于无法向状态函数传入额外变量，必须把事件数据保存到状态函数能够访问的 `sm` 对象中。
+
+下面是该思路的伪代码：
+
+```c
+while(1) {
+    event = eventQueue.get(); // Blocks until an event is available
+    sm.event = event; // Save the event to the state machine object, this is the only way to get data "into" the state machine
+    smf_run_state(SMF_CTX(&sm)); // Run the state machine
+}
+```
+
+下表列出了可在 `prj.conf` 中设置以配置 SMF 的各个选项。[^zephyr-docs-smf]
+
+<table>
+  <thead>
+    <tr>
+      <th>选项</th>
+      <th>说明</th>
+      <th>默认值</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>`CONFIG_SMF`</td>
+      <td>`y` 启用状态机框架，`n` 禁用它。</td>
+      <td>`n`</td>
+    </tr>
+    <tr>
+      <td>`CONFIG_SMF_ANCESTOR_SUPPORT`</td>
+      <td>`y` 启用分层状态机支持（父状态），`n` 禁用它。</td>
+      <td>`n`</td>
+    </tr>
+    <tr>
+      <td>`CONFIG_SMF_INITIAL_TRANSITION`</td>
+      <td>`y` 启用 HSM 中的初始转换支持，`n` 禁用它。</td>
+      <td>`n`</td>
+    </tr>
+  </tbody>
+  <caption>Zephyr 状态机框架（SMF）配置选项。</caption>
+</table>
+
+### 分层状态机
+
+SMF 支持分层状态机（HSM）。HSM 在管理复杂系统的实际应用中非常有用。它允许把状态组织成子树，并让事件向上传播到父状态，直到被处理，从而帮助管理复杂度并减少代码重复。
+
+创建 HSM 的方法与 FSM 基本相同，只是需要给 `SMF_CREATE_STATE()` 宏提供非空的 `parent` 参数。例如：
+
+```c
+// Populate state table
+static const struct smf_state l_myStateTable[] = {
+    [ROOT] = SMF_CREATE_STATE(root_entry, root_run, root_exit, NULL, NULL),
+    [S1] = SMF_CREATE_STATE(s1_entry, s1_run, s1_exit, &l_myStateTable[ROOT], NULL),
+    [S1A] = SMF_CREATE_STATE(s1a_entry, s1a_run, s1a_exit, &l_myStateTable[S1], NULL),
+    [S1B] = SMF_CREATE_STATE(s1b_entry, s1b_run, s1b_exit, &l_myStateTable[S1], NULL),
+    [S2] = SMF_CREATE_STATE(s2_entry, s2_run, s2_exit, &l_myStateTable[ROOT], NULL),
+};
+```
+
+状态函数（`entry()`、`run()` 和 `exit()`）的定义方式与 FSM 完全相同。这会创建下图所示的状态机。
+
+<Image src={import('./_assets/hierarchical-state-diagram.svg')} width="800px">上面代码创建的分层状态机示意图。</Image>
+
+<Aside type="tip">
+当你想无论处于哪个状态都要捕获并处理某个事件时（例如响应错误事件），设置一个作为所有其他状态父状态的 `root` 状态会很有用。
+</Aside>
+
+HSM 中的状态转换遵循以下规则：
+
+- 从当前状态向上直到最低共同祖先（LCA）状态（但不包括 LCA）的所有退出函数都会被调用。先调用当前状态的退出函数，然后按顺序向上直到 LCA（但不调用 LCA 本身）。
+- 从 LCA 状态（不包括 LCA）向下直到下一状态的所有进入函数都会被调用。进入函数按从 LCA 的子状态一直到下一状态的顺序调用。
+
+如果使用上面示例中的 `root`、`S1`、`S1A`、`S1B` 和 `S2` 状态，转换将按以下方式处理：
+
+- 初始转换到 `S1` 会调用 `root_entry()` 和 `s1_entry()`。
+- `EVT1` 到达会引起从 `S1` 到 `S1A` 的转换。这是转换到子状态，只会调用 `s1a_entry()`。
+- `EVT2` 到达会引起从 `S1A` 到 `S1B` 的转换。这是转换到兄弟状态，会先调用 `s1a_exit()`，再调用 `s1b_entry()`。
+- `EVT3` 到达会引起从 `S1B` 到 `S2` 的转换。这是转换到状态机的另一个分支，会依次调用 `s1b_exit()`、`s1_exit()`，然后调用 `s2_entry()`。
+
+<Aside type="tip">
+不必为不同的转换使用不同的事件！你可以在不同状态中复用同一事件来触发不同转换。事实上，在这个示例中，我们完全可以只用一个事件负责所有转换。
+</Aside>
+
+### 事件传播
+
+对 HSM 调用 `smf_run_state()` 时，可以被调用的不只是当前状态的 `run()` 函数。SMF 库还会调用所有祖先状态的 `run()` 函数，除非事件被认为已处理。只要发生以下任一情况，事件就被视为已处理：
+
+1. 调用了 `smf_set_state()`。
+2. 调用了 `smf_set_handled()`。
+
+事件传播是一种强大的方法：通过给父状态添加处理器，并把它们应用到所有子状态（假设子状态自己未处理该事件），可以实现代码通用化并减少重复。
+
+## 实用准则
+
+### 使用大段注释块
+
+`.c` 或 `.cpp` 文件中的大型状态机可能让不熟悉的开发者难以理解。状态图会有帮助，但需要维护才能与代码保持同步。我建议改为在每个状态前添加大段注释块，写明状态名（包括层级，我喜欢用“路径”格式书写，例如 `root/parent_state/child_state`）以及该状态功能的简要说明。
+
+```c
+/* ======================================================================== */
+/* root/mode_1/idle: Initial idle state. */
+/* ======================================================================== */
+static void idle_entry(void *data) {
+    printf("idle entry.\n");
+}
+
+static void idle_run(void *data) {
+    printf("idle run.\n");
+}
+
+static void idle_exit(void *data) {
+    printf("idle exit.\n");
+}
+
+/* ======================================================================== */
+/* root/mode_1/run: Runs when an event ID of 1 occurs. */
+/* ======================================================================== */
+
+// ...
+
+/* ======================================================================== */
+/* root/mode_2: Error state, device goes into disabled state until manual reset. */
+/* ======================================================================== */
+
+// ...
+```
+
+### 不要为“瞬态”事件使用状态
+
+状态应表示设备能够持续非零时间所处的“状态”。一般来说，不要为那些只在进入该状态时执行操作、随后立即转换离开的事情创建状态。状态应始终有一个 run 函数，在转换到其他状态之前等待特定事件。
+
+### 使用 root 状态执行适用于任何状态的操作
+
+我的大多数状态机最终都需要一个 `root` 状态，用来捕获事件并执行适用于任何状态的操作。例如，你可能有一个 `ERROR` 事件，希望无论处于哪个状态都转换到错误状态。但要注意，这也意味着如果已经处于错误状态时又发生错误事件，你会重新进入错误状态。如果不希望这样，请务必在错误状态中为 `ERROR` 事件添加处理器，并调用 `smf_set_handled()` 阻止事件传播。
+
+### 不要在单个状态机中塞入过多内容
+
+把所有代码都写进一个状态机可能不是好主意。随着状态机复杂度增长，它会变得难以理解和维护。
+
+此外，软件开发中的许多概念彼此正交，应分别由不同的状态机管理。例如，考虑一个包含 `LIGHT_1_ON` 和 `LIGHT_1_OFF` 状态的状态机。你添加了第二盏灯，并把两个子状态 `LIGHT_2_ON` 和 `LIGHT_2_OFF` 加到 `LIGHT_1_ON` 下。你又意识到第一盏灯熄灭时也需要处理第二盏灯，于是再次把两个子状态 `LIGHT_2_ON` 和 `LIGHT_2_OFF` 加到 `LIGHT_1_OFF` 下。你可能开始看出这通常不是好的设计模式，因为状态数量会随灯的数量成倍增长。更好的做法可能是为每盏灯分别创建两个独立的状态机。如果它们需要协同，可以用事件系统在两个状态机之间发送事件。
+
+### 嵌套状态机
+
+除了拆分状态机之外，另一种减少代码重复和/或复杂度的有效设计模式是让状态机相互嵌套。这对于封装应用中被视为另一个状态机“实现细节”的部分很有用。
+
+父状态机可以完全封装子状态机，即父状态机的使用者根本不知道子状态机的存在！父状态机可以在自己的初始化过程中创建/初始化子状态机，并可以把事件转发给子状态机。
+
+## 事件系统
+
+Zephyr SMF 不提供事件系统，因此通常需要自己实现一个。这是好事，因为事件系统并不难实现，而且能灵活适应应用设计的多种不同方式。
+
+可以通过以下方式产生事件：
+
+1. **由中断产生：** 你可能设置了一个 GPIO 引脚，在引脚变为高电平时调用中断处理函数。该处理函数可以创建一个事件并把它放入事件队列。
+1. **由定时器产生：** 定时器是为按特定频率闪烁 LED 或实现超时等事情产生事件的常用方式。可以使用 Zephyr 的定时器（它们在不同线程中运行），并让定时器的回调函数创建事件并放入事件队列。
+1. **由状态机自身产生：** 在 `entry()`、`run()` 或 `exit()` 函数的任意位置，都可以创建事件并将其投递到事件队列。这对状态机之间的通信很有用。
+
+状态机可以通过几种不同方式放入线程：
+
+1. **每个状态机一个线程：** 每个状态机都有一个事件队列，并阻塞等待事件。每个状态机可以执行耗时操作，而不会拖慢其他状态机。
+1. **单线程运行所有状态机（事件循环）：** 有一个事件队列，事件循环阻塞等待事件。收到事件后，按顺序把它传给每个状态机（顺序是否重要取决于你的应用）。在这种情况下，你可能只需要一个线程（运行 `main()` 的线程），因此应用是单线程的。
+1. **混合方式：** 大多数状态机在同一个线程中运行，但某些耗时的状态机放在单独的线程中。
+
+我更倾向于用单线程运行所有状态机（事件循环）的方式。任何耗时工作都可以交给工作线程处理，这样状态机之间就没有同步问题需要处理。这还能让状态机保持轻量，也意味着你可以更轻松地嵌套状态机或拆分它们以分离关注点。
+
+事件循环（伪代码）如下所示：
+
+```txt
+while (true) {
+    evt = queue_get();
+    dispatch_event_to_state_machines(evt);
+}
+```
+
+### 避免定时器同步问题
+
+Zephyr 内置定时器会在系统时钟中断处理程序的上下文中调用定时器到期回调。通常你会向事件队列投递一个 `TIMER_EXPIRED` 事件（如果队列已满则不等待），然后返回。事件循环随后会收到该事件并传给状态机。由于回调与事件循环不同步，必须留意同步问题。注意，在状态机函数中停止定时器后，你仍可能收到 `TIMER_EXPIRED` 回调，而且这些回调可能已经在事件队列中等待。即使你先清空了队列，也可能运气不好：在你调用定时器停止函数的那一刻，定时器中断恰好触发。
+
+一种解决方案是不使用 Zephyr 的定时器，而是利用可以传给队列的变量，让队列最多等待指定的最长时间。利用这一点，你可以自己实现定时器功能。可以设计一个模块，用于创建多个定时器，并注册未来的超时。当需要阻塞在队列上时，先算出接下来哪个定时器会到期，并把该超时时间提供给队列。队列返回后，可以检查返回码，判断是收到了事件，还是因为超时返回。如果是超时，就可以创建一个 `TIMER_EXPIRED` 事件并传给状态机。
+
+这种方法使定时器与事件循环同步，从而解决上述问题。
+
+## 完整示例
+
+完整的 SMF 可运行示例（运行在 Linux 的 `native_sim` 开发板上）见 GitHub 仓库 [gbmhunter / zephyr-examples](https://github.com/gbmhunter/zephyr-examples/tree/main/apps/state-machine-framework)。
+
+{/* ======================================================================== */}
+{/* REFERENCES */}
+{/* ======================================================================== */}
+
+[^zephyr-docs-smf]: Zephyr（2024 年 4 月 21 日）。_State Machine Framework_ [文档]。检索于 2024-11-11，来自 https://docs.zephyrproject.org/latest/services/smf/index.html。
+[^zephyr-release-notes-v2-7-0]: Zephyr。_Releases > Zephyr 2.7.0_ [发行说明]。检索于 2024-11-11，来自 https://docs.zephyrproject.org/latest/releases/release-notes-2.7.html。

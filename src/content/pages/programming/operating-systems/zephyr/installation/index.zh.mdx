@@ -1,0 +1,604 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: 面向 Linux、Windows 和 WSL 的 Zephyr RTOS 安装指南，涵盖 west 工作区搭建、SDK/工具链安装以及让 VS Code IntelliSense 正常工作。
+lastUpdated: 2026-07-02
+tags: [programming, operating systems, OSes, RTOS, Zephyr, installation, guide, Linux, Windows, WSL]
+title: Zephyr 安装指南
+type: page
+sourcePath: programming/operating-systems/zephyr/installation/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:e5b378683aec0c6af176e7379a08a31e3c9373cf16c368062ddd55bb7f785ee9
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/installation/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+下面提供面向不同操作系统的 [Zephyr](/programming/operating-systems/zephyr/) 基础安装指南。另一份值得阅读的资料是官方[入门指南（Getting Started Guide）](https://docs.zephyrproject.org/latest/develop/getting_started/index.html)。与 `npm`、`pip`、`cargo` 等现代包管理器带来的体验相比，安装 Zephyr 并不算轻松。但也应体谅 Zephyr：它支持多种架构和编译器工具链，本身就比较复杂。
+
+<Aside type="note">
+自从我最初编写本指南以来，Zephyr 已大幅更新了安装流程。我已把主要说明更新为使用最新版本的 Zephyr（v4.0.0）。注意，下面的示例清单（manifest）固定使用 nRF Connect SDK（sdk-nrf）v3.0.1——这是 nRF Connect SDK 的版本号，而不是 Zephyr 的版本号（它基于 Zephyr v4）。如果你需要旧的安装说明，请参阅下面的[旧版指南](#older-guide)一节。
+</Aside>
+
+## Linux
+
+我们为 Zephyr 项目新建一个目录，然后在 `.venv` 子目录中创建 Python 虚拟环境：
+
+```bash
+mkdir ~/zephyr-project
+cd ~/zephyr-project
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+接下来在虚拟环境中安装 `west`：
+
+```bash
+pip install west
+```
+
+只要虚拟环境处于激活状态，就可以在命令行中使用 `west`。
+
+我们不打算运行 `west init`，因为它会把 zephyr 放到项目根目录中。我更愿意把所有由 west 管理的依赖放在同一个子目录里，这样项目根目录更干净，也便于设置 `.gitignore` 规则。
+
+因此，改为创建一个名为 `.west` 的目录，并在其中添加名为 `config` 的文件，内容如下：
+
+```text title=".west/config"
+[manifest]
+path = app
+file = west.yml
+
+[build]
+cmake-args = -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBOARD_ROOT=../
+
+[zephyr]
+base = external/zephyr
+```
+
+`base = external/zephyr` 会告诉 west 到 `external/zephyr` 目录中查找 zephyr 源代码。运行 `west update` 时拉取的其他所有依赖也会和 `zephyr` 目录一起放在 `external` 目录中。
+
+创建 `app` 目录，然后在其中创建 `west.yml` 文件，内容如下：
+
+```text title="app/west.yml"
+manifest:
+  self:
+    path: app
+  remotes:
+    - name: nrf
+      url-base: https://github.com/nrfconnect
+  projects:
+    - name: sdk-nrf
+      remote: nrf
+      path: nrf
+      revision: v3.0.1
+      import:
+        path-prefix: external
+      clone-depth: 1
+```
+
+<Aside type="note">
+本示例使用 Zephyr 的 `nrf` 移植版本，因为我当时正在为基于 nRF52840 的开发板做开发。移植版本列表见[此处](https://docs.zephyrproject.org/latest/boards/index.html)。如果你想定义自己的开发板，请参阅[向 Zephyr 添加自定义开发板](/programming/operating-systems/zephyr/adding-a-custom-board/)。
+</Aside>
+
+现在可以运行 `west update` 拉取所有必需的依赖。该命令需要一些时间（5–15 分钟）才能完成，不妨坐下来喝杯咖啡。它会在 `external` 目录中填充大量 Git 仓库。
+
+```bash
+west update
+```
+
+然后更新 Python 依赖（在较旧的 Zephyr 版本中，必须调用 `pip install -r <path_to_zephyr>/scripts/requirements.txt`）：
+
+```bash
+west packages pip --install
+```
+
+安装 Zephyr SDK（它实际上就是工具链）：
+
+```bash
+west sdk install
+```
+
+注意，整个 SDK 相当大，在 `v0.17.1` 中约为 12GB（见下方截图）。可以用 `--toolchains` 选项只指定要安装的特定工具链，从而减小体积。我用得最多的两个是 `arm-zephyr-eabi`（为真实 MCU 编译）和 `x86_64-zephyr-elf`（为 `native_sim` 编译测试）。
+
+在 Linux 上，Zephyr SDK 默认会安装到主目录下的一个目录中。例如 `~/zephyr-sdk-0.17.1`。
+
+<Image src={import('./_assets/screenshot-showing-the-size-of-the-zephyr-sdk.webp')} width="800px">显示 Zephyr SDK v0.17.1 总大小的截图。12GB！</Image>
+
+```bash
+west sdk install --toolchains arm-zephyr-eabi x86_64-zephyr-elf
+```
+
+<Image src={import('./_assets/west-sdk-download-screenshot.webp')} width="800px">Zephyr SDK 下载进度截图，展示了默认会下载的所有不同工具链。</Image>
+
+也可以用 `--version` 选项指定要安装的 SDK 版本：
+
+```bash
+west sdk install --version 0.17.1
+```
+
+如果安装了多个版本的 Zephyr SDK，可以在构建时把环境变量 `ZEPHYR_SDK_INSTALL_DIR` 设置为想要使用的 SDK 路径。
+
+## 旧版指南
+
+我认为这部分内容适用于 v4 之前的 Zephyr。在 v4 中，Zephyr 增加了 `west sdk install` 和 `west packages pip --install` 等命令，使安装更简单。
+
+### Windows
+
+在 Windows 上安装 Zephyr 最简单的方法是使用 chocolatey 包管理器。安装好 chocolatey 后，在管理员权限的命令提示符中执行以下步骤：
+
+<Aside type="caution">
+务必使用命令提示符（command prompt）而不是 PowerShell，因为 PowerShell 与用 `set` 定义环境变量的方式不兼容。
+</Aside>
+
+1. 启用全局确认，这样就不必逐个手动确认程序的安装：
+
+    ```cmd
+    > choco feature enable -n allowGlobalConfirmation
+    Chocolatey v0.10.15
+    Enabled allowGlobalConfirmation
+    ```
+
+1. 安装 Zephyr 依赖：
+
+    ```cmd
+    > choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+    > choco install ninja gperf python git
+    ```
+
+    如果你已通过 chocolatey 以外的方式在机器上安装了其中某些包，建议把它们从上面的命令中去掉，以免重复安装并导致一个程序遮蔽或冲突另一个程序。
+
+1. 安装名为 `west` 的 Zephyr 命令行工具（注意：我在使用 Python 虚拟环境时遇到过问题，因此把 `west` 安装到操作系统自带的 Python 中，详见下文）：
+
+    ```cmd
+    > pip install west
+    ```
+
+1. 新建 Zephyr 项目：
+
+    ```cmd
+    > west init myproject
+    === Initializing in C:\Users\gbmhunter\myproject
+    --- Cloning manifest repository from https://github.com/zephyrproject-rtos/zephyr, rev. master
+    Initialized empty Git repository in C:/Users/gbmhunter/myproject/.west/manifest-tmp/.git/
+    remote: Enumerating objects: 55, done.
+    remote: Counting objects: 100% (55/55), done.
+    remote: Compressing objects: 100% (42/42), done.
+    ...
+    ...
+    Branch 'master' set up to track remote branch 'master' from 'origin'.
+    --- setting manifest.path to zephyr
+    === Initialized. Now run "west update" inside C:\Users\gbmhunter\zephyrproject.
+    ```
+
+    警告：我在使用 Python 虚拟环境（而非操作系统 Python 环境）安装 west 并运行 `west init` 时，遇到以下错误：
+
+    ```text
+    > python -m venv .venv
+    > .\.venv\Scripts\activate
+    > pip install west
+    > west init myproject
+    Updating files: 100% (14758/14758), done.
+    Already on 'master'
+    Branch 'master' set up to track remote branch 'master' from 'origin'.
+    Traceback (most recent call last):
+      File "C:\Users\gbmhunter\AppData\Local\Programs\Python\Python38-32\lib\shutil.py", line 788, in move
+        os.rename(src, real_dst)
+    PermissionError: [WinError 5] Access is denied: 'C:\\Users\\gbmhunter\\myproject\\.west\\manifest-tmp' -> 'C:\\Users\\gbmhunter\\myproject\\zephyr'
+    ```
+
+1. 切换到项目目录并运行 `west update`：
+
+    ```cmd
+    > west update
+    ```
+
+    该命令需要运行几分钟，因为它会把若干仓库克隆到项目目录中。
+
+1. 把 Zephyr CMake 包导出到本地 CMake 用户包注册表。这样 CMake 就能自动找到 Zephyr 的“基础包（base）”：
+
+    ```cmd
+    > west zephyr-export
+    Zephyr (C:/Users/gbmhunter/zephyrproject/zephyr/share/zephyr-package/cmake)
+    has been added to the user package registry in:
+    HKEY_CURRENT_USER\Software\Kitware\CMake\Packages\Zephyr
+
+    ZephyrUnittest (C:/Users/gbmhunter/zephyrproject/zephyr/share/zephyrunittest-package/cmake)
+    has been added to the user package registry in:
+    HKEY_CURRENT_USER\Software\Kitware\CMake\Packages\ZephyrUnittest
+    ```
+
+1. 从 https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads 下载并安装 GNU Arm Embedded 工具链。默认情况下它会想安装到系统的 `C:\Program Files (x86)\GNU Arm Embedded Toolchain\10 2020-q4-major`，但不要允许！Zephyr 不喜欢路径中有空格，因此请安装到没有空格的路径。我选择了 `C:\gnu-arm-embedded-toolchain\10-2020-q4-major\`：
+
+1. 设置环境变量：
+
+    ```cmd
+    set ZEPHYR_TOOLCHAIN_VARIANT=gnuarmemb
+    set GNUARMEMB_TOOLCHAIN_PATH=C:\gnu-arm-embedded-toolchain\10-2020-q4-major
+    ```
+
+1. 安装 Zephyr 所需的 Python 依赖：
+
+    ```cmd
+    > pip install -r zephyr\scripts\requirements.txt
+    ```
+
+1. 构建应用！本示例使用 ST NUCLEO F070RB 开发板。注意，不能从项目根目录构建，必须先切换到 `zephyr` 子目录：
+
+    ```cmd
+    > cd .\zephyr
+    > west build -b nucleo_f070rb samples/basic/blinky
+    C:\Users\gbmhunter\temp\myproject\zephyr>west build -b nucleo_f070rb samples/basic/blinky
+    [121/128] Linking C executable zephyr\zephyr_prebuilt.elf
+
+    [128/128] Linking C executable zephyr\zephyr.elf
+    Memory region         Used Size  Region Size  %age Used
+              FLASH:       13544 B       128 KB     10.33%
+                SRAM:        4416 B        16 KB     26.95%
+            IDT_LIST:          0 GB         2 KB      0.00%
+    ```
+
+1. 从 https://github.com/xpack-dev-tools/openocd-xpack/releases 安装 OpenOCD。我解压了 .zip 文件，然后把文件复制到 `C:\Program Files\OpenOCD\bin`。
+
+1. 烧录应用：
+
+    ```cmd
+    west flash
+    ```
+
+    注意：运行该命令时我遇到以下错误：
+
+    ```text
+      File "C:\Users\gbmhunter\temp\myproject\zephyr\scripts/west_commands\runners\core.py", line 504, in require
+        if shutil.which(program) is None:
+      File "C:\Users\gbmhunter\AppData\Local\Programs\Python\Python38-32\lib\shutil.py", line 1365, in which
+        if os.path.dirname(cmd):
+      File "C:\Users\gbmhunter\AppData\Local\Programs\Python\Python38-32\lib\ntpath.py", line 223, in dirname
+        return split(p)[0]
+      File "C:\Users\gbmhunter\AppData\Local\Programs\Python\Python38-32\lib\ntpath.py", line 185, in split
+        p = os.fspath(p)
+    TypeError: expected str, bytes or os.PathLike object, not NoneType
+    ```
+
+### Ubuntu/WSL
+
+按照以下说明在类 UNIX 系统（包括 Ubuntu 和 WSL）上搭建/安装 Zephyr。使用 `apt` 假设你运行的是类 Debian 系统。
+
+1. 首先，安装系统依赖：
+
+    ```sh
+    sudo apt install --no-install-recommends git cmake ninja-build gperf \
+      ccache dfu-util device-tree-compiler wget \
+      python3-dev python3-pip python3-setuptools python3-tk python3-wheel xz-utils file \
+      make gcc gcc-multilib g++-multilib libsdl2-dev
+    ```
+
+1. 接下来，下载 _Zephyr SDK_。SDK 包含适用于 Zephyr 所有受支持架构（例如 `ARM`、`RISCV64`、`x86_64`、`Xtensa`、`aarch64`）的工具链（编译器、链接器、汇编器，以及 QEMU、OpenOCD 等其他工具）。从 https://github.com/zephyrproject-rtos/sdk-ng/tags 找到你需要的版本（如果没有特别要求，就用最新版）。下面的示例在 x86-64 Linux 上使用 `v0.16.4`。
+
+    它会被下载并安装到 Zephyr 项目目录之外。多个 Zephyr 项目只需共用这一份副本。
+
+    ```sh
+    cd ~
+    wget https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v0.16.4/zephyr-sdk-0.16.4_linux-x86_64.tar.xz
+    ```
+
+    该文件大小超过 1GB，请确保有足够空间！此外还有 _最小发行版（minimal release）_，它不包含所有工具链，而是让你选择并下载需要的工具链。
+
+    <Aside type="caution">
+    可以说这个命名有点失误：Zephyr SDK 实际上并不包含 Zephyr 源代码（Zephyr 源代码是在运行 `west update` 时拉取到 west 工作区中的），它包含的是适用于 Zephyr 所有受支持架构的工具链。我本以为叫“Zephyr Toolchain”之类的名字会更好！
+    </Aside>
+
+1. 解压下载的 SDK：
+
+    ```sh
+    tar xvf zephyr-sdk-0.16.4_linux-x86_64.tar.xz
+    ```
+
+    这会把 SDK 解压到 `~/zephyr-sdk-0.16.4`。如果需要，你也可以把它移到别处，常见选择还有 `/opt/` 和 `/usr/local/`。这也是一项大操作，可能需要几分钟才能完成！
+
+1. 运行 Zephyr SDK 安装脚本：
+
+    ```sh
+    cd zephyr-sdk-0.16.4
+    ./setup.sh
+    ```
+
+1. 安装 `udev` 规则，让你能以普通用户身份为大多数开发板编程（串口权限）：
+
+    ```sh
+    sudo cp ~/zephyr-sdk-0.16.4/sysroots/x86_64-pokysdk-linux/usr/share/openocd/contrib/60-openocd.rules /etc/udev/rules.d
+    sudo udevadm control --reload
+    ```
+
+1. 新建 Zephyr 项目目录，并在 `.venv` 子目录中创建 Python 虚拟环境：
+
+    ```sh
+    mkdir ~/zephyr-project
+    cd ~/zephyr-project
+    python3 -m venv .venv
+    source .venv/bin/activate
+    ```
+
+1. 在新的虚拟环境中安装 `west`（`west` 是一个 Python 包）。只要虚拟环境处于激活状态，就可以在命令行中使用 `west`：
+
+    ```sh
+    pip install west
+    ```
+
+1. 初始化 west 工作区：
+
+    ```sh
+    west init .
+    ```
+
+    这会在当前工作目录中创建名为 `.west` 的目录。`.west` 内还有一个名为 `manifest-tmp` 的目录。
+
+1. 更新：
+
+    ```sh
+    west update
+    ```
+
+    `west update` 会下载项目中 `./modules/` 下的大量 Git 子模块。这可能需要几分钟才能完成。
+
+1. 导出 Zephyr CMake 包：
+
+    ```sh
+    west zephyr-export
+    ```
+
+    这会把 `Zephyr` 添加到位于 `~/.cmake/packages/Zephyr` 的用户包注册表（在项目根目录之外）。你应该会看到类似下面的消息：
+
+    ```text
+    Zephyr (/home/gbmhunter/zephyr-project/zephyr/share/zephyr-package/cmake)
+    has been added to the user package registry in:
+    ~/.cmake/packages/Zephyr
+    ```
+
+1. 安装额外的 Python 依赖：
+
+    ```sh
+    pip install -r ./zephyr/scripts/requirements.txt
+    ```
+
+1. `cd` 进入 `zephyr` 目录（项目目录的子目录），并构建 Blinky 示例：
+
+    ```sh
+    cd ~/zephyr-project/zephyr
+    west build -p auto -b nucleo_f070rb samples/basic/blinky
+    ```
+
+1. 确保开发套件已连接到计算机，然后把应用烧录到开发套件（记住本示例使用的是 NUCLEO-F070RB）：
+
+    ```sh
+    west flash
+    ```
+
+<Aside type="note">
+`west init` 和 `west update` 都可能需要一些时间运行（各需 2–5 分钟）。
+</Aside>
+
+如果没有开发板，你总可以通过为 Linux 构建来试用 Zephyr。
+
+```sh
+west build -p auto -b native_sim samples/basic/blinky
+```
+
+构建出的可执行文件位于 `./zephyr/build/zephyr/zephyr.exe`（尽管扩展名是 `.exe`，它是为 Linux 而非 Windows 编译的）。当然，在 Linux 上运行时没有可以闪烁的基础 LED，但 Zephyr 为我们模拟了它，改为打印到 `stdout`：
+
+```sh
+~/zephyr-project/zephyr/build/zephyr$ ./zephyr.exe 
+*** Booting Zephyr OS build zephyr-v3.5.0-4014-g0d7d39d44172 ***
+LED state: OFF
+LED state: ON
+LED state: OFF
+LED state: ON
+LED state: OFF
+LED state: ON
+...
+```
+
+## 创建应用
+
+按照安装说明操作后，你应该能够构建和烧录 Zephyr 仓库中包含的 _仓库应用（repository application）_（例如 blinky）。但如果你想开发自己的应用呢？这时就有必要理解三种不同的应用类型：
+
+- **仓库应用（Repository Application）：** 包含在 Zephyr 仓库本身中的应用（位于上面创建的工作区中的 `zephyr/` 目录内）。这些通常是 `samples/` 下的示例项目，如 "Hello, world!" 和 "blinky"。在下面的目录结构中，`hello_world` 是一个仓库应用。
+    ```text
+    zephyr-project/
+    ├─── .west/
+    │    └─── config
+    └─── zephyr/
+        ├── arch/
+        ├── boards/
+        ├── cmake/
+        ├── samples/
+        │    ├── hello_world/
+        │    └── ...
+        ├── tests/
+        └── ...
+    ```
+- **工作区应用（Workspace Application）：** 位于 west 工作区内、但不在 zephyr 仓库（`zephyr/`）中的应用。如果你在学习，我建议用这种方式创建应用！在下面的目录结构中，`app` 是一个工作区应用：
+    ```text
+    <home>/
+    ├─── zephyr-project/
+    │     ├── .west/
+    │     ├── app/
+    │     │    ├── CMakeLists.txt
+    │     │    ├── prj.conf
+    │     │    └── src/
+    │     │        └── main.c
+    │     ├── zephyr/
+    │     ├── bootloader/
+    │     ├── modules/
+    │     └── ...
+    ```
+- **独立应用（Freestanding Application）：** 不在 west 工作区内的应用，即存放在磁盘上完全其他位置的应用。在下面的目录结构中，`app` 是一个独立应用：
+    ```text
+    <home>/
+    ├─── zephyr-project/
+    │     ├─── .west/
+    │     │    └─── config
+    │     ├── zephyr/
+    │     ├── bootloader/
+    │     ├── modules/
+    │     └── ...
+    │
+    └─── app/
+        ├── CMakeLists.txt
+        ├── prj.conf
+        └── src/
+            └── main.c
+    ```
+
+### 创建工作区应用
+
+如果你在学习，我建议先创建一个最简的工作区应用，以了解核心文件的作用。在工作区中创建名为 `app` 的目录，然后 `cd` 进入该目录：
+
+```bash
+cd ~/zephyr-project
+mkdir app
+cd app
+```
+
+现在创建名为 `CMakeLists.txt` 的文件，内容如下：
+
+```cmake title="app/CMakeLists.txt"
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr)
+project(my_zephyr_app)
+
+target_sources(app PRIVATE src/main.c)
+```
+
+在这个 `app` 目录中创建一个空的 `prj.conf`。它必须存在，但目前里面不需要任何内容。
+
+最后需要创建一个名为 `src` 的目录来存放所有源代码，然后在其中创建名为 `main.c` 的文件，内容如下。
+
+```c title="app/src/main.c"
+#include <stdio.h>
+#include <zephyr/kernel.h>
+
+int main(void) {
+    while (1) {
+        printf("Hello, world!\n");
+        k_msleep(1000);
+    }
+    return 0;
+}
+```
+
+基础应用已完成！文件结构应如下所示：
+
+```text
+<home>/
+├─── zephyr-project/
+│     ├── .west/
+│     ├── app/
+│     │    ├── CMakeLists.txt
+│     │    ├── prj.conf
+│     │    └── src/
+│     │        └── main.c
+│     ├── zephyr/
+│     ├── bootloader/
+│     ├── modules/
+│     └── ...
+```
+
+要构建并运行，先 `cd` 回到位于 `~/zephyr-project/` 的 west 工作区，然后在命令行中运行：
+
+```bash
+west build -b native_sim ./app
+west build -t run
+```
+
+第一条命令执行构建，告诉 west 使用 `native_sim` 开发板（在 Linux 上运行），并构建位于 `./app` 的应用。第二条命令告诉 west 运行它，你应该会得到类似下面的输出：
+
+```bash
+(.venv) geoff@my-computer:~/zephyr-project$ west build -t run
+-- west build: running target run
+[1/2] cd /home/geoff/zephyr-project/build && /home/geoff/zephyr-project/build/zephyr/zephyr.exe
+*** Booting Zephyr OS build zephyr-v3.5.0-4014-g0d7d39d44172 ***
+Hello, world!
+Hello, world!
+Hello, world!
+...
+```
+
+## 让 VSCode IntelliSense 正常工作
+
+让 VS Code 的 IntelliSense 在 Zephyr 下良好工作的最有效方法是使用下文所述的“compile_commands”方法。IntelliSense 正常工作后，你可能还想[在 VSCode 中为 Zephyr 设置调试](/programming/operating-systems/zephyr/debugging/)。我发现这比尝试提供包含路径有效得多。
+
+把以下内容添加到 `.west/config` 文件中（如果你按照上面的 Linux 指南操作，`.west/config` 已包含此项）：
+
+```ini
+[build]
+cmake-args = -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+```
+
+这会告诉 CMake 在构建时始终生成 `compile_commands.json` 文件。
+
+把以下内容添加到 `.vscode/c_cpp_properties.json` 文件中：
+
+```json
+{
+    "configurations": [
+        {
+            "name": "App Config",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        }
+    ],
+    "version": 4
+}
+```
+
+这会告诉 VS Code 使用 `compile_commands.json` 文件进行 IntelliSense。上面的片段假设构建目录为 `build/`，请按需修改。
+
+从头重新构建项目。构建目录中应生成 `compile_commands.json`。VSCode 的 IntelliSense 会读取它，应该能修复你遇到的所有包含错误！
+
+如果你在一个 west 工作区中开发多个应用，可以为每个应用分开配置。下面的示例设置两个配置：一个用于应用，另一个用于 `tests/` 子目录中的 [ztest 单元测试](/programming/operating-systems/zephyr/#tests)，并让构建目录设为 `build-tests`：
+
+```json
+{
+    "configurations": [
+        {
+            "name": "App Config",
+            "compileCommands": "${workspaceFolder}/build/compile_commands.json"
+        },
+        {
+            "name": "Tests Config",
+            "compileCommands": "${workspaceFolder}/build-tests/compile_commands.json"
+        }
+    ],
+    "version": 4,
+    "enableConfigurationSquiggles": true
+}
+```
+
+添加后，可以在 VS Code 底部工具栏的右侧选择活动配置。
+
+如果你只有一个配置，也可以不添加到 `.vscode/c_cpp_properties.json`，而是添加到 `.vscode/settings.json`：
+
+```json
+{
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json",
+}
+```
+
+如需了解 Zephyr 单元测试和 IntelliSense 的更多信息，请参阅 Zephyr 主页面的[测试](/programming/operating-systems/zephyr/#tests)一节。
+
+## 使用 clangd
+
+有些人推崇 `clangd`，认为它比默认的 VS Code C/C++ 扩展提供更好的 IntelliSense。安装 clangd 扩展，即可让 clangd 与 Zephyr 和 VS Code 配合工作。
+
+<Image src={import('./_assets/clangd-telling-me-i-need-to-add-config-gpio.webp')} width="500px">clangd 提示我需要添加 CONFIG_GPIO 且未包含驱动的截图。</Image>
+
+出于某种原因，我始终没能让 `clangd` 完全正常工作。总会出现一些问题，例如 `clangd` 找不到头文件 `<functional>`。
+
+## 移动 west 工作区
+
+我在 Linux 上移动 west 工作区时运气不佳。移动后找不到 `west` 可执行文件（已确认 Python 虚拟环境处于激活状态）。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}

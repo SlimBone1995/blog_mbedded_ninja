@@ -13,3 +13,6 @@ date,batch,agent,pages,tokens,duration_s,notes
 2026-11-11,Programming batch 1,C language,9,95362,320,
 2026-11-11,Programming batch 1,C++ language,8,107449,364,
 2026-11-11,Programming batch 1,FreeRTOS/Zephyr,8,119758,367,
+2026-11-11,Programming batch 2,C big pages,4,101846,317,
+2026-11-11,Programming batch 2,Zephyr/boot/build,5,136929,359,
+2026-11-11,Programming batch 2,C++ big pages,5,129750,1929,

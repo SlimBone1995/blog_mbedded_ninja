@@ -1,0 +1,783 @@
+---
+authors: [gbmhunter]
+date: 2014-04-17
+description: 关于使用 C++ 为微控制器编写固件（代码）的风格/特性指南。
+lastUpdated: 2026-07-05
+tags: [c++, constructors, errors, status, initialization, embedded, firmware, classes, microcontrollers, NTBS, strings, pointers, MISRA, arrays, dynamic memory allocation, new, delete, malloc, free, ETL, RAII, templates, namespaces, testing, virtual functions]
+title: 嵌入式系统上的 C++
+type: page
+sourcePath: programming/languages/c-plus-plus/cpp-on-embedded-systems/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:f0bff9570b11432848bb48f5fe4aa390f60c3f8e583c21cf0b20482cd5d14335
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/cpp-on-embedded-systems/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+在嵌入式系统上使用 C++ 的一个担忧是性能下降（就内存和处理速度而言）。与大多数复杂问题一样，答案其实是——“视情况而定”。此外，人们对嵌入式系统的理解因人、因公司而异。在运行 Linux 等完整操作系统的高端嵌入式设备上，你可以使用大多数 C++ 特性。本页所说的是“深度”嵌入式系统——在微控制器上以“裸机”（无操作系统）或配合 RTOS 运行的系统。内存通常非常受限，典型的闪存大小为 16-256kB，RAM 为 2-64kB。CPU 时钟速度可能在 8 到 250MHz 之间，通常为单核。
+
+**我相信，你可以精心挑选 C++ 语言的一个子集，它既能提供面向对象设计的大部分好处，又不会为目标嵌入式系统带来任何显著的性能损失**。
+
+本页旨在涵盖 C++ 的许多特性，并评估它们在深度嵌入式系统中的适用性。
+
+## 应该使用的 C++ 特性
+
+以下是**在大多数嵌入式固件中你应该使用**的所有 C++ 特性：
+
+- [类](/programming/languages/c-plus-plus/classes/)
+- RAII
+- 模板（无开销，可以看作功能更强大的宏）。不过，不正确/粗心地使用模板会导致代码体积大幅增加。同时要注意不要过度使用，过多的模板会让代码非常难读。
+- 函数重载和默认参数——无需大规模重构即可轻松扩展函数！并为 API 提供更多灵活性。
+- 枚举类、类型安全的 typedef
+- [运算符重载](/programming/languages/c-plus-plus/operator-overloading/)（在合理使用的前提下！）
+- [引用](/programming/languages/c-plus-plus/references/)（它们只是更安全、不能为空的指针！）
+- [命名空间](/programming/languages/c-plus-plus/namespaces/)（无开销）
+- [继承](/programming/languages/c-plus-plus/inheritance/)
+- [`auto`](/programming/languages/c-plus-plus/auto-specifier/)
+- [智能指针](/programming/languages/c-plus-plus/smart-pointers/)（`std::unique_ptr`、`std::shared_ptr`）
+- `std::array`
+- 嵌入式模板库（ETL）
+
+下面各小节将更详细地解释这些特性。
+
+### 类
+
+如果你做过基于 C 的嵌入式项目，并且需要控制多个外设实例（例如 UART），你很可能已经意识到：如果只是复制所有 `Uart_Write(char * bytes, ...)` 和 `Uart_Read()` 函数，并把它们命名为 `Uart2_Write()`、`Uart2_Read()` 等，代码既低效又难以维护。然后你可能会想：嘿，我只要保留一份所有函数的副本，但把包含某个 UART 全部配置和状态数据的 Uart `struct` 作为第一个参数传进去就好了。
+
+现在你的函数看起来像 `Uart_Write(Uart* uart, char* bytes, ...)`。告诉你吧，**这就是 C++ 中类的基本思想**。但真正的类提供了更易读、更易维护的方式来实现这一点。因此，没有理由不在嵌入式固件中使用 C++ 类，而且至少在这种基本意义上使用类时没有性能损失。
+
+### 多态
+
+与类和继承密切相关的概念是多态。多态是指不同的子对象可以被当作共同父类型的对象来对待。我发现在嵌入式固件中，多态最有用的地方是编写[单元测试和集成测试](/programming/languages/c-plus-plus/unit-testing-and-mocking/)。
+
+你可以定义抽象基类，为微控制器外设定义接口。然后让真实实现和 mock 实现继承该基类并提供所需功能。真实类会与实际的硬件通信（直接访问寄存器，或通过 [HAL](/programming/languages/c-plus-plus/designing-a-hal-in-cpp/)/驱动）。mock 类只记录函数调用并保存传入的数据，以便在测试期间验证。
+
+这称为运行时多态，可能因虚表指针而产生少量开销。不过，这很少成为问题；如果确实有问题，你随时可以改用编译期多态（或根据编译目标替换 `.cpp` 文件）。详见下文。
+
+<Aside type="caution">
+不要滥用多态。要注意，每一层抽象都会增加理解代码的复杂度。你不能再通过“ctrl+单击”函数调用来查看它的实现位置（如果那是对接口的函数调用）。相反，你需要知道正在使用哪个子类，并沿着它去查找。请明智地使用，并确保代码尽可能易读。
+</Aside>
+
+### RAII
+
+RAII 是一种编程技术，全称是“资源获取即初始化”（Resource Acquisition Is Initialization）。基本上，它意味着你应该在类的构造函数中获取资源（例如分配内存、锁定互斥锁、打开网络连接），并在析构函数中释放它们。这确保了对象离开作用域时资源总能被释放。
+
+这听起来可能没什么大不了，但它实际上是一项非常强大的技术，应尽可能充分地利用，尤其是在嵌入式固件中。RAII 会影响你设计类和组织代码的方式。C++ 之所以能实现 RAII，是因为所有类都有构造函数和析构函数，并且保证在对象进入和离开作用域时被调用。C 中并非如此，在 C 里你最多只能确保调用 `init()` 和 `deinit()` 函数。
+
+嵌入式世界中 RAII 的经典例子，是用 RAII 确保锁定互斥锁的代码执行完毕后互斥锁总能被释放。为此，你会创建一个 `MutexLock` 类，在构造函数中加锁、在析构函数中解锁。然后在 `Mutex` 类上创建一个返回 `MutexLock` 对象的 `lock()` 方法。示例见下面的 C++ 伪代码：
+
+```c++
+class MutexLock {
+public:
+  MutexLock(Mutex& mutex) : m_mutex(mutex) {
+    m_mutex.lockInternal();
+  }
+  ~MutexLock() {
+    m_mutex.unlockInternal();
+  }
+private:
+  Mutex& m_mutex;
+};
+
+class Mutex {
+  friend class MutexLock;
+public:
+  MutexLock lock() {
+    return MutexLock(*this);
+  }
+private:
+  void lockInternal() {
+    // ...
+  }
+  void unlockInternal() {
+    // ...
+  }
+};
+
+// Then in your code you can do the following:
+void someFunction() {
+  Mutex mutex;
+  MutexLock lock = mutex.lock();
+  // ...
+} // Mutex is automatically unlocked here
+```
+
+这完全消除了在代码中手动解锁互斥锁的需要。你的函数可能有许多退出点，你不再需要记住在每个退出点解锁互斥锁。而且，如果你确实允许使用异常，异常抛出时互斥锁也会自动解锁。
+
+关于这一点的真实示例，请参阅[我的 ZephyrCppToolkit 库中的 Mutex 和 MutexLockGuard 类](https://github.com/gbmhunter/ZephyrCppToolkit/blob/main/include/ZephyrCppToolkit/Core/Mutex.hpp)。
+
+尽管实际的固件应用可能不太关心在析构函数中清理资源（它通常被设计为永远运行），但如果你在为固件编写单元测试或集成测试，清理就突然变得很重要。单元/集成测试通常是一个可执行文件，运行许多测试函数。每个函数都会想创建应用的一小部分（单元测试）或整个应用（集成测试），测试某些东西，然后清理干净，不留下任何被修改的全局状态。这正是 RAII 大显身手的地方。我设计固件时，会让根级 `App` 类拥有一个析构函数，负责清理其包含的所有对象。这些子对象会确保清理自己的资源，也会确保清理它们的子对象，依此类推。这可能意味着析构函数会做诸如向线程发送 `Exit` 事件、关闭连接之类的事情。我通常不必担心 `delete`，因为我尽量把对象直接嵌入其他对象，或使用智能指针管理内存。
+
+这样设计后，我只需让 `App` 对象在测试函数结束时离开作用域，所有资源就会被正确清理。
+
+### 模板
+
+模板允许你在编译期创建使用不同类型、略有差异的类版本。
+
+注意不要过度使用模板。使用过度会让代码非常难读。为了展示模板和元编程能走多远，有人写了完整的[编译期光线追踪器](https://github.com/phresnel/metatrace)。能做不代表该做 😊。
+
+### 枚举类
+
+[C 中的枚举](/programming/languages/c/enumerations/)可能很危险。库函数的用户可以随便把一个整数作为参数传给接受枚举的函数，编译器不会报错，但在运行时，所提供的值可能完全超出范围，导致意外缺陷。
+
+此外，所有枚举共享同一作用域，因此必须小心避免名称冲突！例如，如果你想为不同的状态机各定义一个 `IDLE` 枚举，就不得不改名，例如 `GPS_IDLE` 和 `MOTOR_IDLE`。
+
+C++ 通过 `enum class` 概念改进了这一点。它是类型更强的枚举，如果试图在不显式转换的情况下在该类型和整数之间转换，编译器会报错。枚举值也限定在枚举名的作用域内，从而避免与项目中的其他枚举发生命名冲突。这与命名空间结合使用是非常强大的组合。
+
+下面的示例展示了 C 风格枚举如何被隐式转换为整数（这可能很危险），而 `enum class` 则不会。
+
+```c++
+// C-style enums
+enum EStates { OFF, IDLE, RUNNING };
+enum EColors { RED, BLUE, GREEN };
+
+// C++-style enum classes
+enum class ECStates { OFF, IDLE, RUNNING };
+enum class ECColors { RED, BLUE, GREEN };
+
+int main() {
+    EStates myEState;
+    myEState = IDLE;
+    if (myEState == GREEN) { // Bad idea, but compiles
+      // ...
+    }
+
+    ECStates myECState = ECStates::IDLE;
+    if (myECState == ECColors::GREEN) { // Bad idea, but yay, won't compile!
+        // ...
+    }
+}
+```
+
+<Aside type="tip">
+虽然 `enum class` 不允许隐式转换为整数，但有时这样做仍然很有用。你仍然可以转换，只是必须在代码中显式转换变量。我建议使用 `static_cast<uint8_t>(myEnum)` 来完成。
+</Aside>
+
+下面的示例展示了 C 风格枚举如何导致作用域/命名问题。
+
+```c++
+enum GpsState {
+    OFF,
+    IDLE,
+    SCANNING
+};
+
+enum MotorState {
+    OFF, // Because of the global scope, this is going to collide with the OFF in GpsState!  
+    RUNNING
+};
+```
+
+但如果使用 `enum class`，就能避免命名冲突：
+
+```c++
+enum class GpsState {
+    OFF,
+    IDLE,
+    SCANNING
+};
+
+enum class MotorState {
+    OFF, // This is fine, MotorState::OFF is not going to collide with GpsState::OFF
+    RUNNING
+};
+```
+
+### 命名空间
+
+C++ 命名空间是组织代码的绝佳特性。它允许你把代码组织成逻辑上按作用域分组的集合，并防止命名冲突。这在编写库时尤其重要，因为从库作者的角度看，他们无法控制库将被用于的项目中其他所有内容的命名；而从库用户的角度看，他们真的不想为了修复命名冲突而深入库代码去修改东西（如果可能的话）。
+
+```c++
+namespace my_namespace {
+// All my stuff goes here
+}
+```
+
+<Aside type="tip">
+我喜欢对命名空间使用 `snake_case`，以便在视觉上与类、枚举等类型区分开。
+</Aside>
+
+### std::array
+
+`std::array` 是 C 风格数组的包装器，在其使用上提供了更多安全性。与 C 中不同，它不会自动退化为指向元素类型的指针。[^cpp-reference-std-array]
+
+如果使用 `[]` 运算符访问元素，其行为与 C 中相同，没有边界检查：
+
+```c++
+std::array<uint8_t, 3> myArray;
+myArray[3] = 10; // Woops, no bounds checking!
+```
+
+然而，如果改用 `.at()`，就会进行边界检查：
+
+```c++
+std::array<uint8_t, 3> myArray;
+myArray.at(3) = 10; // Bounds checking, this will throw an exception
+```
+
+如果索引越界，会抛出 `std::out_of_range`。
+
+<Aside type="note">
+抛出异常？但我的固件不允许使用异常啊。有道理。幸运的是，[嵌入式模板库（ETL）](https://www.etlcpp.com/)可以救场。详见下文。
+</Aside>
+
+你还可以使用有用的 `.fill()` 函数，用单个值填充所有元素：
+
+```c++
+// Set the array to all 0's
+myArray.fill(0);
+```
+
+另一个有用的特性是，只需使用 `=` 运算符就能复制整个数组：
+
+```c++
+std::array<uint8_t, 3> myArray1 = {1, 2, 3};
+std::array<uint8_t, 3> myArray2;
+myArray2 = myArray1;
+```
+
+注意，这只适用于类型和大小都相同的数组。
+
+```c++
+std::array<uint8_t, 4> myArray3;
+myArray3 = myArray2; // Compiler error! Different sizes
+```
+
+### constexpr 与编译期计算
+
+`constexpr` 是一个关键字，允许你在编译期定义常量值。这对于数组大小或其他在编译期已知的值很有用。
+
+对于数组大小和其他常量，应优先使用 `constexpr` 而不是 `#define`，因为它有类型和作用域，而不是 `#define` 那种粗暴的文本替换。
+
+```c++
+// Don't do this
+#define ARRAY_SIZE 10
+
+// Do this
+static constexpr size_t arraySize = 10;
+```
+
+`constexpr` 也可用于执行编译期计算。
+
+### 基于范围的 for 循环
+
+传统的 `for(int x = 0; x < arrayLength; x++)` 循环写起来很麻烦，而且如果范围写错就容易出错（最常见的错误是不小心写成 `x <= arrayLength` 而不是 `x < arrayLength`，导致越界访问，糟糕！）。
+
+C++11 引入了基于范围的 for 循环，通常写成：`for (auto& value : container)`。这是一种更优雅的方式，用于遍历“可迭代”对象（具有 `begin()` 和 `end()` 方法）。当你遍历容器中的每个元素且不需要知道索引时，应该用这种循环替代传统的 `for` 循环。
+
+```c++
+std::array<uint8_t, 3> myArray = {1, 2, 3};
+
+// Range based for loop
+for (auto& value : myArray) {
+  // ...
+}
+```
+
+最常用的类型是 `auto&`，它会自动成为容器所持有类型的引用。
+
+## 可以使用但需谨慎考虑的 C++ 特性
+
+- `new/delete`
+- [虚函数](/programming/languages/c-plus-plus/virtual-methods/)
+- RTTI
+- [异常](/programming/languages/c-plus-plus/exceptions/)
+- [`std::string`](/programming/languages/c-plus-plus/strings/)
+- `std::vector`
+- [Boost](/programming/languages/c-plus-plus/boost-libraries/)
+
+### new/delete
+
+`new` 和 `delete` 是 C++ 对 C 的 [`malloc()` 和 `free()`](/programming/languages/c/dynamic-memory-allocation/) 函数的回应。它们是 `malloc()` 和 `free()` 的改进版本。
+
+我对嵌入式固件的一般规则是：除非特定编码标准（如 MISRA）禁止使用动态内存分配，否则**允许使用动态内存分配，但仅在初始化期间使用**。我认为这样能兼顾两者的优点。使用动态内存分配的能力使固件能够灵活应对初始化变量和配置；只允许在初始化时使用，则避免了在运行时不断从堆上创建和删除对象时可能出现的“内存碎片”问题。
+
+我通过以下方式确保避免内存问题：
+
+- 优先把对象直接作为变量嵌入另一个类，而不是存储对象指针并在构造函数中用 `new` 分配。这样我就不必担心意外的空指针或忘记释放内存。不过，有时无法在父对象构造函数的初始化列表中构造子对象，这种情况下我会退回到使用指针。
+- 尽量把所有裸指针包装在 `std::unique_ptr` 或 `std::shared_ptr` 中，以确保对象离开作用域时内存被自动释放。
+
+### 异常
+
+异常很强大，它允许错误沿栈向上传播，直到你关心并捕获它们，而不必在所有不关心异常的层添加任何代码。然而，对大多数深度嵌入式固件项目来说，异常是个问题，因为：
+
+- 栈展开是处理器密集型操作。
+- 正确的异常处理代码可能难以阅读（相对于返回码）。参见 Raymond Chen 的文章 [Cleaner, more elegant, and harder to recognize](https://devblogs.microsoft.com/oldnewthing/20050114-00/?p=36693)。
+
+在嵌入式固件中不允许使用异常时，错误处理通常通过从函数返回错误码并在每次调用函数时检查来完成。**这起初可能看起来很麻烦，但这是一种非常常见的范式，能迫使你思考“异常”场景以及如何处理它们**。许多现代语言（如 Go 和 Rust）本来就鼓励用“返回错误码、检查错误码、继续”的流程替代异常。
+
+禁用异常时，需要考虑的一个问题是如何处理构造函数中的错误。详见下面的[在构造函数中处理错误](#handling-errors-in-constructors)一节。
+
+GCC 编译器支持 `-fno-exceptions` 标志来禁用异常。
+
+### std::string
+
+我通常不建议在嵌入式固件中使用 `std::string`，因为它在运行时使用动态内存分配（使用默认分配器时）。嵌入式模板库（ETL）提供了更合适的 `etl::string`，它使用模板参数在编译期确定栈上字符串缓冲区的大小，从而避免动态内存分配。
+
+在嵌入式 C++ 中，`std::string_view` 可作为原始 NTBS（以空字符结尾的字节串）的更安全包装器，而无需在运行时使用动态内存分配。
+
+## 在构造函数中处理错误
+
+用固件编写类时的一个问题是，**C++ 类构造函数中发生错误时难以向调用者发出信号**。返回错误号的标准函数做法行不通，因为 C++ 构造函数不允许有返回值。在开发运行于完整操作系统上的 C++ 应用时，标准做法是抛出异常。在不允许使用异常的嵌入式应用中，这显然不是一个选项。例如，考虑下面的示例类：
+
+```c++
+#include <cstdint>
+
+class TempSensor {
+public:
+  TempSensor(uint8_t i2cAddress) {
+    // Validate I2C address
+    if (i2cAddress > 127) {
+      // Argh, error! What do we do in firmware when we can't throw an exception?
+    }
+    this->i2cAddress = i2cAddress;
+  }
+private:
+    uint8_t i2cAddress;
+};
+
+int main() {
+  TempSensor tempSensor(10); // We don't know if this is ok or not!
+}
+```
+
+你想在构造函数中检查调用者是否提供了有效的 I2C 地址（0-127 范围内）。有几种方法可以把此故障信号传回调用者，我们现在来讨论。
+
+<Aside type="note">
+所有这些示例的可运行代码都可以在 [https://replit.com/@gbmhunter/cpp-handling-constructor-errors](https://replit.com/@gbmhunter/cpp-handling-constructor-errors) 找到。
+</Aside>
+
+### 把所有非平凡代码移到 Init()
+
+绕过这个问题的一种常见做法，是把所有可能引发错误的非平凡代码从构造函数移到 `Init()` 函数中。
+
+<Aside type="caution">
+这种方法违背 RAII，我不推荐！
+</Aside>
+
+```c++
+#include <cstdint>
+#include <cstdio>
+
+class TempSensor {
+public:
+  TempSensor() {
+    // Nothing here now
+  };
+
+  uint8_t Init(uint8_t i2cAddress) {
+    // Validate I2C address
+    if (i2cAddress > 127) {
+      return 1;
+    }
+    this->i2cAddress = i2cAddress;
+    return 0;
+  };
+private:
+    uint8_t i2cAddress;
+};
+
+int main() {
+  TempSensor tempSensor;
+  uint8_t status;
+  
+  status = tempSensor.Init(10); // OK, returns 0
+  status = tempSensor.Init(200); // Error, returns 1  
+}
+```
+
+<Aside type="tip">
+你可能想确保调用者在调用任何其他函数之前不会忘记调用 `Init()`。为此，可以在类中添加一个 `bool m_isInitialized` 变量，然后在所有其他成员函数的入口处检查它。
+</Aside>
+
+使用 `Init()` 函数还**使调用者能够在不删除此对象并构造新对象的情况下重新初始化类**。这对特定应用可能有利也可能无益！
+
+这种方法的一个缺点是，调用者必须记住在使用类的其他任何函数之前调用 `Init()`。此外，添加 `m_isInitialized` 检查意味着每个成员函数都要增加代码。
+
+### 向构造函数传入状态指针
+
+另一种解决问题的方法是，向构造函数传入指向状态变量的指针，让构造函数对其赋值，类似于当普通函数有多个输出时，你会传入额外的“输出”参数。
+
+```c++
+#include <cstdint>
+#include <cstdio>
+
+class TempSensor {
+public:
+  TempSensor(uint8_t i2cAddress, uint8_t& status) {
+    // Validate I2C address
+    if (i2cAddress > 127) {
+      status = 1;
+      return;
+    }
+    m_i2cAddress = i2cAddress;
+    status = 0;
+  }
+private:
+    uint8_t m_i2cAddress;
+};
+
+int main() {
+  uint8_t status;
+  TempSensor tempSensor(200, status);
+  if (status != 0) {
+    printf("Error initializing temp. sensor. status=%u\n", status);
+  }
+}
+```
+
+希望调用者记得在构造对象后检查状态变量，并且只在构造函数成功时才使用该对象。
+
+### 提供第二个函数或成员变量来检查构造函数是否成功
+
+解决构造函数错误问题的最后一种方法，是把构造函数的成功状态保存到类中，然后向调用者提供另一个函数来获取该状态：
+
+```c++
+#include <cstdint>
+#include <cstdio>
+
+class TempSensor {
+public:
+    TempSensor(uint8_t i2cAddress) {
+        // Validate I2C address
+        if (i2cAddress > 127) {
+            // Returning here will mean m_initSuccessful will stay false
+            return;
+        }
+        m_i2cAddress = i2cAddress;
+        m_initSuccessful = true;
+    }
+
+    bool initSuccessful() {
+        return m_initSuccessful;
+    }
+private:
+    bool m_initSuccessful = false;
+    uint8_t m_i2cAddress;
+};
+
+int main() {
+    TempSensor tempSensor(10);
+    if(!tempSensor.initSuccessful()) {
+        printf("Initialization of temp. sensor failed.");
+    }
+}
+```
+
+如果你想向调用者提供更详细的构造函数失败原因，可以把布尔变量 `m_initSuccessful` 改为 `uint8_t`。这与上面的“传入状态”方法非常相似。
+
+## C++ 与中断
+
+在嵌入式固件项目中使用 C++ 并涉及中断和中断服务程序（interrupt service routine，ISR）时，有几点需要注意：
+
+### C++ 改写 ISR 名称
+
+C++ 会改写函数名（在名称中添加任意字符）——如果你的固件环境依赖精确的函数名来识别 ISR，就不能使用 C++ 函数。解决办法是用 `extern "C"` 包装 ISR 函数。下面的示例使用 STM32 标准外设固件库：
+
+```c++
+// In a .cpp file somewhere...
+extern "C" {
+    void SPI1_IRQHandler(void)
+    {
+        // ISR handler code goes here
+    } 
+}
+```
+
+如果没有用 `extern "C"` 包装 `SPI1_IRQHandler(void)`，它编译后的名称会类似 `AbXllGSPI1_IRQHandler(void)`。链接器不会识别它，而且由于启动代码中用 `__weak` 定义了默认（后备）IRQ 函数，你甚至不会收到函数缺失的错误！
+
+如果你使用的平台提供“注册”ISR 的函数，就不会有这个问题，因为无论如何你都要把改写后的名称传给注册函数：
+
+```c++
+int main(void) {
+    // In your firmware app somewhere...
+    register_isr(&SPI1_IRQHandler);
+}
+```
+
+<Aside type="note">
+C++ 执行名称改写是为了支持函数重载（同名但支持不同数量和/或类型的输入输出变量的函数）。
+</Aside>
+
+### ISR 调用类函数
+
+ISR 通常有严格的函数类型签名——没有输入变量，也没有返回类型。因此，无法把 C++ 类的实例作为函数输入传入，以访问并调用类成员函数。出于这个原因，通常必须定义 ISR 可访问的文件作用域类实例（或静态成员函数，或直接调用 C 风格函数）。更多信息请参阅 [C++ 回调页面](/programming/languages/c-plus-plus/callbacks/)。
+
+## 面向嵌入式设备的 C++ 标准库
+
+[uClibc++](http://cxx.uclibc.org/index.html) 是专为微控制器设计的 C++ 标准库。它甚至支持异常！
+
+如果你想获得在 AVR 微控制器上使用 `string` 和 `iostream` 之类功能的库，请查看 [The Standard Template Library (STL) For AVR With C++ Streams](http://andybrown.me.uk/wk/2011/01/15/the-standard-template-library-stl-for-avr-with-c-streams/)。
+
+## 嵌入式模板库（ETL）
+
+[嵌入式模板库（ETL）](https://www.etlcpp.com/)是一个流行的开源、MIT 许可的 C++ 库，旨在补充（在某些情况下替代）C++ STL（标准模板库）的部分内容，以提供适用于嵌入式环境的标准库。[^etl-homepage] 从嵌入式角度看，STL 的主要问题之一是 STL 容器（例如 `std::vector` 和 `std::string`）的使用中内置了动态内存分配。这些容器使用动态内存分配来提供强大而灵活的容器，在完整操作系统上运行良好，但动态内存分配的不确定性和碎片化通常使这些 STL 容器不适合嵌入式系统。
+
+ETL 提供了一组静态分配的替代容器，因此不使用动态内存分配。
+
+ETL 在嵌入式社区中很受欢迎，截至 2024 年 9 月，它在 GitHub 上有 2.1k 颗星。[^etl-github] 该库使用 [CMake](/programming/build-systems-and-package-managers/cmake/) 构建。[^etl-homepage]
+
+### 安装
+
+把 ETL 添加到项目的一种方法是复制仓库或将其作为子模块添加。完成后，你就可以使用 CMake 的 `add_subdirectory()`。下面的示例展示了一个 `CMakeLists.txt` 配置，假设你已将 ETL 仓库作为子模块添加到 `lib/etl`，并且源代码位于 `src/` 下：
+
+```cmake title="CMakeLists.txt"
+cmake_minimum_required(VERSION 3.22)
+project(my_project)
+
+add_subdirectory(lib/etl)
+add_executable(my_project src/main.cpp)
+target_link_libraries(my_project PRIVATE etl::etl)
+```
+
+我最喜欢的 ETL 添加方式是使用 CMake 的 `FetchContent`，这样你甚至不必手动下载 ETL 仓库！下面的示例展示了具体做法：
+
+```cmake title="CMakeLists.txt"
+Include(FetchContent)
+
+FetchContent_Declare(
+  etl
+  GIT_REPOSITORY https://github.com/ETLCPP/etl
+  GIT_TAG        <targetVersion>
+)
+
+FetchContent_MakeAvailable(etl)
+
+add_executable(my_project src/main.cpp)
+target_link_libraries(my_project PRIVATE etl::etl)
+```
+
+### 容器
+
+ETL 提供了许多与 C++ STL 容器类似的容器（例如 vector、string、array），不同之处在于它们由静态分配的内存支撑，不会发生动态分配。
+
+#### 数组
+
+ETL 提供了 `etl::array`，它提供编译期已知固定大小的数组。下面是 `etl::array` 的示例：
+
+```c++
+#include <etl/array.h>
+
+int main() {
+    etl::array<uint8_t, 3> myArray; // Declare an array of uint8_t which has 3 elements
+}
+```
+
+`etl::array` 提供两种主要的随机访问数组元素的方式：`[]` 运算符和 `.at()` 方法。`[]` 运算符更快，但不检查索引是否越界。`.at()` 方法较慢，但会检查索引是否越界，若越界则触发断言或抛出异常（取决于你的 ETL 配置）。
+
+```c++
+myArray[0] = 10; // Use the [] operator to access the element. Faster, but no bounds checking!
+myArray.at(0) = 10; // Use the .at() method to access the element. Slower, but safer!
+```
+
+我建议默认使用 `.at()`，只有在性能原因不得不这样做时才使用 `[]`。另一种安全的元素访问方式（但不是随机访问）是使用迭代器，下面会解释。
+
+你可以使用迭代器遍历数组元素，这进一步保护你免于意外访问数组边界之外的元素。
+
+```c++
+for (auto it = myArray.begin(); it != myArray.end(); ++it)
+{
+    // Do something with the element. "it" is a pointer to the element
+    *it = 10;
+}
+```
+
+<Aside type="note">
+有时迭代器不适用，因为计算的某些部分既需要元素的值，也需要元素的索引。这种情况下请使用标准的 `for (int i = 0; i < myArray.size(); i++)` 循环。
+</Aside>
+
+可以调用 `.size()` 获取数组中的元素数量。
+
+可以使用 `.fill(value)` 把数组的所有元素设为同一个值。
+
+```c++
+myArray.fill(10);
+```
+
+<Aside type="tip">
+不能在数组（ETL 数组或其他数组）中存储引用！这是因为引用不是对象，因此不能存储在容器中（它们没有关联的内存）。你可以在数组中存储对象或指向对象的指针。
+</Aside>
+
+#### Vector
+
+下面是 `etl::vector` 容器的示例及其用法：
+
+```c++
+#include <iostream>
+#include <inttypes.h>
+
+#include <etl/vector.h>
+
+void passMeAVector(etl::ivector<uint32_t>& vec) {
+    // Do something with the vector
+    vec.push_back(13);
+    vec.push_back(14);
+}
+
+int main() {
+    etl::vector<uint32_t, 6> vec;
+    passMeAVector(vec);
+    printf("Num. of things in vec is %lu, vec[0] is %u, capacity is %lu\n", vec.size(), vec[0], vec.capacity());
+    return 0;
+}
+```
+
+注意，创建 vector 时，类型（`uint32_t`）和 vector 的大小（6）都在模板参数中指定。这允许在栈上（此时位于 `main()` 内部）分配 6 个元素的空间。相比之下，`std::vector` 只指定类型，用于保存元素的缓冲区在运行时于堆上动态分配（并调整大小！）。
+
+ETL 的一个巧妙之处是，允许你接受 `etl::vector` 类型的函数输入，而无需同时提供大小。否则会很麻烦，因为这意味着每种不同大小的 vector 都需要一个不同的函数版本。ETL 通过定义一个名为 `etl::ivector` 的基类来实现这一点，该基类只需类型作为模板参数。你可以把 `etl::vector` 传给接受 `etl::ivector` 的函数，它能正常工作。
+
+#### 字符串
+
+ETL 通过 `etl::string` 和 `etl::string_ext` 提供固定容量字符串类。与 `std::string` 不同，`etl::string` 不执行任何动态内存分配。缺点是你需要把最大大小作为模板参数提供（以便 `etl::string` 在编译期在其对象中分配该大小的缓冲区），或者提供自己已分配的缓冲区。
+
+ETL 字符串通过 `etl/string.h` 头文件提供。
+
+`etl::string` 是一个简单的字符串类，包含自己的固定大小数组。要创建 `etl::string`，需要把数组大小指定为模板参数，如下所示：
+
+```c++
+#include <etl/string.h>
+
+int main() {
+    etl::string<10> myString;
+}
+```
+
+你也可以使用 `etl::string_ext` 提供自己的缓冲区来创建字符串：
+
+```c++
+char buffer[10 + 1]; // +1 for the null terminator
+etl::string_ext myString(buffer, etl::size(buffer));
+```
+
+ETL 字符串可避免溢出以及与原始 C 风格字符串（`char *`）相关的其他典型问题。ETL 字符串有一个内部标志记录截断状态。如果字符串在构造、赋值或以任何方式修改时其内容会超出容量，则设置截断标志。如果从最初被截断的字符串构建其他字符串，即使结果字符串没有被截断，截断标志也会传播到这些字符串。这种行为很有用，让你在许多操作之后检查字符串是否有效。它类似于特殊浮点值 `NaN` 会传播到与其一起参与计算的所有其他浮点数。
+
+你可以使用 `<etl/to_string.h>` 头文件提供的 `etl::to_string` 函数，把整数和浮点数等内容格式化到字符串中。
+
+```c++
+etl::string<20> text = "Number is: ";
+etl::to_string(5, text, true); // Make sure to append as to not overwrite "Number is: "
+// String is now "Number is: 5"
+```
+
+你可以使用 `etl::format_spec` 控制字符串的格式。它作为第三个参数传给 `etl::to_string` 的某个重载。下面的示例展示如何把浮点数格式化为 3 位小数。
+
+```c++
+etl::string<20> text = "The result is ";
+etl::to_string(3.1415, text, etl::format_spec().precision(3), true);
+// 'text' is set to "The result is 3.142"
+```
+
+有时你必须把 ETL 字符串传给期望 `char *` 的函数。与 `std::string` 一样，你可以使用 `.c_str()` 方法从 ETL 字符串获取 `char *`。
+
+#### 字符串视图
+
+ETL 提供字符串视图，即对字符串特定部分的低成本视图。
+
+下面的示例从具有不同起始和结束位置的字符串创建字符串视图：
+
+```c++
+etl::string<11> greeting("Hello World");
+etl::string_view view(greeting.begin() + 2, greeting.size() - 4);
+```
+
+### etl::expected
+
+ETL 提供了 `etl::expected` 类，它与 `std::expected` 类非常相似。据我所知，`std::expected` 在嵌入式环境中完全可以放心使用（无动态分配、无异常等），但它直到 C++23 才加入，对某些嵌入式项目来说可能不是可行选项。因此，只要你能使用 ETL 库，`etl::expected` 就是一个很好的替代品。如果你确实有 `std::expected` 可用，我建议用它代替 `etl::expected`，以便与其他 C++ 代码更好地兼容。
+
+与 `std::expected` 一样，`etl::expected` 是从函数返回某个值或错误码的绝佳方式。在我看来，它比“C 方式”（返回错误码并提供指针作为函数输入来保存结果）更清晰。它在本质上类似于 [Rust](/programming/languages/rust/) 的 `Result` 类型。
+
+```c++
+#include <etl/expected.h>
+
+enum class Error {
+  SensorError,
+  CommunicationError,
+};
+
+etl::expected<float, Error> readTemperature() {
+  float temperatureDegC = readTemperatureFromSensor();
+  if (temperatureDegC < 0) {
+    return etl::unexpected(Error::SensorError);
+  }
+  return temperatureDegC;
+}
+
+int main() {
+  auto result = readTemperature();
+  if (!result.has_value()) {
+    printf("Error reading temperature: %d\n", static_cast<int>(result.error()));
+  } else {
+    printf("Temperature: %f\n", result.value());
+  }
+}
+```
+
+### 配置
+
+你可以通过向项目中添加名为 `etl_profile.h` 的文件来配置 ETL。如果该文件存在，ETL 库会自动包含它（`platform.h` 是引入它的文件）。
+
+ETL 使用了一种我以前没见过的技巧，通过 `__has_include` 宏仅在文件存在时包含它，如下所示：
+
+```c++ title="platform.h"
+//*************************************
+// Include the user's profile definition.
+#if !defined(ETL_NO_PROFILE_HEADER) && defined(__has_include)
+  #if !__has_include("etl_profile.h")
+    #define ETL_NO_PROFILE_HEADER
+  #endif
+#endif
+
+#if !defined(ETL_NO_PROFILE_HEADER)
+  #include "etl_profile.h"
+#endif
+```
+
+通常你会定义这个文件，并至少添加 `ETL_LOG_ERRORS` 或 `ETL_THROW_EXCEPTIONS`（如果你的目标平台允许使用异常）。添加 `ETL_VERBOSE_ERRORS` 也很有用，因为它会在错误消息中添加更多信息，例如文件名（但会消耗更多闪存）。
+
+例如，你的 `etl_profile.h` 文件可能如下所示：
+
+```c++ title="etl_profile.h"
+#define ETL_LOG_ERRORS
+#define ETL_VERBOSE_ERRORS
+```
+
+可以在 `etl_profile.h` 中定义的完整宏列表见 [https://www.etlcpp.com/macros.html](https://www.etlcpp.com/macros.html)。
+
+## 常见陷阱
+
+虽然我建议为嵌入式固件使用 C++ 而不是 C，但有一些事情需要注意。
+
+### 意外的动态内存分配
+
+由于构造函数、模板、运算符重载和多态背后隐藏了更多东西，很容易在你不想分配动态内存时意外调用了会分配动态内存的东西。
+
+避免这一点的方法是远离 `std` 容器，除非你确切知道它们的行为（改用 ETL 容器，它们被设计为永不调用 `new`）。
+
+### 模板膨胀
+
+鉴于模板“即时”生成代码的强大能力，很容易过度使用它们，突然之间模板生成的代码就会消耗过多闪存空间。请确保只在合理的地方使用模板，并仔细考虑替代方案。有时，与其用模板让你的库类可移植到任何类型，不如直接以 `void *` 传递。
+
+### 虚函数开销
+
+虚函数使诸如用外设的 mock 实现进行测试之类的事情变得容易。值得注意的是，虚函数会因额外的间接层（虚表指针）而带来性能损失。然而，这很少成为问题，编译器在许多情况下很擅长优化掉虚函数。如果你担心，请对代码进行性能分析，看看虚函数是否是你无法忍受的瓶颈。
+
+如果确实有问题，你有几个选择：
+
+- 使用基于模板的编译期多态，而不是基于虚函数的运行时多态。
+- 使用 C 风格技巧：共享头文件，但根据编译目标替换 `.cpp` 实现文件（仅当你愿意把每个实现都换成不同实现时才适用，例如真实实现与 mock 实现）。你可以通过在构建系统（例如 CMake 目标）中包含正确的实现文件，或使用预处理器宏和 `#if` 语句来切换 `.cpp` 文件。
+
+## 更多资源
+
+如果你真的对在嵌入式平台上使用 C++ 的优缺点感兴趣，文档“[Technical Report on C++ Performance](https://www.open-std.org/jtc1/sc22/wg21/docs/TR18015.pdf)”值得一读。[^bib-iso-tech-report-cpp-performance]
+
+[The Embedded C++ Homepage](http://www.caravan.net/ec2plus/) 算是嵌入式 C++ 编程的一个中心。他们为微控制器等嵌入式设备定义了完整 C++ 语言的一个子集。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^bib-iso-tech-report-cpp-performance]: ISO/IEC（2006 年 2 月 15 日）。_ISO/IEC TR 18015:2006(E) - Technical Report on C++ Performance_ [技术报告]。检索于 2022-09-29，来自 https://www.open-std.org/jtc1/sc22/wg21/docs/TR18015.pdf。
+[^cpp-reference-std-array]: cppreference.com。_std::array_ [网站]。检索于 2024-03-15，来自 https://en.cppreference.com/w/cpp/container/array。
+[^etl-homepage]: Embedded Template Library (ETL)。_Embedded Template Library_ [主页]。检索于 2024-09-03，来自 https://www.etlcpp.com/。
+[^etl-github]: Embedded Template Library (ETL)。_Embedded Template Library_ [GitHub 仓库]。检索于 2024-09-03，来自 https://github.com/ETLCPP/etl。
