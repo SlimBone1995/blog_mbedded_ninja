@@ -1,0 +1,31 @@
+---
+authors: [gbmhunter]
+date: 2013-07-31
+lastUpdated: 2013-07-31
+tags: [FreeRTOS, idle task, hook, vApplicationIdleHook, freeing memory]
+title: 空闲任务
+type: page
+sourcePath: programming/operating-systems/freertos/the-idle-task/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:84df972edf25a5ec5f13261dc279c1058b94a5dcfd2c1dc2fe3e40d272765a5c
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/freertos/the-idle-task/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+空闲任务是 FreeRTOS 调度器在没有其他任务等待执行时间时默认进入的任务。它由 FreeRTOS 内核自动创建，且无法禁用。有两种方式可以访问空闲函数（以便在其中编写你自己的代码）。
+
+监视空闲任务是衡量嵌入式 CPU 利用率的良好方式，可以了解还剩多少空闲时间可用于其他工作。
+
+FreeRTOS 始终要求至少有一个任务处于就绪状态；因此，不得在空闲任务中使用可能等待或阻塞的 FreeRTOS API 函数。
+
+空闲任务负责释放最近被删除任务的内存。因此，如果你的应用会删除任务，就必须确保空闲任务不会持续得不到处理器时间，否则这些内存将永远不会被释放。不过，这也是空闲任务唯一必须做的事，所以如果你不删除任何任务（这是常见情况），空闲任务可以一直得不到处理器时间。
+
+## 创建空闲钩子
+
+要创建空闲钩子，必须在 `FreeRTOSConfig.h` 中把 `configUSE_IDLE_HOOK` 设为 `1`，然后定义一个具有以下原型的函数：
+
+```c
+void vApplicationIdleHook();
+```

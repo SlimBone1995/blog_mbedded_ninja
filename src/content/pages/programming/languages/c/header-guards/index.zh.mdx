@@ -1,0 +1,85 @@
+---
+authors: [gbmhunter]
+date: 2011-09-07
+lastUpdated: 2011-09-07
+tags: [programming, C]
+title: 头文件保护
+type: page
+sourcePath: programming/languages/c/header-guards/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:77ea5995cdfbaa7c0aa072a59e5259b52d0e70ce9c65236ee5484aca51eabe6c
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/header-guards/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+头文件保护（header guard）是放在头文件顶部和底部的一段代码，用于防止该文件在编译时被多次包含。一个头文件可能被许多不同的 `.c` 文件包含。头文件保护只允许头文件的第一次包含真正参与解析。这样就能避免同一段代码被写两次时出现的所有编码错误，例如重复定义错误和变量覆盖。示例如下……
+
+## “#ifndef”方式
+
+此外，系统头文件的保护标识符通常以 `__` 开头（例如 `#ifndef __IDENTIFIER_H`）。你也不应该这样做！因为以 `_<capital letter>` 或 `__` 开头的宏属于系统宏的保留命名空间。
+
+> 在用户头文件中，宏名不应以“_”开头。 - GNU GCC：The C Preprocessor
+
+```c
+// Top of header file...
+#ifndef <IDENTIFIER>_H
+#define <IDENTIFIER>_H
+
+// Rest of header code...
+
+#endif // #ifndef <IDENTIFIER>_H
+// EOF
+```
+
+标识符只需是一个唯一的单词，不会被用作其他头文件保护的标识符。通常使用不带扩展名的文件名作为标识符，例如，如果该文件控制 LED 的闪烁，可以这样写：
+
+```c    
+#ifndef LEDS_H
+#define LEDS_H
+
+// Codey code code...
+
+#endif // #ifndef LEDS_H
+// EOF
+```
+
+## “#pragma once”方式
+
+创建头文件保护的另一种方式是使用 #pragma once 指令。与 #ifndef 方法相比，大多数编译器支持这种方法的时间较短，但在今天，你可以确信大多数编译器（包括 GCC）都支持它。
+
+在某些情况下，这种方法可以实现更快的编译和更好的优化，因为编译器能够在预处理器运行之前决定是否包含代码。它编写起来也更简单，并且不需要在文件末尾添加终止代码（而 #ifndef 方法需要）。
+
+但是，并非所有预处理器都支持它，因此其可移植性不如 `#ifndef` 方式。
+
+```c    
+// Top of header file
+
+// Header guard
+#pragma once
+
+// Codey code code
+
+// EOF
+```
+
+注意文件底部不需要任何头文件保护语法！
+
+## #import 方法
+
+第三种也是最后一种方法，是用 #import 指令代替 `#include`。但是，只有 Objective-C 认为它是标准，**并且在 C 和 C++ 中都已废弃**。
+
+问题在于，用户必须知道该头文件只能被包含一次，并使用 `#import` 指令而不是 `#include`。
+
+```c    
+// A C file
+
+// This header file will only be imported once
+#import "abc.h"
+
+// However, problems will arise if the user accidentally writes instead
+#include "abc.h"
+
+// EOF
+```

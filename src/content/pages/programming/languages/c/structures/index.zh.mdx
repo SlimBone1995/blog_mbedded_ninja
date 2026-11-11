@@ -1,0 +1,145 @@
+---
+authors: [gbmhunter]
+date: 2013-03-18
+lastUpdated: 2022-10-30
+tags: [struct, structures, C, programming, typedef]
+title: 结构体
+type: page
+sourcePath: programming/languages/c/structures/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a239b859d187fb1a746624aac14061acf4d98d98a3b89cd06133616af3c56ba5
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/structures/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+结构体（structure，也简称 struct）是 C 中把若干相关变量组合成一个更大变量的方式。[C++](/programming/languages/c-plus-plus/) 也支持结构体，不过通常改用类（在 C++ 中，两者的一大关键区别是结构体成员默认是 public，而类成员默认是 private）。
+
+## 基本用法
+
+例如，以下代码声明了一个表示错误的 `struct`，其中封装了 `errorCode` 和 `errorString`：
+
+```c
+struct error {
+    uint8_t errorCode;
+    char * errorString;
+};
+```
+
+这只是声明了结构体；要使用它，必须创建一个实例。然后可以用点（`.`）运算符访问成员：
+
+```c
+int main() {
+    struct error myError;
+    myError.errorCode = 4;
+    myError.errorString = "User error";
+}
+```
+
+## 使用 Typedef
+
+在定义 `struct` 时可以使用 `typedef` 关键字：
+
+```c
+typedef struct {
+    uint8_t errorCode;
+    char * errorString;
+} error_t;
+```
+
+这样，就不必用 `struct error <variable_name>` 创建实例，而可以像下面这样使用 `error_t <variable_name>`：
+
+```c
+int main() {
+    error_t myError;
+    myError.errorCode = 4;
+    myError.errorString = "User error";
+}
+```
+
+## 初始化结构体
+
+初始化结构体是指在创建时确定 `struct` 内部变量取值的做法。注意，C 和 C++ 中初始化结构体的语法有很大差异。
+
+```c
+// Defining a structure type
+typedef struct
+{
+    uint16_t value1;
+    uint16_t value2;
+} demoStruct_t;
+
+// Creating a structure and initialising the variables
+// Note that this is won't work in C++
+demoStruct_t struct1 =
+{
+    .value1 = 560;
+    .value2 = 34;
+}
+```
+
+遗憾的是，**不能在声明结构体时为它定义默认变量**，只能在该结构体类型的实例创建时进行初始化。如果这让你感到不便，也许可以考虑改用 C++，它通过类和构造函数机制允许这样做。
+
+## 复制结构体
+
+在 C 中，用赋值运算符（`=`）就能轻松复制 `struct`。虽然不推荐，但也可以用 `memcpy()` 完成同样的工作。
+
+```c
+#include <memory.h>
+#include <stdint.h>
+#include <stdio.h>
+
+typedef struct {
+  uint16_t value1;
+  uint16_t value2;
+} demoStruct_t;
+
+int main(void) {
+  demoStruct_t struct1;
+  demoStruct_t struct2;
+
+  // Copy using assignment (recommended way)
+  struct2 = struct1;
+
+  // Copy using memcpy()
+  memcpy(&struct2, &struct1, sizeof(struct2));
+  
+  return 0;
+}
+```
+
+<Aside type="caution">
+要小心：把 `struct` 传给函数会复制整个结构体，某些情况下这可能不是你期望的，因为：
+
+1. 对于大型结构体，这可能会耗尽大量栈内存。
+1. 函数对该结构体所做的任何修改都不会被调用函数看到。
+
+在这些情况下，你应当改为传入指向该 `struct` 的指针。
+</Aside>
+
+## 自引用结构体
+
+结构体可以自引用，但不能在结构体自身中包含该结构体类型（这会导致无限递归）。要自引用结构体，必须使用 typedef struct 后面那个（在 C 中）很少用到的名字。
+
+```c    
+typedef struct cmd_t {
+    // This is a legal self-reference
+    cmd_t* cmdPtr;
+} cmd_t;
+
+typedef struct cmd_t {
+    // This is an illegal infinite recursion error
+    cmd_t cmd;
+} cmd_t;
+
+// This following declaration has got the first cmd_t
+// missing. This will cause an cmd_t is undefined error.
+typedef struct {
+    cmd_t cmd;
+} cmd_t
+```
+
+## 延伸阅读
+
+结构体是[不透明指针设计模式](/programming/design-patterns/opaque-pointers/)的关键部分。

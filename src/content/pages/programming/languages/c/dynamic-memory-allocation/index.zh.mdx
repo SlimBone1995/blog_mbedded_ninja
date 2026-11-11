@@ -1,0 +1,175 @@
+---
+authors: [gbmhunter]
+date: 2013-03-18
+description: 面向嵌入式系统的 C 语言内存分配（malloc()、free() 等）入门教程。
+lastUpdated: 2026-07-08
+tags: [programming, C, C++, dynamic memory allocation, memory, allocation, malloc(), realloc, calloc(), alloca(), free(), MISRA, memory pools, stack, heap, GCC, static allocation, memory leak]
+title: 动态内存分配
+type: page
+sourcePath: programming/languages/c/dynamic-memory-allocation/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:178311f2931b2a9c7bed314f5a3c26ba39799bd120976068b07a0b7546b7d77b
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/dynamic-memory-allocation/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+动态内存分配（dynamic memory allocation）是在运行时为变量分配空间的过程。对于函数作用域内的变量，这一过程在定义时自动完成（变量被放入栈），但动态内存分配通常指使用 malloc 系列函数之一，手动在堆上分配空间并返回指向该空间的[指针](/programming/languages/c/pointers/)。
+
+动态内存分配最大的风险是：用完内存后忘记释放。随着越来越多的内存空间被分配给同一个变量，你很快就会耗尽内存（这称为内存泄漏）。
+
+malloc 系列函数包括 `malloc()`、`calloc()`、`realloc()` 和 `free()`。大多数 C 编程 IDE 都会链接包含这些函数的标准库。在项目中包含 `stdlib.h` 即可使用它们。这些函数在 C++ 中同样可用。
+
+## 线程安全
+
+下面列出的内存函数的线程安全性取决于实现。这意味着**在多线程（或多任务）系统中使用时，其安全性得不到保证**。在运行操作系统时通常如此。对于运行操作系统的嵌入式系统，这一危险尤其相关，因为计算机上的内存函数在编写时会考虑多线程，而嵌入式系统则不然。
+
+最好的做法是把这些函数包装成线程安全的过程（例如调用调度器挂起函数），或者从头编写自己的线程安全版本。
+
+## malloc()
+
+`malloc()` 是最广为人知的内存分配函数。给定一个大小（以字节为单位），它会分配一块内存并返回指向该内存的指针。
+
+```c
+void* malloc(size_t size);
+```
+
+`malloc()` 总是返回 `void*` 指针。在 C++ 中，**必须**把它强制转换为所需的指针类型。在 C 中强制转换是可选的（`void*` 会隐式转换），而且通常不鼓励这样做，因为显式转换会掩盖遗漏的 `#include <stdlib.h>`。
+
+以这种方式分配的内存在**被释放之前会一直存在**（它位于堆上）。这意味着与局部变量不同，即使调用 `malloc()` 的函数已经结束，它仍然存在。如果不小心并跟踪好所有已分配的变量，就可能导致**内存泄漏**。**C 没有任何垃圾回收机制。**
+
+使用 `malloc()` 时，请记住它需要的是你希望分配的内存**字节数**。这**不一定等于**你希望数组容纳的元素个数。例如，如果你的数组类型是 `uint32_t`，并且希望数组存储 10 个 `uint32_t` 数字，那么需要分配 40 字节，因为每个 `uint32_t` 需要 4 字节内存。编程时确保不因此出错的最安全方法，是像下面代码那样使用 `sizeof()` 命令。
+
+```c    
+#include <stdlib.h>
+
+void DynamicMemoryAllocation() {
+    // You can set numDoubleElements to whatever you want at run time
+    // (because this is dynamic memory allocation!!!)
+    uint8_t numDoubleElements = 8;
+
+    // The safe way of creating an array dynamically. Note the use of
+    // sizeof(*dynamicArray) (the size of a double, i.e. the element type),
+    // NOT sizeof(dynamicArray) (which would give the size of the pointer).
+    double *dynamicArray = (double*)malloc(numDoubleElements * sizeof(*dynamicArray));
+
+    // Now you can use dynamicArray just like a normal array
+    dynamicArray[0] = 4;
+    dynamicArray[1] = dynamicArray[0] + 6.2;
+
+    // Make sure to free the memory after you have finished with it
+    free(dynamicArray);
+}
+```
+
+<Image src={import('./where-malloc-variables-get-added-heap.svg')} width="600px">当你调用 malloc() 时，变量的空间会在堆上保留（分配）出来，这会使堆向未使用（灰色）区域扩展。这种内存布局是 ARM Cortex 单片机的典型情况。</Image>
+
+## realloc()
+
+`realloc()` 用于把内存重新分配到不同的大小。它接受一个指向先前用 malloc() 分配的内存地址的指针，以及期望的新内存大小，并返回指向调整大小后的内存块的指针。
+
+```c
+void* realloc(void* ptr, size_t size);
+```
+
+你必须考虑到：如果 `realloc()` 无法在当前块的末尾分配到足够内存，它会把整个块重新分配到别处，并返回指向内存中不同地址的指针。务必确保**所有其他指向旧内存分配的指针也需要更新**。避免出现这个问题的一种方法是，保存指向原始指针的指针，而不是直接指向内存块。
+
+## alloca()
+
+`alloca()` 用于在栈上而不是堆上分配内存。与 `malloc()` 系列函数不同，由 `alloca()` 分配的内存在函数返回调用者时会自动释放。它还有不会造成内存碎片的优点。但是，如果分配过多内存，它可能导致栈溢出，因为它在分配内存之前不会检查操作是否安全。因此，不建议用它分配超过几百字节的变量（具体取决于平台）。
+
+函数声明：
+
+```c
+void* alloca(size_t size);
+```
+
+其中 `size` 是希望分配的字节数（正整数）。
+
+在源文件中包含 `alloca.h` 后（`#include <alloca.h>`），就可以在代码中使用 `alloca()`。
+
+**不要用** `free()` 释放由 `alloca()` 分配了内存的变量！这很可能会使程序崩溃（行为是未定义的）。
+
+如果你使用的是 GCC（以及 glibc 库），应当注意：在大多数情况下，GCC 编译器会把 `alloca()` 调用内联并删除该函数。它通常会被替换成仅调整栈指针的一行代码。
+
+在许多系统上，你不能在函数调用的参数列表中调用 `alloca()`，因为进入函数时，分配的内存会与参数交错在一起。
+
+```c
+int main() {
+    // This will throw a compiler error on most systems
+    MyFunc(2, "string", alloca(2));
+}
+```
+
+`alloca()` 用于 GNU glibc 的 `getopt()` 函数（用于[命令行选项处理](/programming/languages/c/processing-command-line-input/)）。
+
+## 向数组追加元素
+
+使用动态内存分配时，你常常希望向自己动态分配的数组末尾添加一个新元素，并将其初始化为 0。可以通过巧妙使用 realloc() 和 memset() 函数来实现。下面的代码给出了一个为你完成此事的函数。它实质上把数组大小增加了 1。
+
+```c    
+//! @brief	Dynamically appends a new element onto the end of an array.
+//! @details	Uses dynamic memory allocation.
+//! @param	arrayStart 		Pointer to the start of the array
+//! @param	currNumElements 	The number of elements in the array
+//! @param	sizeofElement		The size (in bytes) of the individual elements in the array.
+//!					This can be found by using sizeof(arrayType_t)
+//! @returns	Pointer to new position of array[0]. Remember to cast back to the original type.
+void* AppendNewArrayElement(void* arrayStart, uint32_t currNumElements, uint32_t sizeOfElement) {
+    // Create a new option at end of option array
+    arrayStart = realloc(arrayStart , (currNumElements+1)*sizeOfElement);
+    // Cast to char pointer to get around the "arithmetic on type void* compiler warning)
+    char* arrayStartChar = (char*)arrayStart;
+    // Set to 0
+    memset(arrayStartChar + (currNumElements*sizeOfElement), '\0', sizeOfElement);
+    // Return pointer to the start of array (realloc() could have changed this)
+    return arrayStart;
+}
+```
+
+## 嵌入式系统上的内存分配
+
+以及为什么它可能是个坏主意。
+
+在嵌入式系统上，内存分配通常备受谨慎对待，许多嵌入式设计标准或公司直接禁止使用它。为什么呢？
+
+1. **第一个原因是内存分配可能失败**。无法保证对 `malloc()` 的调用一定成功。规范指出，如果 `malloc()` 找不到足够空间满足内存请求，就会返回 `NULL`。当 `malloc()` 返回 `NULL` 时你该怎么办？对于大多数在桌面/服务器上运行的应用，这只意味着应用会终止，可能给用户/客户带来一些困扰。但是，如果你的嵌入式代码正在控制火箭发动机的推力，而 `malloc()` 调用恰好在发射后失败，后果可能严重得多。即使你能保证在最坏情况下始终有足够的字节可用，也无法保证存在足够大的**连续**内存块，因为内存会碎片化（内存的分配和释放会导致碎片）。
+
+2. **第二个原因是动态分配引入了一整类新的缺陷**。你现在可能意外造成内存泄漏；可能忘记在读取前初始化刚分配的内存；可能不小心调用了两次 `free()`，从而产生未定义行为。
+
+3. **第三个原因是内存分配是非确定性的**。你无法知道 `malloc()` 分配内存需要多长时间，这对硬实时应用可能是不可接受的。
+
+MISRA 等 C 编程标准直接禁止内存分配。
+
+禁止内存分配确实限制了应用的灵活性（例如你不能再拥有表示任意长度字符串的数据类型）。不过，嵌入式应用中会使用以下变通方法：
+
+1. **静态分配**。内存块可以在编译时静态分配。你通常按最坏运行情况分配足够的内存。例如，你可以为接收缓冲区分配 `500 bytes`，并且根据所用协议，你知道永远不需要更多。
+2. **内存池**。内存池是一块静态分配的内存，被划分成若干块，可在运行时“动态分配”。这为应用提供了动态内存分配的大部分好处，但你始终知道池中还剩多少块，内存请求是确定性的，而且不会受到碎片化影响。
+
+## 覆盖 malloc() 的默认实现
+
+只需在应用代码中提供（具有正确输入/输出类型的）函数，就可以覆盖标准库提供的 `malloc()` 及其同类函数的默认实现。
+
+例如：
+
+```c
+#include <stdlib.h>
+
+int main()
+{
+    int* i = malloc(sizeof(int));
+    free(i);   
+}
+
+void* malloc(size_t s)
+{
+    printf("My custom malloc() called");
+    return NULL;
+}
+
+void free(void* p)
+{
+    printf("My custom free() called");
+}
+```

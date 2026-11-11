@@ -1,0 +1,313 @@
+---
+authors: [gbmhunter]
+date: 2011-09-07
+lastUpdated: 2026-07-07
+tags: [programming, languages, C, preprocessor, macros, syntax, code, embedded, microcontroller, variadic, stringification]
+title: C 预处理器
+type: page
+sourcePath: programming/languages/c/preprocessor/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:748ff407d002c80ce51426c7c025f33b07fe3cb0d257b08ec5fdd53aaba8fc27
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/preprocessor/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+预处理器（preprocessor）指令（也称为预编译器指令）是由预编译器执行的代码片段。这些指令本身不会出现在最终的汇编文件中，但它们在定义可全代码替换的值（例如集中定义代码中多次使用的常量）或根据所需配置包含/排除代码块方面非常有用。
+
+它们还用于创建巧妙的 assert 和调试消息，在构建时可自动报告代码的文件名和行号。
+
+## 一般语法
+
+C 中所有预处理器功能都以 `#` 字符开头，告诉预处理器必须解析这一行。
+
+## 宏（#define）
+
+宏是最常用的预处理器指令之一。
+
+宏有两种基本类型：对象式宏和函数式宏。
+
+## 对象式宏
+
+对象式宏的一般语法是：
+
+```c
+#define <identifier>
+```
+
+第一种语法只是定义一个存在的标识符。它本身作用不大，但可用于控制条件预处理器指令（下文将说明）的结果。一个典型例子是：
+
+```c
+#define PWM_FREQ_50KHZ
+```
+
+可以认为它表示 PWM 频率需要设为 50kHz，并可能触发包含另一段把 PWM 模块配置为 50kHz 运行的代码。
+
+第二种对象式宏语法提供一个替换值。预处理器在代码中任何位置找到 `<identifier>`，都会把它替换为 `<replacement>`。
+
+```c
+#define <identifier> <replacement>
+```
+
+一个常见例子是定义常量：
+
+```c 
+#define NUM_OF_COUNTS 12
+
+uint8 x = 0;
+while(x < NUM_OF_COUNTS)
+{
+    // x will be incremented NUM_OF_COUNTS times
+    x++;
+}
+```
+
+在构建过程中，代码到达编译器之前，预处理器会把所有 `NUM_OF_COUNTS` 实例替换为值 12。
+
+## 函数式宏
+
+函数式宏在语法和操作上与 C 标准函数类似。它们使用以下语法：
+
+```c
+#define MY_FUNC(x) x*x
+```
+
+因此，当代码中某处这样写时
+
+```c 
+MY_FUNC(2)
+```
+
+预处理器会把它替换为 `2*2`。
+
+## 可变参数宏
+
+C 预处理器允许可变参数宏，就像 C 编译器允许[可变参数函数](/programming/languages/c/variadic-functions/)一样。可变长度参数封装在变量 `__VA_ARGS__` 中，并用 `...` 表示宏是可变参数的。
+
+```c
+#define eprintf(...) fprintf (stderr, __VA_ARGS__)
+```
+
+下面的可变参数示例允许有条件地包含调试语句，其行为与 `printf()` 一样。注意它还使用 FreeRTOS 及其信号量来控制调试 UART 资源。
+
+```c
+#if(configPRINT_DEBUG_GPRS_MAIN == 1)
+    #define Main_SendDebugMsg(...)  								\
+    { 																\
+        xSemaphoreTake(xUartTxMutex, 5000/portTICK_RATE_MS); 		\
+        snprintf(debugMsgBuff, sizeof(debugMsgBuff), __VA_ARGS__); 	\
+        UartDebug_PutString(debugMsgBuff); 							\
+        xSemaphoreGive(xUartTxMutex); 								\
+    }
+#else
+    #define Main_SendDebugMsg(...)   
+#endif
+```
+
+如果 `configPRINT_DEBUG_GPRS_MAIN` 未定义为 1，那么所有调试打印处都会被替换为空白。你可以这样使用它：
+
+```c
+uint32_t myNumber = 16;
+Main_SendDebugMsg("My number = %u.\r\n", myNumber);
+```
+
+可变参数宏是作为 [C99 标准](/programming/languages/c/standards-and-versions/)的一部分加入的。GCC 编译器在该标准引入之前很久就支持它们，但只支持 `args...` 格式。
+
+下面的示例结合可变参数宏与特殊宏 `__FILE__` 和 `__LINE__`，创建了一个强大的调试消息打印器（在嵌入式平台上非常有用）。
+
+```c
+#define PRINT_DEBUG(...) \
+    { \
+        char temp[100]; \
+        snprintf(temp, sizeof(temp), __FILE__ ", %u: ", __LINE__); \
+        UartDebug_PutString(temp); \
+        snprintf(temp, sizeof(temp), __VA_ARGS__); \
+        UartDebug_PutString(temp); \
+        UartDebug_PutString("\r\n"); \
+    }
+```
+
+上面的代码中，`UartDebug_PutString()` 函数是嵌入式平台硬件抽象层的一部分，用于把传入的字符串打印到调试 UART。
+
+## 字符串化
+
+### 基本字符串化
+
+_字符串化_（stringification）是把宏转换为 C 风格字符串的过程。
+
+在函数式宏中，只需在参数前加上 `#` 字符，就能让预处理器把宏参数转换为字符串。注意，`#` 运算符只对函数式宏的参数有效——不能用于对象式宏或任意文本。
+
+```c    
+// Note the use of the '#' character to get the preprocessor
+// to turn the argument into a string
+#define STRINGIFY(tok) #tok
+
+char* msg = STRINGIFY(This is a message);
+
+// This ends up as (this is what the compiler sees)
+char* msg = "This is a message";
+```
+
+### 在其他字符串内部替换字符串
+
+当你想把宏放进字符串时会出现问题。可以为此使用函数式宏。这是一个经典的 C 预处理器问题。
+
+下面的示例使用两个类似函数的宏。这样就能对类似变量的宏进行字符串化！
+
+```c 
+#define STR_EXPAND(tok) #tok
+#define STR(tok) STR_EXPAND(tok)
+
+// The string-like macro
+#define PF_UINT32_T %lu
+
+uint32_t aNum = 378;
+
+printf("This is an " STR(PF_UINT32_T) ".", aNum);
+```
+
+## 条件语句（#if、#else、……）
+
+条件语句的用法与普通的 C if 语句一样，但必须记住：唯一有效的检查条件是常量值（数字，某些情况下也可以是字符串）。只要想想预编译器做了什么，就完全能理解这一点。它在“C 代码”被编译之前解析这些代码，因此根本不知道运行时会有什么变量。
+
+预处理器条件语句有一个恼人的限制：它只支持与整数比较，也就是说不能在比较中使用 float/double。因此，如果你想确保 double1 小于 double2，只能在运行时完成。
+
+我对 `#if` 语句遵循的一般格式规则是：只有当被包含的 #if 代码只有几行、并且屏幕上能同时看到 #endif 时，才进行缩进。对于较大的块，我不缩进，并在 #endif 末尾添加 #if 部分作为注释，以便你知道该 #endif 对应哪一段。
+
+```c
+#if SOME_CONDITION
+    // Short amount of code here,
+    // so indented like a normal if
+#endif
+
+#if SOME_CONDITION
+
+// Longer
+// block
+// of
+// code
+// so
+// no
+// indentation
+
+// Note however, the comment at the end of the #endif
+
+#endif // #if SOME_CONDITION
+```
+
+## 注释掉代码块
+
+可以使用 #if 语句注释掉代码段。如果你想注释掉一大段代码（例如整个 C 文件），而其中包含大量 `/* comment */` 风格的注释，这会很有用。由于 `/*` 风格注释不能嵌套，你无法再用它们注释掉已经包含这类注释的代码块。`#if 0` 是一个很好的替代方案。
+
+```c
+#if 0
+
+void aFunction()
+{
+    /* The comment stops you from using "/*" to
+    comment out a block of code. Instead, use
+    #if 0 (as above) */
+}
+
+#endif // #if 0
+```
+
+## 包含（#include）
+
+#include 指令用于把一个文件的文本内容包含到另一个文件中。#include 既可以在 `.c` 文件和 `.h` 文件中调用，也可以用于包含 `.c` 和 `.h` 文件。但是，我强烈建议你**不要用它包含 .c 文件！** 通常没有理由这样做。`.c` 文件会各自编译成目标文件，然后由链接器链接在一起。包含 `.c` 文件相当于替链接器干活，而且最终会出现**混乱的重复定义错误**。
+
+具体的 `#include` 语法取决于你包含的是系统文件还是用户文件。要包含系统文件，请用 `<` 和 `>` 括号把文件名括起来，如下所示：
+
+```c
+// Including a system file
+#include <stdint.h>
+```
+
+要包含用户文件，请用 " 引号把文件名括起来，如下所示：
+
+```c 
+// Including a user file
+#include "MyFile.h"
+```
+
+我不规定 `#include` 应该从哪里调用。尽管有些人会说相反的话（例如只放在头文件中），但我建议把 `#include` 放在任何依赖另一个文件中的对象/定义的文件里！
+
+**#include 文件的添加顺序可能很重要。** 如果一个头文件依赖另一个头文件中定义的类型（枚举、结构体），而没有先包含含定义的头文件，编译器就可能无法识别它（除非需要这些定义的头文件按上述方式包含了含定义的头文件，否则它确实无法识别）。
+
+小心循环包含！这是指一个头文件依赖第二个头文件，而第二个又依赖第一个。可以通过**前向声明**或添加[头文件保护](/programming/languages/c/header-guards/)来解决。
+
+## 警告和错误（#warning、#error）
+
+大多数 C 预编译器支持在编译时向标准输出打印警告或错误消息的指令。预编译器遇到它们时就会打印，因此通常把它们包在预编译器条件指令（例如 #if）中。警告只是向屏幕打印消息，而错误还具有停止编译的额外功能。
+
+要显示警告，使用以下语法：
+
+```c
+#warning This is a warning.
+```
+
+要显示错误（并停止编译），使用以下语法：
+
+```c 
+#error This is an error, and will stop compilation.
+```
+
+## 消息
+
+一些预编译器支持不使用 `#warning` 或 `#error` 就向标准输出打印消息。GCC 预编译器就包括在内。
+
+要打印消息（通常支持两种语法），可以输入：
+
+```c
+// First syntax
+#pragma message("This is a message.")
+
+// Second syntax
+#pragma message "This is a message."
+```
+
+你可以用这些关键字组成“消息组”，例如一个 **TODO** 组：
+
+```c
+#define DO_PRAGMA(x) _Pragma (#x)
+#define TODO(x) DO_PRAGMA(message ("TODO - " #x))
+
+TODO(Remember to fix this)
+```
+
+它会打印 `'/myFolder/myCfile.c:8 note: #pragma message: TODO - Remember to fix this'`
+
+## 文件名和行号
+
+预处理器遍历源代码时，会更新记录当前文件名和预处理器正在执行的行号的变量。它们称为_预定义宏_。如果你想向用户打印调试信息（类似于编译器在遇到警告/错误时报告文件名/行号），或者要[**使用断言**](/programming/languages/c/assertions-assert)，这些宏很有用。
+
+你可以随时用下面的指令覆盖预处理器当前的行号：
+
+```c
+#line 230
+```
+
+## 清理预处理器代码
+
+遗憾的是，与编译器不同，预处理器相当笨，不会给出诸如 #define SOMETHING 未使用 的警告。这意味着你最终可能留下大量冗余代码，让你和将来查看代码的人都感到困惑。
+
+查找冗余 `#define` 最明显但不一定最快或最安全的方法是：把它们注释掉，看看是否仍能编译。但是，预编译器在条件语句中使用变量并不需要该变量已声明（还记得 `#ifdef` 指令吗？），所以仅仅能编译并不意味着它没被使用，而且这样做还可能改变代码行为。
+
+更好的方法是使用另一个程序来检查。市面上有一些昂贵的程序，但你可以利用一些 Linux 命令行程序轻松完成。
+
+```c
+# This will return the lines of code which
+# contain the phrase "configNUM_OF_COUNTS"
+# in all files in the current directory and
+# any sub-directories
+grep -r configNUM_OF_COUNTS ./*
+
+## And if only one match was returned you can
+# continue...
+
+## The next line will delete all lines of code 
+# that have the phrase "configNUM_OF_COUNTS" on 
+# them, in the files in the current directory.
+sed -i "/configNUM_OF_COUNTS/d" ./*.*
+```

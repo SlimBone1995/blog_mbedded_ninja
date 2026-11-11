@@ -1,0 +1,78 @@
+---
+authors: [gbmhunter]
+date: 2014-06-11
+lastUpdated: 2014-06-11
+tags: [array, C, programming, Iliffe vector, multidimensional, C99, dynamic array]
+title: 数组
+type: page
+sourcePath: programming/languages/c/arrays/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:abfc7cef8bb761b32b6baad1b7ba2d67a3137cc35ff7280456d9d1295d32d682
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/arrays/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<h2>概述</h2>
+
+<p>C 语言中的数组（array）是一种数据结构。它们用于存储一个或多个相同数据类型的元素。所有元素都存放在一块连续的内存中。</p>
+
+<h2>不规则数组</h2>
+
+<p><i>不规则数组</i>（ragged array）是指这样一种指针数组：其中的指针指向内存长度不同的对象。一个常见例子是指向字符串的指针数组，其中每个字符串的字符数各不相同。</p>
+
+<p>指向某种数据类型的指针数组（例如指向字符串的指针数组）也是一种 <i>Iliffe 向量</i>（Iliffe vector）。它的好处是可以用 NULL 表示数组的结束（后面没有其他数据）。</p>
+
+<h2>奇怪的语法</h2>
+
+<p>一个鲜为人知且奇怪的事实是：数组既可以写成 <code>a[5]</code>，也可以写成 <code>5[a]</code>，两者没有区别。不过，使用 <code>6[a]</code> 这种语法没有任何实际用途，还会让人极其困惑，所以我不建议这样写！</p>
+
+<h2>多维数组</h2>
+
+<p>多维数组可以这样创建：</p>
+
+```c
+int myArray[3][4];
+```
+
+<p>这会创建 3 个一维数组，每个数组有 4 个元素（4 个整数），总共 12 个整数。可以用下面的语法读写它们：</p>
+
+```c
+// Read
+int x = myArray[0][3]
+
+// Write
+myArray[1][2] = 3;
+```
+
+<p>C89 标准要求这块内存是连续的，与一维数组一样。</p>
+
+<h2>作为函数参数的多维数组</h2>
+
+<p>把多维数组作为参数传入函数（严格说称为<i>形参</i>）时，必须提供除最左侧维度之外的所有维度。细想一下这很合理，因为 C 不会在数组操作中加入任何运行时计算。因此，如果不知道除最后一维之外所有维度的大小，编译器根本无法为 <code>myArray[][2]</code> 这样的表达式计算内存偏移（记住，数组只是一块连续、线性的内存）。</p>
+
+```c
+// Valid 3-dimensional array as the formal parameter
+void MyFuction(char[][12][23] myArray);
+
+//! This is invalid!
+void MyFuction(char[][][23] myArray);
+```
+
+<p>从某种意义上说，<b>把数组作为参数传给函数时，数组总会丢失一个维度</b>。</p>
+
+<h2>动态数组</h2>
+
+<p>动态数组是指大小在运行时才确定的数组。当我们事先不知道数组大小时就会用到它们（也就是说，无法在代码中写死一个整数，而必须使用 <code>x</code> 这样的变量）。</p>
+
+<p>ANSI C 不允许动态数组，所有数组都必须是静态的。事实上，连下面这样写都会报错！</p>
+
+```c
+const int limit = 100; 
+char myArray[limit]; 
+                ^^^^^ 
+    error: integral constant expression expected 
+```
+
+<p>什么！<b>所幸 C99 解决了这个问题</b>，允许你在栈上创建动态数组。你也可以（在所有版本的 C 中）使用 <code>malloc()</code> 系列函数在堆上创建动态数组。</p>

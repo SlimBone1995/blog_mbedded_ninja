@@ -10,3 +10,6 @@ date,batch,agent,pages,tokens,duration_s,notes
 2026-11-11,PCB batch 3,B,10,68501,172,
 2026-11-11,PCB batch 3,A,10,102631,327,
 2026-11-11,PCB batch 3,C,10,100182,298,
+2026-11-11,Programming batch 1,C language,9,95362,320,
+2026-11-11,Programming batch 1,C++ language,8,107449,364,
+2026-11-11,Programming batch 1,FreeRTOS/Zephyr,8,119758,367,

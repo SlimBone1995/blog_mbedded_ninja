@@ -1,0 +1,138 @@
+---
+authors: [gbmhunter]
+date: 2014-02-19
+lastUpdated: 2023-03-11
+tags: [c, programming, enumerations, max values, types, firmware, state machines]
+title: 枚举
+type: page
+sourcePath: programming/languages/c/enumerations/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:f58ce38deb3d06f8841555d18d89558f9907233587f558d1a1fadf13c0dabcbf
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/enumerations/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+C 语言中的枚举（enumeration）最基本的意义，是创建一种有意义的、基于单词的列表**类型**。
+
+枚举是使用 C 预处理器宏来创建代表数字的单词的替代方案。例如：
+
+```c
+#define RED     0
+#define GREEN   1
+#define BLUE    2
+#define YELLOW  3
+```
+
+如果你发现自己正在这样做，请仔细想一想：用枚举会不会更好？用下面的写法可以得到完全相同的结果：
+
+```c   
+typedef enum
+{
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW
+} colours_t;
+```
+
+## 用途
+
+枚举常用于：
+
+- 创建某类事物的列表（例如 COLOURS = RED, GREEN, BLUE, ...）
+- 在嵌入式系统中访问硬件寄存器（用于创建有意义的寄存器名）。
+- 创建状态变量（描述状态机中状态的变量，常与 switch 语句配合使用）
+
+## 语法
+
+枚举有两种定义方式。非 typedef 方式：
+
+```c  
+enum myColoursType {
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW
+} colours_t;
+
+enum colours_t myColoursType = BLUE;
+```
+
+或 typedef 方式：
+
+```c  
+typedef enum {
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW
+} colours_t;
+
+colours_t myColours = BLUE;
+```
+
+注意，使用第一种方式（非 typedef）时，每次创建该枚举类型的变量都必须先写 enum 关键字。使用第二种方式（typedef）时，可以省略 enum 关键字。
+
+默认情况下，编译器会让第一个枚举值等于 0，第二个等于 1，依此类推。不过，你可以指定希望枚举取的值：
+
+```c    
+typedef enum {
+    RED = 2,
+    GREEN = 5,
+    BLUE,
+    YELLOW = 8
+} colours_t;
+```
+
+如果未指定值，编译器会照常以 `1` 递增，因此上例中 `BLUE = 6`。
+
+## 可互换性
+
+在 C 中，枚举类型和整数类型通常可以互换。这可能是好事也可能是坏事，取决于你的观点。C++ 通过最近引入的 `enum class`（强类型枚举）允许更严格的类型检查，它不能与整数类型比较。强类型枚举还允许你指定用于存储枚举值的整数宽度。
+
+## 优化
+
+不允许取枚举的引用（指针）（它们不允许是 `lvalues`），而 `const int` 可以。这意味着枚举可以被优化，而 `const int` 不能。
+
+## 枚举的数据类型
+
+枚举的数据类型由实现定义。标准是这样说的……
+
+<blockquote>类型的选择由实现定义，但必须能够表示该枚举所有成员的值。</blockquote>
+
+通常你并不关心宽度是多少，只要能用就行！但是在某些情况下，例如把枚举打包进结构体并希望所有内容都具有特定大小时，你希望精确指定枚举宽度。你可以用一个简单的技巧**在枚举末尾添加一个非常大的数**，强制枚举使用比默认更大的数据类型。
+
+```c    
+typedef enum {
+    FIRST_VAL,
+    SECOND_VAL,
+    // ...
+    FORCE_ENUM_WIDTH = MAX_INT // This here forces the enumeration to be at least a particular width
+} myEnum_t;
+```
+
+某些编译器支持改变枚举默认大小的指令。例如在 GCC 中，可以添加编译器标志：
+
+```c    
+-fshort-enums
+```
+
+这会让所有枚举使用合适的最小宽度。你也可以通过下面的写法有选择地缩小枚举：
+
+```c
+typedef enum __attribute__ ((__packed__)) {
+    ...
+} myEnum_t;
+```
+
+## 最大值
+
+没有编译器语法或语言特性可以在编译时获取枚举中元素的数量。这个信息可能很有用，你可能想做一些事情，例如：
+
+- 遍历枚举中的每个值。
+- 从枚举中随机选取一个值。
+- 让另一个枚举从上一个枚举结束的地方继续（以保证多个枚举之间的数字唯一）。
+
+一种常见做法是在枚举末尾添加一个名为 `MAX_VALUE` 之类的值。如果它是枚举的最后一项，并且枚举中没有“空缺”（只有在手动指定数字时才可能），那么 `MAX_VALUE` 就等于枚举成员的数量。

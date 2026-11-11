@@ -1,0 +1,162 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: Zephyr 是面向嵌入式系统的开源实时操作系统、系统/外设 API 和构建系统。本页涵盖安装、API 用法等内容。
+lastUpdated: 2026-07-08
+tags: [programming, operating systems, OSes, RTOS, Zephyr, logging, serial, UART, USB, RTT, terminals]
+title: Zephyr 日志
+type: page
+sourcePath: programming/operating-systems/zephyr/logging/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a84bc2d8065cf58e602825d575815caf8eac160a603e01b875cd6f5c391eb013
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/logging/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+Zephyr 通过其日志 API 提供了非常强大的日志功能（相比你对嵌入式设备的通常预期）。
+
+## 基本用法
+
+首先需要在 `prj.conf` 中启用日志：
+
+```python
+CONFIG_LOG=y
+```
+
+<Aside type="caution">
+如果忘记设置 `CONFIG_LOG=y`，使用 `LOG_MODULE_REGISTER` 和 `LOG_INF("my message")` 等内容的代码仍能编译，只是运行时不会输出任何日志。
+</Aside>
+
+还可以这样设置默认的编译期日志级别：
+
+```python
+# The default compile time log level. Recommended to leave this as verbose as
+# possible given memory constraints and then set the runtime log level as needed.
+# 0 = LOG_LEVEL_OFF
+# 1 = LOG_LEVEL_ERR
+# 2 = LOG_LEVEL_WRN
+# 3 = LOG_LEVEL_INFO
+# 4 = LOG_LEVEL_DBG
+CONFIG_LOG_DEFAULT_LEVEL=4
+```
+
+如果想在 .c 文件中添加日志，首先包含 `#include <zephyr/logging/log.h>`。然后需要把源文件注册为一个“模块”：
+
+```c
+// Uses the compiled log level set in prj.conf with CONFIG_LOG_DEFAULT_LEVEL
+LOG_MODULE_REGISTER(MyModule);
+
+// OR:
+
+// Optionally override the compiled log level with a custom level as a second
+// parameter to the macro.
+LOG_MODULE_REGISTER(MyModule, LOG_LEVEL_INF);
+```
+
+现在可以在代码中使用日志语句：
+
+```c
+void MyFunction() {
+    LOG_DBG("Here is a debug level log!");   // Prints: [00:10:04.267,242] <dbg> MyModule: MyFunction: Here is a debug level log!
+    LOG_INF("Here is a info level log!");    // Prints: [00:00:01.024,291] <inf> MyModule: Here is a info level log!
+    LOG_WRN("Here is a warning level log!"); // Prints: [00:00:01.024,291] <wrn> MyModule: Here is a warning level log!
+    LOG_ERR("Here is a error level log!");   // Prints: [00:00:01.024,291] <err> MyModule: Here is a error level log!
+}
+```
+
+注意，调试级别日志会输出额外信息——它还会打印日志消息所在函数名（上例中为 `MyFunction`）。对于支持 ANSI 转义码的输出，警告日志以黄色打印（时间戳除外），错误日志同样以红色打印。
+
+### 编译期与运行时日志级别
+
+区分编译期日志级别和运行时日志级别很重要。设置 `CONFIG_LOG_DEFAULT_LEVEL` 或给 `LOG_MODULE_REGISTER` 传第二个参数，会设定编译期日志级别。所有比它更高的日志级别（数值更大、更详细）都不会包含在编译后的固件二进制中，这意味着运行时无法把级别调到更高。运行时日志级别通过 `log_filter_set()` 或 [shell](/programming/operating-systems/zephyr/shell/) 命令 `log enable <log_level>`（例如 `log enable dbg`）设置。可运行时调整的日志级别还依赖 `CONFIG_LOG_RUNTIME_FILTERING=y`；启用 shell 时会自动设置该项。我的建议是：如果闪存足够，就把编译期日志级别保留为 `LOG_LEVEL_DBG`，然后在运行时设置日志级别。这样就能按需动态调整级别，而无需重新编译固件。如果为了获得诊断问题所需的“debug”日志，就必须在出问题的设备上重新编译并重新烧录固件，那会很痛苦。而且你可能不想重新烧录，因为你刚刚捕捉到一个难以复现的间歇性 bug！
+
+下面的代码展示了如何在运行时修改日志级别：
+
+```c
+#include <zephyr/logging/log.h>
+#include <zephyr/logging/log_ctrl.h>
+
+int main() {
+  // ...
+
+  // Change all log levels at runtime
+  // NOTE: If you do this for a particular event, you may want to save all
+  // the previous levels and restore them after the event is finished
+  uint32_t logLevel = LOG_LEVEL_INF;
+  uint32_t numLogSources = log_src_cnt_get(0);
+  for (uint32_t sourceId = 0; sourceId < numLogSources; sourceId++)
+  {
+      char * sourceName = (char *)log_source_name_get(0, sourceId);
+      __ASSERT_NO_MSG(sourceName); // Should not be null
+      log_filter_set(NULL, 0, sourceId, logLevel);
+  }
+
+  // ...
+}
+```
+
+<Aside type="tip">
+如果没有启用 shell，又希望运行时调整日志级别，请记得在 `prj.conf` 中设置 `CONFIG_LOG_RUNTIME_FILTERING=y`。
+</Aside>
+
+### “X messages dropped”错误
+
+Zephyr 实现了一个基于字符的环形缓冲区，用于存储待处理的消息（请记住——Zephyr 日志通常是异步处理的）。如果其他线程产生日志的速度太快，日志线程来不及处理，Zephyr 在某个时刻就会丢弃日志。发生这种情况时，你通常会看到一条日志错误，内容为 `--- x messages dropped ---`（如下所示）。
+
+<Image src={import('./_assets/zephyr-shell-x-messages-dropped-screenshot.png')} width="700px">Zephyr 日志中可能出现的“x messages dropped”错误截图。</Image>
+
+如果还有额外的 RAM 空间，降低该错误概率的一种方法是在 `prj.conf` 中增大 Zephyr 用于写入消息的环形缓冲区：
+
+```python
+# Increased from 1024 to reduce probability of --- x messages dropped --- errors 
+CONFIG_LOG_BUFFER_SIZE=2048
+```
+
+`CONFIG_LOG_BUFFER_SIZE` 设置分配给环形数据包缓冲区的字节数。[^zephyr-docs-logging] 注意，每条日志消息也有最大长度，详见[最大消息长度](#max-message-size)一节。
+
+如果使用 Zephyr shell，仅靠 `CONFIG_LOG_BUFFER_SIZE` 可能不足以消除这些“x messages dropped”警告。还需要设置 `CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_SIZE`。在我的环境中它默认为 `512`，相当小——使用默认值时我经常遇到“x messages dropped”警告。我在几个项目中把它提高到 `2048`，在我的用例中消除了该警告。我不知道设置 `CONFIG_SHELL_BACKEND_SERIAL_LOG_MESSAGE_QUEUE_SIZE` 后是否仍需要 `CONFIG_LOG_BUFFER_SIZE`，但为了保险，我把两者都调大了（闪存占用对我来说不是问题）。
+
+### 最大消息长度
+
+Zephyr 的日志消息最大长度为 2047 字节。消息超过该长度会被丢弃。据我所知，这由 `zephyr/subsys/logging/log_msg.c` 中的 `Z_LOG_MSG_MAX_PACKAGE` 决定，而它又由 `#define Z_LOG_MSG_PACKAGE_BITS 11` 决定（2047 即 2^11 - 1）。该值无法通过 `prj.conf` 中的设置修改，因此是硬性限制。
+
+我用过的一种变通方法是将较大的日志消息拆分为多条消息。在我的用例中，我想打印从 SD 卡读取的一个“文件”，其中包含多行文本。因此自然的做法是逐行记录该文件。缺点是其他日志消息可能插入到这些行之间（如果有多个线程在运行）。
+
+### 延迟日志与立即日志
+
+Zephyr 支持两种日志模式：_延迟_（deferred）和_立即_（immediate）。在延迟模式下，当代码调用 `LOG_DBG(...)` 或类似宏时，传入的格式字符串和变量会被保存下来，由单独的日志线程进一步处理（进一步处理包括把参数填入格式字符串，并发送到 UART 等后端）。在立即模式下，当代码调用 `LOG_DBG(...)` 时，日志会在调用线程中处理并发送到后端。
+
+要启用立即模式，请在 `prj.conf` 中添加：
+
+```python title="prj.conf"
+CONFIG_LOG_MODE_IMMEDIATE=y
+```
+
+如果你不想拖慢发出日志的线程，延迟日志是很好的选择（它甚至允许在中断上下文中记录日志！）。最大的缺点是日志消息与微控制器在现实世界中的实际行为并不同步。延迟日志会掩盖硬件错误和段错误等问题——发生严重错误时处理器会崩溃/挂起（或调用错误处理程序），但你将看不到最后约 1 秒的日志消息，从而难以定位问题。
+
+这正是立即模式的用武之地——在[调试](/programming/operating-systems/zephyr/debugging/)崩溃和其他时间敏感问题时，你需要日志在调用 `LOG_DBG()` 的同时立即打印。如果发生崩溃，你可以查看最后几条日志消息，从而大致判断源代码中问题可能出在哪里。如果要在中断上下文或时间敏感的线程中记录日志，则不适合使用立即模式。
+
+### 加快日志输出
+
+在开发期间通过串口输出日志进行调试时，Zephyr 日志默认可能显得相当滞后、“缓慢”。加快速度的方法之一是在 `prj.conf` 中添加：
+
+```python
+CONFIG_LOG_PROCESS_TRIGGER_THRESHOLD=1
+```
+
+该设置告诉 Zephyr：队列中只要有 1 条日志消息，就唤醒日志线程处理。默认值为 10，这会让日志显得很慢！[^zephyr-docs-kconfig-log-trigger-threshold] `CONFIG_LOG_PROCESS_TRIGGER_THRESHOLD` 仅在 `CONFIG_LOG_MODE_IMMEDIATE=n` 时适用。
+
+### C++ 兼容性
+
+一般来说，日志在 C++ 中能正常工作。不过，如果尝试从使用模板的类中记录日志，就会遇到问题。模板函数的函数体通常放在头文件中，因为编译器需要知道如何实例化它们。这对 `LOG_MODULE_REGISTER()` 是个问题。但你可以在头文件中任何需要记录日志的函数的开头使用 `LOG_MODULE_DECLARE(<module_name>);`。详情请参阅[如何将 C++ 与 Zephyr 配合使用](/programming/operating-systems/zephyr/cpp/)页面。
+
+我认为 Zephyr 基于实例的日志有些混乱，所以基本不用。这很可惜，因为它本来可以很好地与 C++ 类的实例配合。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^zephyr-docs-kconfig-log-trigger-threshold]: Zephyr（2022 年 1 月 12 日）。_Kconfig Search > CONFIG_LOG_PROCESS_TRIGGER_THRESHOLD_ [文档]。检索于 2024-11-27，来自 https://docs.zephyrproject.org/latest/kconfig.html#CONFIG_LOG_PROCESS_TRIGGER_THRESHOLD。
+[^zephyr-docs-logging]: Zephyr（2024 年 2 月 19 日）。_Logging_ [文档]。检索于 2024-02-19，来自 https://docs.zephyrproject.org/latest/services/logging/index.html。

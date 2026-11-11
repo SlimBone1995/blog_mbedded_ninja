@@ -1,0 +1,160 @@
+---
+authors: [gbmhunter]
+date: 2025-05-04
+description: 单一定义规则是 C++ 语言的一条规则，规定每个实体只能有一个定义。
+lastUpdated: 2025-05-05
+tags: [programming, languages, C++, one definition rule, ODR, inline, classes, functions, templates, static]
+title: 单一定义规则
+type: page
+sourcePath: programming/languages/c-plus-plus/one-definition-rule-odr/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:2da26b72e5a78a06e8e70d289eca83b3eb6d778b2f2717083346aaa87ec67fb3
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/one-definition-rule-odr/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+单一定义规则（One Definition Rule）是 C++ 语言的一条规则，它规定：
+
+1. 每个类/结构体或内联函数在整个程序中只能有一个定义。
+1. 模板和类型在每个翻译单元中只能有一个唯一定义。
+
+等等，如果我在头文件中定义一个类，并在不同的 `.cpp` 文件中包含该头文件呢？显然这不违法，因为这种用法到处都是。这里有一个例外：类可以在不同的翻译单元中多次定义，只要这些定义完全相同！
+
+## 类
+
+单一定义规则意味着下面的代码是非法的，因为它在同一个翻译单元中定义了两次 `MyClass`：
+
+```c++ title="main.cpp"
+class MyClass {};
+class MyClass {}; // Illegal!
+```
+
+<Aside type="note">
+翻译单元可以看作单个源文件（即 `.cpp` 文件）以及随之包含的所有头文件。
+</Aside>
+
+虽然这是非法的，但通常不是问题，因为编译器很容易检测到并给出错误（我用 GCC v11.4.0 测试过，见 <IRef iref="fig-multiple-definitions-in-one-file-error" />）。头文件保护可以防止同一个头文件（因而同一个类）在同一个翻译单元中被多次定义（头文件保护还有防止无限重复包含等用途）。
+
+<Image iref="fig-multiple-definitions-in-one-file-error" src={import('./_assets/multiple-definitions-in-one-file-error.webp')} width="900px">在同一个 `.cpp` 文件中定义同一个类两次时编译器给出的错误消息。</Image>
+
+更常见的情况是在不同的翻译单元中多次定义同一个类。编译器和链接器都不会发现这种情况（这属于链接器的问题，因为它在合并多个 `.o` 文件时才会出现）。我用 GCC v11.4.0 测试过，即使定义了两个同名的不同类，也没有报错。
+
+### 工作示例
+
+下面是一个 C++ 应用程序示例，它不会产生任何编译器或链接器错误（或警告），但违反了单一定义规则，并清楚地展示了由此在运行时出现的意外行为。我们先定义一个接口类：
+
+```c++ title="Interface.h"
+#pragma once
+
+// Abstract base class
+class Base {
+public:
+	virtual int getInt() = 0;
+	virtual ~Base() = default;
+};
+
+extern Base *createChild1();
+extern Base *createChild2();
+```
+
+现在我们创建这个接口的两个实现，但都把子类命名为 `Child`。下面是第一个实现：
+
+```c++ title="Child1.cpp"
+#include "Interface.h"
+
+// Violates the ODR, multiple definitions of "Child"
+class Child : public Base {
+public:
+    int getInt() override {
+        // This version returns 1
+        return 1;
+    }
+};
+
+Base *createChild1() {
+    return new Child();
+}
+```
+
+现在创建该接口的第二个实现，同样命名为 `Child`（这违反了单一定义规则）：
+
+```c++ title="Child2.cpp"
+#include "Interface.h"
+
+// Violates the ODR, multiple definitions of "Child"
+class Child : public Base {
+public:
+    int getInt() override {
+        // This version returns 2
+        return 2;
+    }
+};
+
+Base *createChild2() {
+    return new Child();
+}
+```
+
+最后，我们的 main.cpp 文件如下：
+
+```c++ title="main.cpp"
+#include <iostream>
+#include "Interface.h"
+
+int main() {
+    Base *child1 = createChild1();
+    Base *child2 = createChild2();
+    std::cout << "child1: " << child1->getInt() << std::endl;
+    std::cout << "child2: " << child2->getInt() << std::endl;
+    return 0;
+}
+```
+
+构建并运行后，这段代码通常输出：
+
+```text
+child1: 1
+child2: 1
+```
+
+这清楚地展示了问题。`child2` 本应返回 `2`！但它返回了 `1`，因为我们有两个名为 `Child` 的类，而编译器只为其中一个生成了 vtable。
+
+我在[为测试不同 C++ 回调技术而构建基准测试可执行文件](/programming/languages/c-plus-plus/callbacks/)时遇到了单一定义规则问题。我在多个 `.cpp` 文件中定义了许多 `MyClass` 类（为简洁起见，我没有把它们写在头文件中，而且它们也没有在其他地方使用）来测试示例代码。大多数情况下这完全没有问题，但在大约 10 个示例中有 1 个会导致程序段错误。在网上发布问题后，有人指出这可能是单一定义规则问题。把所有 `MyClass` 定义包进[匿名命名空间](/programming/languages/c-plus-plus/namespaces/)（`namespace { ... }`）后，问题解决了。
+
+`inline` 是单一定义规则的核心概念。任何“内联”的东西都允许有多个定义。编译器会挑选一个，并“丢弃”其余的。有些东西是隐式内联的，其他东西可以通过 `inline` 关键字变为内联。
+
+隐式内联：
+
+- 类内函数定义
+- 模板类
+
+<Aside type="tip">
+关键字 `inline` 并不意味着编译器必须“内联”该函数（即用函数体替换所有调用）。它最初可能确实是为此设计的，但现在更多是与单一定义规则相关。编译器可以根据它认为最高效的方式以及优化级别来选择是否内联函数。
+</Aside>
+
+## 自由函数
+
+不是类成员的函数称为自由函数。除非用 `inline` 声明，否则它们不允许在程序中被定义多次。幸运的是，大多数编译器都能轻松发现重复的函数定义并报错，如 <IRef iref="fig-multiple-definition-of-my-function-linker-error" /> 所示。
+
+<Image iref="fig-multiple-definition-of-my-function-linker-error" src={import('./_assets/multiple-definition-of-my-function-linker-error.webp')} width="900px">在两个不同的 `.cpp` 文件中定义同一个函数两次时链接器给出的错误消息。</Image>
+
+## 静态类成员
+
+静态类成员可以在头文件中定义，但必须确保定义只出现在一个 `.cpp` 文件中：
+
+```c++ title="MyClass.h"
+class MyClass {
+    static int count; // Declaration
+};
+```
+
+```c++ title="MyClass.cpp"
+int MyClass::count = 0; // Definition (must be in only one .cpp file)
+```
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+

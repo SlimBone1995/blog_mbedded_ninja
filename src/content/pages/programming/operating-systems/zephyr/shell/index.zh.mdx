@@ -1,0 +1,277 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: Zephyr 命令行是一个模块，可通过串行传输（如 UART、USB 或 Segger RTT）提供 Linux 风格的命令行界面。
+lastUpdated: 2026-07-02
+tags: [programming, operating systems, OSes, RTOS, Zephyr, Zephyr SDK, shell, UART, USB, RTT, serial, terminals]
+title: Zephyr 命令行
+type: page
+sourcePath: programming/operating-systems/zephyr/shell/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:afddcda5e2b6c4edd030bbf8a8fa7ab6c6d99971b19fa951e048ba4e90c7a05a
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/shell/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+[Zephyr 提供了“shell”](https://docs.zephyrproject.org/latest/services/shell/index.html)（其模块之一），可通过 [UART](/electronics/communication-protocols/uart-communication-protocol/)、[USB](/electronics/communication-protocols/usb-protocol/) 或 Segger RTT 等串行传输提供。该命令行提供 Linux 命令行风格的命令、[日志](/programming/operating-systems/zephyr/logging/)、自动补全、命令历史等功能。它非常适合实现调试接口，以便从 [NinjaTerm](https://ninjaterm.mbedded.ninja/) 等终端应用控制微控制器（顺便推销一下，这个应用是我开发的）。
+
+Zephyr 提供了 API，固件可用它定义用户可通过命令行使用的命令。
+
+## 命令行基本用法
+
+```python title="prj.conf"
+CONFIG_SHELL=y
+```
+
+这可能就是让基本命令行在默认串行传输（`printf()` 的输出目标）上工作所需的全部配置。你应该会看到命令行在终端中打印提示符，例如 `uart:~$ `。
+
+## 添加命令
+
+API 由 `#include <zephyr/shell/shell.h>` 提供。
+
+可以使用宏 `SHELL_CMD_REGISTER()` 注册新的根命令。我们来添加一个基本的根命令。
+
+```c++
+static int helloCallback(const struct shell* shell, size_t argc, char** argv)
+{
+    shell_print(shell, "Hello, world!");
+    return 0;
+}
+
+SHELL_CMD_REGISTER(hello, NULL, "Say hello", helloCallback);
+```
+
+这里使用 `shell_print()` 而不是 `printf()`，以便把输出路由到调用该命令的命令行实例的后端。
+
+## 指向特定命令行实例的指针
+
+可以使用 `shell_backend_uart_get_ptr()`（声明于 `zephyr/shell/shell_uart.h`）或 `shell_backend_rtt_get_ptr()`（声明于 `zephyr/shell/shell_rtt.h`）等函数获取指向特定命令行实例的指针。例如，如果你使用 UART 后端，可以这样：
+
+```c
+#include <zephyr/shell/shell_uart.h>
+
+int main() {
+    const struct shell * main_shell;
+    main_shell = shell_backend_uart_get_ptr();
+    __ASSERT(main_shell != NULL, "Failed to get shell backend.");
+}
+```
+
+`shell_set_bypass()` 可用于注册回调，该回调会接收所有原始输入数据，绕过命令行正常的命令解析。
+
+可以传入 `NULL` 清除现有的旁路，例如：
+
+```c
+shell_set_bypass(sh, NULL);
+```
+
+modem_shell 示例项目就利用了这一旁路功能，在命令行与调制解调器之间提供直接的 [AT 命令](/electronics/communication-protocols/at-commands/)模式。
+
+## 命令行登录
+
+你可以相对容易地用 Zephyr 实现登录命令行，用一个简单的根级密码保护所有命令，必须“登录”后才能使用。
+
+在 `prj.conf` 中设置 `CONFIG_SHELL_CMDS_SELECT=y` 后，就可以选择哪些命令行命令可用。然后可以在 C 代码中调用 `shell_set_root_cmd()` 设置根命令。`shell_set_root_cmd(NULL)` 会清除根命令，恢复显示所有可用命令。
+
+<Image src={import('./_assets/zephyr-login-shell-screenshot.webp')} width="500px">Zephyr 登录命令行的实际效果截图。</Image>
+
+在我的测试中，调用 `shell_obscure_set(sh, true)` 会导致所有日志停止，而之后调用 `shell_obscure_set(sh, false)` 并未恢复日志。过了一段时间发生了硬件错误，可能是因为日志消息不断累积并溢出某个缓冲区。我通过用 `z_shell_log_backend_enable()` 重新启用命令行日志后端解决了这个问题：
+
+```c
+z_shell_log_backend_enable(sh->log_backend, (void *)sh, sh->ctx->log_level);
+```
+
+另一种修复方法是停止再启动命令行：
+
+```c
+// Fix to restore logging
+shell_stop(sh);
+shell_start(sh);
+```
+
+这些停止和启动函数在内部会调用 `z_shell_log_backend_disable()` 和 `z_shell_log_backend_enable()`。
+
+下面是创建登录命令行的源代码。它依靠 `PRODUCTION_BUILD` 宏决定是否显示登录提示，因为在开发构建中，每次使用命令行都要登录会很麻烦。
+
+```c title="LoginCmd.c"
+#include <zephyr/kernel.h>
+#include <zephyr/shell/shell.h>
+#include <zephyr/shell/shell_uart.h>
+#include <zephyr/init.h>
+
+/**
+ * The password for the shell login.
+ */
+#define SHELL_PASSWORD "zephyr"
+
+static int LoginInit(void)
+{
+    // Only enable login in production builds, otherwise skip past the login prompt
+#if PRODUCTION_BUILD == 1
+    printk("Please login with password to continue.\n");
+    if (!CONFIG_SHELL_CMD_ROOT[0]) {
+        shell_set_root_cmd("login");
+    }
+    struct shell const * sh = shell_backend_uart_get_ptr();
+    // Obscure the input so that the password is not visible
+    shell_obscure_set(sh, true);
+
+    // Disable logging to the console so that we don't see it at the login prompt
+    z_shell_log_backend_disable(sh->log_backend);
+#else
+    printk("Development build. Login is not required.\n");
+#endif
+    return 0;
+}
+
+static int CheckPassword(char *passwd)
+{
+    return strcmp(passwd, SHELL_PASSWORD);
+}
+
+static int CmdLogin(const struct shell* sh, size_t argc, char** argv)
+{
+    static uint32_t attempts;
+
+    if (CheckPassword(argv[1]) != 0)
+    {
+        shell_error(sh, "Incorrect password!");
+        attempts++;
+        if (attempts > 3)
+        {
+            k_sleep(K_SECONDS(attempts));
+        }
+        return -EINVAL;
+    }
+
+    // Clear history so password not visible there
+    z_shell_history_purge(sh->history);
+    shell_obscure_set(sh, false);
+    
+    shell_set_root_cmd(NULL);
+    shell_prompt_change(sh, "uart:~$ ");
+    z_shell_log_backend_enable(sh->log_backend, (void *)sh, sh->ctx->log_level);
+
+    shell_print(sh, "Logged in successfully! Hit tab for help. Use the command \"logout\" to log back out.\n");
+    attempts = 0;
+    return 0;
+}
+
+static int CmdLogout(const struct shell* sh, size_t argc, char** argv)
+{
+    shell_set_root_cmd("login");
+    shell_obscure_set(sh, true);
+    shell_prompt_change(sh, "login: ");
+    // Disable logging to the console so that we don't see it at the login prompt
+    z_shell_log_backend_disable(sh->log_backend);
+    shell_print(sh, "\n");
+    return 0;
+}
+
+SHELL_CMD_ARG_REGISTER(login, NULL, "<password>", CmdLogin, 2, 0);
+
+SHELL_CMD_REGISTER(logout, NULL, "Log out.", CmdLogout);
+
+SYS_INIT(LoginInit, APPLICATION, CONFIG_APPLICATION_INIT_PRIORITY);
+```
+
+`shell_prompt_change(sh, "login: ")` 用于把命令行提示符改为 `login:`，让用户清楚地知道必须先登录才能做其他事情。
+
+命令行登录的示例见[此处](https://github.com/zephyrproject-rtos/zephyr/blob/main/samples/subsys/shell/shell_module/prj_login.conf)。
+
+## 通过 USB CDC ACM 使用命令行
+
+在 `prj.conf` 文件中添加以下内容以启用 USB 设备驱动：
+
+```python title="prj.conf"
+CONFIG_USB_DEVICE_STACK=y
+CONFIG_USB_DEVICE_PRODUCT="My Product Console"
+CONFIG_USB_DEVICE_VID=0xDEAD
+CONFIG_USB_DEVICE_PID=0xBEEF
+CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT=n
+```
+
+`CONFIG_USB_DEVICE_PRODUCT` 会在 Windows 设备管理器的设备属性中显示为“Bus reported device description”。
+
+<Image src={import('./_assets/usb-serial-cdc-device-in-windows-showing-bus-reported-device-description.webp')} width="400px">Windows 中 USB 串行 CDC 设备的截图，显示了总线报告的设备描述。</Image>
+
+在开发板 DTS 文件的 `/chosen` 下添加以下内容：
+
+```txt title="my_board.dts"
+/ {
+    chosen {
+        zephyr,console = &cdc_acm_uart0;
+        zephyr,shell-uart = &cdc_acm_uart0;
+    };
+};
+```
+
+然后在开发板 DTS 文件底部为 `&zephyr_udc0` 添加以下额外覆盖：
+
+```txt title="my_board.dts"
+&zephyr_udc0 {
+    cdc_acm_uart0: cdc_acm_uart0 {
+        compatible = "zephyr,cdc-acm-uart";
+    };
+};
+```
+
+<Aside type="note">
+`&zephyr_udc0` 的额外信息必须放在开发板 DTS 文件中 `zephyr_udc0` 的定义之后。`zephyr_udc0` 的定义可能类似这样（来自 nRF52840 开发板）：
+
+```txt title="my_board.dts"
+zephyr_udc0: &usbd {
+    compatible = "nordic,nrf-usbd";
+    status = "okay";
+};
+```
+</Aside>
+
+由于设置了 `CONFIG_USB_DEVICE_INITIALIZE_AT_BOOT=n`，我们需要手动初始化 USB 设备。这可以在 `main()` 函数中完成。随后我们还想发送一些数据来测试 USB CDC 是否正常工作。我们将使用 `LOG_INF()` 宏向命令行发送数据。
+
+```c title="main.c"
+#include <zephyr/drivers/gpio.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/usb/usb_device.h>
+
+LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
+
+// LED to blink if a fatal error occurs before the USB serial is available
+static const struct gpio_dt_spec l_userLedGpioSpec = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+
+void preSerialFatalError(void) {
+    while (1) {
+        gpio_pin_toggle_dt(&l_userLedGpioSpec);
+        k_msleep(250);
+    }
+}
+
+int main(void)
+{
+    int usbEnableRc = usb_enable(NULL);
+    if (usbEnableRc != 0) {
+        preSerialFatalError();
+    }
+
+    while (1)
+    {
+        LOG_INF("Hello, world!");
+        k_sleep(K_SECONDS(1));
+    }
+    return 0;
+}
+```
+
+<Aside type="note">
+如果 `usb_enable()` 因任何原因失败，我们无法记录错误，因为日志输出尚不可用！因此这里实现了一个 `preSerialFatalError()` 函数，退回到我们可以假定能工作的更简单方式——翻转 LED。
+</Aside>
+
+官方示例会等待 DTR 线被置位后再发送数据。在传统串行通信中，DTR（data terminal ready，数据终端就绪）线由数据终端设备（DTE，例如计算机）驱动，由数据通信设备（DCE，例如调制解调器）读取。DTE 用它表示自己已准备好发送数据。[^wikipedia-data-terminal-ready]
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^wikipedia-data-terminal-ready]: Wikipedia（2025 年 3 月 10 日）。_Data Terminal Ready_ [wiki]。检索于 2025-07-30，来自 https://en.wikipedia.org/wiki/Data_Terminal_Ready。

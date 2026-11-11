@@ -1,0 +1,260 @@
+---
+authors: [gbmhunter]
+date: 2016-12-13
+description: 介绍 C++ 中最常用的容器，包括 std::array、std::vector、std::map、std::deque、std::set 等。
+lastUpdated: 2025-05-06
+title: 容器
+type: page
+sourcePath: programming/languages/c-plus-plus/containers/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:061e6e93fe2cd2a822fea02774369a56cb0e8b81b244ec8f19aa7967fd74aacc
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/containers/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+本页介绍 C++ 中可用的各种容器（container）。这些容器覆盖了存储数据时可能用到的多种方式。
+
+_以下容器按字母顺序排列。_
+
+## 数组（array）
+
+<table >
+<tbody >
+<tr>
+    <td>头文件</td>
+    <td>#include &lt;deque&gt;</td>
+</tr>
+<tr>
+    <td>完整路径</td>
+    <td>std::array</td>
+</tr>
+<tr>
+<td>时间复杂度</td>
+<td>
+
+随机访问：$ \mathcal{O}(1) $<br/>
+在开头或结尾插入：n/a<br/>
+在中间插入：n/a<br/>
+</td>
+</tr>
+</tbody>
+</table>
+
+当然，我们在 C++ 中始终可以使用 C 风格数组，它们通常只是作为指向元素类型的指针来使用和传递。然而，标准 C 风格数组存在一些问题：没有内建的内存管理、没有边界检查，而且数组大小的信息不会随数组一起传递（因此通常必须向函数传入另一个变量来指明大小）。
+
+C++11 为我们提供了一个 std 容器，它封装了固定大小的数组。
+
+```c++
+std::array<int, 3> myArray = { 1, 2, 3}; 
+```
+
+`std::array` 比 C 风格数组限制更严，因为大小必须在编译期提供。例如：
+
+```c++
+int size = 4;
+int cArray[x];                  // This WILL compile
+std::array<int, size> cppArray; // This WON'T compile
+```
+
+如果你需要一个可在运行时调整大小的类数组容器，请改用 `std::vector`。
+
+在 C++11 引入 `std::array` 之前，你可以使用 Boost 中的等价物。Boost 提供了一个模板化的类，用于创建特定类型的固定大小数组。要创建一个存储 6 个 double 的固定数组，可以这样写：
+
+```c++
+boost::array<double, 6> myArray;
+```
+
+注意，`boost::array` 的初始化语法与 `std::array` 完全相同。第一个模板参数是数组要存储的类型，第二个参数是数组中的元素个数。
+
+## deque
+
+<table>
+  <tbody>
+    <tr>
+      <td>头文件</td>
+      <td>#include &lt;deque&gt;</td>
+    </tr>
+    <tr>
+      <td>完整路径</td>
+      <td>std::deque</td>
+    </tr>
+    <tr>
+      <td>时间复杂度</td>
+      <td>
+
+    随机访问：$ \mathcal{O}(1) $<br/>
+    在开头或结尾插入：$ \mathcal{O}(1) $<br/>
+    在中间插入：$ \mathcal{O}(n) $<br/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+`std::deque` 代表**双端队列（double-ended queue）**（通常读起来像 “deck”）。它是一个索引序列容器，用于在 C++ 中存储数据。它的大小是动态的，可以在前端和后端快速扩展/收缩。
+
+deque 并不保证把所有数据存储在连续的内存序列中。因此，它的数据不能像 vector 那样通过指针加法访问。
+
+**示例**
+
+```c++
+// Create a new queue initialised with 4 integers
+std::deque<int> myDeque = {5, 6, 7, 8};
+myDeque.push_front(4);
+myDeque.push_back(9);
+
+// queue now equals 4, 5, 6, 7, 8, 9
+```
+
+## map/multimap
+
+<table>
+  <tbody>
+    <tr>
+      <td>头文件</td>
+      <td>#include &lt;map&gt;</td>
+    </tr>
+    <tr>
+      <td>完整路径</td>
+      <td>std::map , std::multimap</td>
+    </tr>
+    <tr>
+      <td>时间复杂度</td>
+      <td>
+
+随机访问：$ \mathcal{O}(1) $<br/>
+在开头或结尾插入：$ \mathcal{O}(1) $<br/>
+在中间插入：$ \mathcal{O}(n) $<br/>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+`std::map` 是 C++ 中的关联容器。它类似于 Python 中的字典。数组或 vector 只允许用整数存储和检索数据，而 map 允许通过任何其他对象来存储和检索数据。
+
+例如，我们可以根据名字存储人员数据：
+
+```c++
+std::map <string, int> peoplesAges;
+```
+
+现在可以把一个值存入 map：
+
+```c++
+peoplesAges["John"] = 32;
+```
+
+注意，我们可以用字符串而不是整数来索引 map！
+
+我们可以使用 `find()` 方法从 map 中检索值。
+
+```c++
+auto it = peoplesAges.find("John");
+if(it != peoplesAges.end()
+    std::cout << "Found John's age of " << *it << std::endl;
+```
+
+**向 map 添加元素的不同方式**
+
+`emplace()` 在 C++11 中被加入 `std::map`。它允许分别传入用于在 map 中创建新元素的参数。随后 `emplace()` 会把这些参数转发给元素的构造函数。
+
+## set/multiset
+
+set 是一种关联的有序容器，其中元素的值同时也充当键（而 map 中键与值不同）。set 的另一个有趣特性是元素是 const 的，也就是说不能直接修改它们。不过，你可以添加和删除元素。
+
+```c++
+std::set<std::string> mySet;
+    
+mySet.insert("Hello, ");
+mySet.insert("world!");
+
+for(it = mySet.begin(); it != mySet.end(); it++){
+    std::cout << *it << std::endl;
+}
+```
+
+C++ 标准并未规定库必须如何实现 `std::set`。不过，`std::set` 通常在后台实现为_二叉搜索树_。
+
+set 中的每个元素必须唯一。如果要存储多个相同值的元素，请改用 multiset。
+
+## vector
+
+`std::vector` 是 C++ 中常用的基础数组类型。它支持元素的插入和删除，并支持运行时的动态调整大小。
+
+```c++
+std::vector<int> myVector;
+myVector.push_back(1);
+myVector.push_back(2);
+myVector.push_back(3);
+
+std::cout << myVector[1] << std::endl; // "2", no bounds checking
+std::cout << myVector.at(1) << std::endl; // "2", with bounds checking!
+```
+
+`myVector[<element index>]` 提供了标准的、不做边界检查的 vector 元素读写方式。不过，如果你想要**边界检查**，可以改用 `.at()`。
+
+自 C++11 起，你可以使用 `data()` 方法获得指向数组的 C 风格指针：
+
+```c++
+std::vector<int> myVector = { 1, 2, 3 };
+int * ptrToArray = myVector.data();
+```
+
+C++ 标准保证数据存储在连续的内存空间中，并且可以像 C 风格数组一样访问。
+
+## std::span
+
+`std::span` 是 C++20 引入的一种容器，它提供对连续对象序列的视图。它是一个轻量、不拥有所有权的连续对象序列视图，例如数组或 vector 的视图。[^cpp-reference-std-span] 它在构造时不进行任何内存分配，也不会让智能指针保持存活（它是一种_引用类型_）。
+
+<Aside type="tip">
+`std::span` 以前称为 `array_view`，更早以前称为 `array_ref`。[^stack-overflow-what-is-a-span-and-when-should-i-use-one]
+</Aside>
+
+`std::span` 有两种类型：[^cpp-reference-std-span]
+
+1. **静态范围（static extent）**：序列中的元素个数在编译期已知，并编码在类型中。
+2. **动态范围（dynamic extent）**：序列中的元素个数在编译期未知。
+
+你可以把 `std::span` 想象成一个 `struct { T * ptr; std::size_t size; }`，再加上迭代器支持等许多便利方法。[^stack-overflow-what-is-a-span-and-when-should-i-use-one]
+
+下面是一个基本示例，展示如何向函数传递 `std::span` 而不是裸指针加大小：
+
+```c++
+#include <cstdint>
+#include <cstdio>
+#include <span>
+
+void worseWay(uint8_t* data, size_t size) {
+    for (size_t i = 0; i < size; i++) {
+        std::printf("%d ", data[i]);
+    }
+    std::printf("\n");
+}
+
+void betterWay(std::span<uint8_t> data) {
+    for (auto& byte : data) {
+        std::printf("%d ", byte);
+    }
+    std::printf("\n");
+}
+
+int main() {
+    std::array<uint8_t, 5> data = {1, 2, 3, 4, 5};
+    worseWay(data.data(), data.size());
+    betterWay(data);
+    return 0;
+}
+```
+
+`worseWay()` 是传统做法。注意调用者必须显式传入大小，而且出错的方式更多。`betterWay()` 是使用 `std::span` 的“更好”做法。不需要显式大小（编译器会自动为你捕获）。
+
+ISO C++ 核心准则建议，对于需要操作数组的函数，使用 `std::span` 而不是传入裸指针和大小。[^iso-cpp-cpp-core-guidelines]
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^cpp-reference-std-span]: cppreference.com。_C++ > Containers library > std::span_ [文档]。检索于 2025-05-06，来自 https://en.cppreference.com/w/cpp/container/span。
+[^stack-overflow-what-is-a-span-and-when-should-i-use-one]: Stack Overflow。_What is a "span" and when should I use one?_ [论坛帖子]。检索于 2025-05-06，来自 https://stackoverflow.com/questions/45723819/what-is-a-span-and-when-should-i-use-one。
+[^iso-cpp-cpp-core-guidelines]: Bjarne Stroustrup, Herb Sutter。_C++ Core Guidelines_。检索于 2025-05-06，来自 https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines。

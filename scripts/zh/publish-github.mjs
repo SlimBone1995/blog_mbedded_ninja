@@ -27,7 +27,8 @@ const REPO = 'SlimBone1995/blog_mbedded_ninja';
 const BRANCH = 'zh';
 const dryRun = process.argv.includes('--dry-run');
 const batch3 = process.argv.includes('--batch3');
-const update = process.argv.includes('--update') || batch3;
+const batch4 = process.argv.includes('--batch4');
+const update = process.argv.includes('--update') || batch3 || batch4;
 
 function walk(dir) {
   const out = [];
@@ -168,11 +169,49 @@ BATCH3_FILES.push(
   'scripts/zh/publish-github.mjs',
 );
 
-const groupsToPublish = batch3
-  ? [{ message: 'feat(zh): translate 30 PCB component-package pages', files: BATCH3_FILES }]
-  : update
-    ? [{ message: 'feat(zh): add language switcher and Chinese README', files: UPDATE_FILES }]
-    : GROUPS;
+const BATCH4_FILES = [
+  'programming/languages/c/arrays',
+  'programming/languages/c/data-types',
+  'programming/languages/c/dynamic-memory-allocation',
+  'programming/languages/c/enumerations',
+  'programming/languages/c/preprocessor',
+  'programming/languages/c/structures',
+  'programming/languages/c/header-guards',
+  'programming/languages/c/switch-statements',
+  'programming/languages/c/unions',
+  'programming/languages/c-plus-plus/classes',
+  'programming/languages/c-plus-plus/const-correctness',
+  'programming/languages/c-plus-plus/containers',
+  'programming/languages/c-plus-plus/exceptions',
+  'programming/languages/c-plus-plus/namespaces',
+  'programming/languages/c-plus-plus/one-definition-rule-odr',
+  'programming/languages/c-plus-plus/references',
+  'programming/languages/c-plus-plus/virtual-methods',
+  'programming/operating-systems/freertos/common-mistakes',
+  'programming/operating-systems/freertos/compiling-freertos-with-cpp',
+  'programming/operating-systems/freertos/the-idle-task',
+  'programming/operating-systems/zephyr/creating-libraries',
+  'programming/operating-systems/zephyr/debugging',
+  'programming/operating-systems/zephyr/logging',
+  'programming/operating-systems/zephyr/shell',
+  'programming/operating-systems/zephyr/cpp',
+].map((dir) => `src/content/pages/${dir}/index.zh.mdx`);
+
+BATCH4_FILES.push(
+  'zh/glossary/terms.csv',
+  'zh/translation-runs.csv',
+  'zh/status.json',
+  'zh/ZH_TODO.md',
+  'scripts/zh/publish-github.mjs',
+);
+
+const groupsToPublish = batch4
+  ? [{ message: 'feat(zh): translate 25 programming pages', files: BATCH4_FILES }]
+  : batch3
+    ? [{ message: 'feat(zh): translate 30 PCB component-package pages', files: BATCH3_FILES }]
+    : update
+      ? [{ message: 'feat(zh): add language switcher and Chinese README', files: UPDATE_FILES }]
+      : GROUPS;
 
 function gh(args, input) {
   return execFileSync('gh', args, {

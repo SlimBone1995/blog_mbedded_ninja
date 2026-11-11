@@ -1,0 +1,170 @@
+---
+authors: [gbmhunter]
+date: 2020-04-19
+description: 本指南介绍如何为嵌入式 Zephyr 项目配置并编写 C++ 代码。
+lastUpdated: 2026-07-01
+tags: [programming, operating systems, RTOS, Zephyr, C++, exceptions, expected, microcontrollers, embedded, tutorial, walkthrough]
+title: 如何将 C++ 与 Zephyr 配合使用
+type: page
+sourcePath: programming/operating-systems/zephyr/cpp/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:3f6528820e619231f7d83d95e20c42b8203828a43c2ad58d1cfef63da4e4ab9d
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/cpp/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+Zephyr 对 [C++](/programming/languages/c-plus-plus/) 的支持相当不错。
+
+不确定是否要在嵌入式开发中使用 C++？更多信息请参阅我的文章[嵌入式系统中的 C++](/programming/languages/c-plus-plus/cpp-on-embedded-systems/)。
+
+## 启用 C++ 支持
+
+在 `prj.conf` 中添加以下内容即可启用 C++ 编译支持：
+
+```python title="prj.conf"
+CONFIG_CPP=y
+```
+
+然后可以把 `main.c` 改为 `main.cpp`。记得同时更新 `CMakeLists.txt` 文件中的路径！不过，你仍会缺少大量 C++ 标准库内容（例如 `std::function`）。要使其可用，请在 `prj.conf` 中添加：
+
+```python title="prj.conf"
+# Adds the full C++ standard library
+CONFIG_REQUIRES_FULL_LIBCPP=y
+```
+
+记住，你可以从 C++ 调用 C 代码，但反过来不行（嗯——技术上可以，但一般来说，如果你使用了类和其他 C++ 特性，就不行）。因此一种迁移策略是：当 `main.cpp` 文件能正常工作后，可以把部分核心应用代码升级为 C++，而把驱动和库等保留为 C。当然，你仍然可以从 C++ 代码访问 Zephyr API（它用 C 编写）。所有 Zephyr 头文件都包裹在 `extern "C"` 中，便于你在 C++ 中调用。
+
+### 选择 C++ 标准
+
+默认情况下，Zephyr 使用 C++11 标准。这在如今已经相当老旧，你很可能想使用更新的标准。截至 2025 年 6 月，Zephyr 最高支持 C++20。可以从以下选项中选择所需版本：[^zephyr-kconfig-config-std-cpp]
+
+- CONFIG_STD_CPP98
+- CONFIG_STD_CPP11
+- CONFIG_STD_CPP14
+- CONFIG_STD_CPP17
+- CONFIG_STD_CPP2A
+- CONFIG_STD_CPP20
+- CONFIG_STD_CPP2B
+
+在 `prj.conf` 文件中为你想要的选项加上 `=y` 即可，例如：
+
+```python title="prj.conf"
+CONFIG_STD_CPP20=y # Use C++20
+```
+
+我注意到仅包含完整 C++ 标准库并不会显著增加 RAM 或闪存占用，因此你只需为实际使用的内容付出代价。
+
+现在应该可以编译包含 C++ 代码的 Zephyr 应用了。总而言之，你的 `prj.conf` 应类似这样：
+
+```python title="prj.conf"
+CONFIG_CPP=y
+CONFIG_REQUIRES_FULL_LIBCPP=y
+CONFIG_STD_CPP20=y
+```
+
+<Aside type="note">
+我尝试通过 Zephyr 插入的 `-std=c++20` 标志之后提供编译器标志 `-std=c++23`，以突破 C++20 的限制使用 C++23。但没能成功，只好接受 C++20。
+</Aside>
+
+## 日志
+
+使用 C++ 时，你迟早会想在头文件中放置日志调用。对于任何模板代码（必须放在头文件中）或任何你懒得在单独 `.cpp` 文件中定义的类函数，都是如此。
+
+必须在头文件中任何需要记录日志的函数的开头添加 `LOG_MODULE_DECLARE(<module_name>);`。还必须在一个 `.cpp` 文件中添加 `LOG_MODULE_REGISTER(<module_name>)`，如下所示：
+
+```c++ title="MyClass.h"
+#include <zephyr/logging/log.h>
+
+class MyClass
+{
+public:
+    void myFunction()
+    {
+        LOG_MODULE_DECLARE(MyClass); // Note how we have to declare the log module before we can use it
+        LOG_INF("Hello, world!");
+    }
+
+    void myOtherFunction()
+    {
+        LOG_MODULE_DECLARE(MyClass); // We have to do this at the start of each function
+        LOG_INF("Hello, again!");
+    }
+};
+```
+
+然后需要在某个 `.cpp` 文件中提供日志模块的实现。我通常会在 `MyClass.cpp` 文件中完成。注意，不能把所有实现都塞进一个文件（例如 `main.cpp`），否则会发生命名冲突。
+
+```c++ title="MyClass.cpp"
+#include "MyClass.h"
+
+LOG_MODULE_REGISTER(MyClass, LOG_LEVEL_INF);
+```
+
+Zephyr 还支持基于实例的日志，即日志消息与类的特定实例关联。不过，我认为 Zephyr 基于实例的日志有些混乱，所以基本不用。这很可惜，因为它本来可以很好地与 C++ 类的实例配合。
+
+## Expected
+
+由于 Zephyr 尚不支持 C++23（截至 2025 年 6 月），我们无法使用 `std::expected`。不过，TartanLlama（Sy Brand）创建了一个兼容 C++11 及更高版本的替代实现。你可以在 [GitHub 上这里](https://github.com/TartanLlama/expected)找到该仓库。
+
+要把该依赖添加到项目，请在 `CMakeLists.txt` 文件中添加：
+
+```cmake title="CMakeLists.txt"
+# Disable packaging for TlExpected
+set(EXPECTED_BUILD_PACKAGE OFF CACHE BOOL "Disable TlExpected packaging" FORCE)
+set(EXPECTED_BUILD_TESTS OFF CACHE BOOL "Disable TlExpected tests" FORCE)
+
+include(FetchContent)
+FetchContent_Declare(
+    TlExpected
+    GIT_REPOSITORY https://github.com/TartanLlama/expected
+    GIT_TAG v1.1.0
+)
+FetchContent_MakeAvailable(TlExpected)
+
+# The target 'expected' (aliased as tl::expected) is now configured.
+# Link against the alias provided by the library.
+target_link_libraries(app PUBLIC tl::expected)
+```
+
+它使用 `FetchContent` 自动下载仓库并提供给你的项目。`EXPECTED_BUILD_PACKAGE` 和 `EXPECTED_BUILD_TESTS` 都必须设为 `OFF`，以防止编译器错误，因为 Zephyr 构建环境不支持对该库进行测试或打包（我们只需要头文件）。
+
+## 异常
+
+在 Zephyr 中启用 C++ 支持时，异常默认是禁用的。如果你尝试在代码中添加 `throw std::runtime_error("test");`，会得到以下编译器错误：
+
+```text
+error: exception handling disabled, use '-fexceptions' to enable
+```
+
+在 `prj.conf` 文件中添加以下内容即可启用异常：
+
+```python title="prj.conf"
+CONFIG_CPP_EXCEPTIONS=y
+```
+
+仅在以下情况下才能启用异常：
+
+- 已通过 `CONFIG_CPP=y` 启用 C++。
+- 未启用 `CONFIG_NEWLIB_LIBC_NANO` 或 `CONFIG_MINIMAL_LIBCPP`。
+
+<Aside type="note">
+必须通过 `prj.conf` 启用异常。仅在 CMakeLists.txt 文件中添加如下编译器标志是无效的：
+
+```cmake title="CMakeLists.txt"
+target_compile_options(app PRIVATE -fexceptions)
+```
+
+因为 Zephyr 会添加自己的编译器标志 `-fno-exceptions`，它会出现在你指定的标志之后。
+</Aside>
+
+是否使用 C++ 异常需要仔细考虑。如果我的理解没错，异常通常会使用动态内存分配来存储抛出的异常对象。如果你有禁止动态内存分配、或禁止初始化后动态内存分配的规则，就不能使用异常。
+
+关于使用 C++ 异常的利弊，请参阅[嵌入式系统中的 C++](/programming/languages/c-plus-plus/cpp-on-embedded-systems/)页面。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^zephyr-kconfig-config-std-cpp]: Zephyr（2022 年 1 月 12 日）。_Kconfig Search > CONFIG_STD_CPP_ [文档]。检索于 2025-06-14，来自 https://docs.zephyrproject.org/latest/kconfig.html#!CONFIG_STD_CPP。

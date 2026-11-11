@@ -1,0 +1,80 @@
+---
+authors: [gbmhunter]
+date: 2013-12-25
+lastUpdated: 2013-12-25
+tags: [programming, C++]
+title: 类
+type: page
+sourcePath: programming/languages/c-plus-plus/classes/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:8f36561885b30b31faeea0b205bdebb63dd33a43b767ee1c7ebdda5a0c72474f
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/classes/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 什么是类？
+
+类（class）基本上可以看作功能增强的结构体。结构体能做的所有事情它都能做，此外它还支持**封装（对成员的访问保护）**。这是一个重要区别，正是它使 C++ 成为面向对象的语言。
+
+## 一个简单的类示例
+
+下面的示例为 `Point`（名称由用户选择）定义了一个类。
+
+```c++
+class Point {
+   private:
+
+      int32_t x;
+      int32_t y;
+
+   public:
+
+      int32_t GetX() {
+         return x;
+      }
+
+      int32_t GetY() {
+         return y;
+      }
+};
+```
+
+然后我们就可以使用 Point 类创建 Point 对象。
+
+```c++
+Point myFirstPoint = new Point();
+```
+
+上面的语句表达了两件事：首先说明 myFirstPoint 的类型是 Point（Point myFirstPoint），然后使它等于一个新的 Point 对象（`= new Point();`）。第一部分**声明**变量，第二部分**初始化**变量。
+
+注意，类本身不会创建你可以使用的对象（此规则的例外是 `static` 成员）。
+
+## 成员函数
+
+<Aside type="note">
+所有 C++ 成员函数都隐式地是 `inline` 的。因此无需再写 `inline`，因为它已经“存在”了。因此下面两个成员函数完全相同。
+</Aside>
+    
+```c++
+// Identical to Point2
+class Point1 {
+    int32_t GetX();
+}
+
+// Identical to Point1
+classPoint2 {
+    inline int32_t GetX();
+}
+```
+
+## 但结构体也可以有函数？
+
+C++ 还有一个鲜有人用的特性：它也允许在结构体（即 `struct`）内部定义函数（而在 C 中，只能在结构体内部定义函数指针）。
+
+## 记住父类
+
+有时，记住父类会很有用。C++ 没有默认的引用方式，按设计，任何子类都不知道自己的父类。
+
+要做到这一点，你必须在子类中创建自己的指针变量；当父类实例化该类时，父类可以传入指向自身的指针，子类随后将其保存到自己的指针变量中。

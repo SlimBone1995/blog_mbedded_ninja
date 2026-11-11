@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-11T07:47:23.384Z",
+  "generatedAt": "2026-11-11T08:18:00.316Z",
   "counts": {
-    "current": 70,
+    "current": 95,
     "stale": 0,
-    "missing": 1105,
+    "missing": 1080,
     "orphan": 0
   },
   "current": [
@@ -260,32 +260,132 @@
       "source": "programming/design-patterns/state-machines/function-pointers/index.mdx"
     },
     {
+      "zh": "programming/languages/c/arrays/index.zh.mdx",
+      "source": "programming/languages/c/arrays/index.mdx"
+    },
+    {
       "zh": "programming/languages/c/bit-fields-and-bit-manipulation-masking/index.zh.mdx",
       "source": "programming/languages/c/bit-fields-and-bit-manipulation-masking/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/data-types/index.zh.mdx",
+      "source": "programming/languages/c/data-types/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/dynamic-memory-allocation/index.zh.mdx",
+      "source": "programming/languages/c/dynamic-memory-allocation/index.mdx"
     },
     {
       "zh": "programming/languages/c/embedded-systems-and-the-volatile-keyword/index.zh.mdx",
       "source": "programming/languages/c/embedded-systems-and-the-volatile-keyword/index.mdx"
     },
     {
+      "zh": "programming/languages/c/enumerations/index.zh.mdx",
+      "source": "programming/languages/c/enumerations/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/header-guards/index.zh.mdx",
+      "source": "programming/languages/c/header-guards/index.mdx"
+    },
+    {
       "zh": "programming/languages/c/pointers/index.zh.mdx",
       "source": "programming/languages/c/pointers/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/preprocessor/index.zh.mdx",
+      "source": "programming/languages/c/preprocessor/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/structures/index.zh.mdx",
+      "source": "programming/languages/c/structures/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/switch-statements/index.zh.mdx",
+      "source": "programming/languages/c/switch-statements/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c/unions/index.zh.mdx",
+      "source": "programming/languages/c/unions/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/classes/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/classes/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/const-correctness/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/const-correctness/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/containers/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/containers/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/exceptions/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/exceptions/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/namespaces/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/namespaces/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/one-definition-rule-odr/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/one-definition-rule-odr/index.mdx"
+    },
+    {
+      "zh": "programming/languages/c-plus-plus/references/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/references/index.mdx"
     },
     {
       "zh": "programming/languages/c-plus-plus/smart-pointers/index.zh.mdx",
       "source": "programming/languages/c-plus-plus/smart-pointers/index.mdx"
     },
     {
+      "zh": "programming/languages/c-plus-plus/virtual-methods/index.zh.mdx",
+      "source": "programming/languages/c-plus-plus/virtual-methods/index.mdx"
+    },
+    {
       "zh": "programming/microcontrollers/stm32/index.zh.mdx",
       "source": "programming/microcontrollers/stm32/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/freertos/common-mistakes/index.zh.mdx",
+      "source": "programming/operating-systems/freertos/common-mistakes/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/freertos/compiling-freertos-with-cpp/index.zh.mdx",
+      "source": "programming/operating-systems/freertos/compiling-freertos-with-cpp/index.mdx"
     },
     {
       "zh": "programming/operating-systems/freertos/index.zh.mdx",
       "source": "programming/operating-systems/freertos/index.mdx"
     },
     {
+      "zh": "programming/operating-systems/freertos/the-idle-task/index.zh.mdx",
+      "source": "programming/operating-systems/freertos/the-idle-task/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/cpp/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/cpp/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/creating-libraries/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/creating-libraries/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/debugging/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/debugging/index.mdx"
+    },
+    {
       "zh": "programming/operating-systems/zephyr/index.zh.mdx",
       "source": "programming/operating-systems/zephyr/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/logging/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/logging/index.mdx"
+    },
+    {
+      "zh": "programming/operating-systems/zephyr/shell/index.zh.mdx",
+      "source": "programming/operating-systems/zephyr/shell/index.mdx"
     }
   ],
   "stale": [],
@@ -972,33 +1072,25 @@
     "programming/languages/c-plus-plus/auto-specifier/index.mdx",
     "programming/languages/c-plus-plus/boost-libraries/index.mdx",
     "programming/languages/c-plus-plus/callbacks/index.mdx",
-    "programming/languages/c-plus-plus/classes/index.mdx",
     "programming/languages/c-plus-plus/clocks-and-timing/index.mdx",
     "programming/languages/c-plus-plus/code-checkers/index.mdx",
-    "programming/languages/c-plus-plus/const-correctness/index.mdx",
-    "programming/languages/c-plus-plus/containers/index.mdx",
     "programming/languages/c-plus-plus/cpp-on-embedded-systems/index.mdx",
     "programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.mdx",
-    "programming/languages/c-plus-plus/exceptions/index.mdx",
     "programming/languages/c-plus-plus/google-benchmark/index.mdx",
     "programming/languages/c-plus-plus/index.mdx",
     "programming/languages/c-plus-plus/inheritance/index.mdx",
     "programming/languages/c-plus-plus/input-and-output/index.mdx",
     "programming/languages/c-plus-plus/linux-bash-commands-for-cpp/index.mdx",
     "programming/languages/c-plus-plus/magic-statics/index.mdx",
-    "programming/languages/c-plus-plus/namespaces/index.mdx",
-    "programming/languages/c-plus-plus/one-definition-rule-odr/index.mdx",
     "programming/languages/c-plus-plus/openmp-tutorial/index.mdx",
     "programming/languages/c-plus-plus/operator-overloading/index.mdx",
     "programming/languages/c-plus-plus/qt/index.mdx",
-    "programming/languages/c-plus-plus/references/index.mdx",
     "programming/languages/c-plus-plus/special-casts/index.mdx",
     "programming/languages/c-plus-plus/streams/index.mdx",
     "programming/languages/c-plus-plus/strings/index.mdx",
     "programming/languages/c-plus-plus/threading/index.mdx",
     "programming/languages/c-plus-plus/type-conversion/index.mdx",
     "programming/languages/c-plus-plus/unit-testing-and-mocking/index.mdx",
-    "programming/languages/c-plus-plus/virtual-methods/index.mdx",
     "programming/languages/c-plus-plus/warning-and-error-message-help/index.mdx",
     "programming/languages/c-sharp/binding/index.mdx",
     "programming/languages/c-sharp/closing-your-application/index.mdx",
@@ -1013,7 +1105,6 @@
     "programming/languages/c-sharp/using-installsheild/index.mdx",
     "programming/languages/c-sharp/windows-office-application-interface/index.mdx",
     "programming/languages/c/arithmetic-operators/index.mdx",
-    "programming/languages/c/arrays/index.mdx",
     "programming/languages/c/assertions-assert/index.mdx",
     "programming/languages/c/bss-section/index.mdx",
     "programming/languages/c/c-naming-conventions/index.mdx",
@@ -1022,11 +1113,7 @@
     "programming/languages/c/commenting-and-documentation/index.mdx",
     "programming/languages/c/common-c-compile-build-errors/index.mdx",
     "programming/languages/c/control-statements/index.mdx",
-    "programming/languages/c/data-types/index.mdx",
-    "programming/languages/c/dynamic-memory-allocation/index.mdx",
-    "programming/languages/c/enumerations/index.mdx",
     "programming/languages/c/file-input-and-output/index.mdx",
-    "programming/languages/c/header-guards/index.mdx",
     "programming/languages/c/index.mdx",
     "programming/languages/c/inserting-assembly-code-into-c/index.mdx",
     "programming/languages/c/linkage/index.mdx",
@@ -1035,17 +1122,13 @@
     "programming/languages/c/logical-operators/index.mdx",
     "programming/languages/c/non-local-jumps-setjmp-longjmp/index.mdx",
     "programming/languages/c/object-orientated-c/index.mdx",
-    "programming/languages/c/preprocessor/index.mdx",
     "programming/languages/c/processing-command-line-input/index.mdx",
     "programming/languages/c/reading-user-input/index.mdx",
     "programming/languages/c/reducing-code-execution-time/index.mdx",
     "programming/languages/c/standards-and-versions/index.mdx",
     "programming/languages/c/string-manipulation-in-c/index.mdx",
-    "programming/languages/c/structures/index.mdx",
-    "programming/languages/c/switch-statements/index.mdx",
     "programming/languages/c/system-calls/index.mdx",
     "programming/languages/c/the-confusing-differences-between-struct-and-typedef-struct/index.mdx",
-    "programming/languages/c/unions/index.mdx",
     "programming/languages/c/variadic-functions/index.mdx",
     "programming/languages/dart-and-flutter/index.mdx",
     "programming/languages/delphi/index.mdx",
@@ -1188,11 +1271,8 @@
     "programming/operating-systems/azure-rtos-threadx/index.mdx",
     "programming/operating-systems/embassy/index.mdx",
     "programming/operating-systems/embassy/nrf52-dk-tutorial/index.mdx",
-    "programming/operating-systems/freertos/common-mistakes/index.mdx",
-    "programming/operating-systems/freertos/compiling-freertos-with-cpp/index.mdx",
     "programming/operating-systems/freertos/freertos-and-watchdogs/index.md",
     "programming/operating-systems/freertos/freertos-quick-reference-guide/index.md",
-    "programming/operating-systems/freertos/the-idle-task/index.mdx",
     "programming/operating-systems/index.mdx",
     "programming/operating-systems/linux/a-review-of-linux-shells/index.md",
     "programming/operating-systems/linux/bash-script-for-montoring-disk-usage/index.md",
@@ -1257,15 +1337,10 @@
     "programming/operating-systems/windows/windows-subsystem-for-linux-wsl/index.mdx",
     "programming/operating-systems/zephyr/adding-a-custom-board/index.mdx",
     "programming/operating-systems/zephyr/bluetooth/index.mdx",
-    "programming/operating-systems/zephyr/cpp/index.mdx",
-    "programming/operating-systems/zephyr/creating-libraries/index.mdx",
-    "programming/operating-systems/zephyr/debugging/index.mdx",
     "programming/operating-systems/zephyr/installation/index.mdx",
-    "programming/operating-systems/zephyr/logging/index.mdx",
     "programming/operating-systems/zephyr/mcuboot/index.mdx",
     "programming/operating-systems/zephyr/nfc/index.mdx",
     "programming/operating-systems/zephyr/peripherals/index.mdx",
-    "programming/operating-systems/zephyr/shell/index.mdx",
     "programming/operating-systems/zephyr/state-machine-framework/index.mdx",
     "programming/programming-microcontrollers-an-overview/index.mdx",
     "programming/segger-j-link/index.mdx",

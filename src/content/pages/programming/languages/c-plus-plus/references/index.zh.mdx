@@ -1,0 +1,38 @@
+---
+authors: [gbmhunter]
+date: 2013-12-25
+lastUpdated: 2013-12-25
+tags: [C++, programming, references]
+title: 引用
+type: page
+sourcePath: programming/languages/c-plus-plus/references/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:0de4f04c178f227edb6a3933c1c1db9007855880d82a1ec256ff7e414d7594d5
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/references/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+C++ 引入了引用（reference）运算符 `&`，其工作方式与 C 中略有不同。
+    
+```c++
+    double a = 1;
+    double b = &a;  // b is now a pointer to a
+    
+    b = 2;
+    
+    // a now = 2
+```
+
+对于有 C 背景并理解指针的人来说，可以这样理解：`double &b = a` 相当于 `double *b = &a`，之后所有对 `b` 的使用都替换为 `*b`。注意，`b` 所指向的 double 不能被改变！这与普通指针 `double *b = &a` 不同，后者你之后还可以写 `b = &c`。引用则不行。
+
+## 它们有什么用？
+
+引用可以简化某些指针操作的语法。它们在创建运算符重载时也很有用（例如为枚举创建 ++ 运算符），这样语法就能与 C++ 中的基础类型保持一致。
+
+<Aside type="caution">
+如果你通过引用返回局部变量，即使它是右值引用，也会产生未定义行为。
+</Aside>

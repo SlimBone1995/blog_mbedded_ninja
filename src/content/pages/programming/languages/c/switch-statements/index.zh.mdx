@@ -1,0 +1,58 @@
+---
+authors: [gbmhunter]
+date: 2015-01-10
+lastUpdated: 2015-01-10
+tags: [programming, C]
+title: switch 语句
+type: page
+sourcePath: programming/languages/c/switch-statements/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:a877b7209af21b238982e50cf73eecb486ba1da1e34a1971c22276129290722e
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/switch-statements/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 贯穿
+
+贯穿（fall-through）是指前一个 case 没有 break 语句（或其他可能改变程序计数器的语句，例如 goto、return）时发生的情况。它被认为是 C 编程语言最大的设计错误之一，但不幸的是，由于现有代码依赖贯穿才能正确工作，这一特性无法移除。
+
+Duff's Device 就利用了贯穿。
+
+有人提议在 C++ 中加入不允许贯穿的显式 switch。更多信息见 ISO/IEC 文档编号 N3879（[http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3879.pdf](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3879.pdf)）。截至 2015 年 1 月，该特性尚未加入该语言。
+
+## switch 语句的效率
+
+switch 语句在嵌入式系统中以导致低效而闻名。这通常发生在你决定在中断服务程序（interrupt service routine，ISR）中使用 switch 时，随后整个系统开始出问题，因为 ISR 执行时间过长。
+
+如果实现为跳转表，switch 的执行时间随 $Olog(n)$ 缩放，其中 $n$ 是 case 语句的数量。
+
+不过，替代方案可能更糟！if、else if、else if、……、else 语句的执行时间可能长得多，因为编译器无法优化它（每个条件都需要按顺序检查）。
+
+## 包裹 {'{'}{'}'} 花括号
+
+我建议用 {`{`} 和 {`}`} 花括号包裹所有 case 语句。示例如下：
+
+```c    
+switch(myVar) {
+    case 0: {
+        // Cool, I can now define local variables inside my case statement, without worrying about other case statements seeing it!
+        int myInt = 2;
+        break;
+    }
+    case 1: {
+        // code goes here
+        break;
+    }
+    default: {
+        // code goes here
+        break;
+    }
+}
+```
+
+这意味着：
+
+1. 现在你可以在每个 case 语句内部定义局部变量，而无需担心其他 case 语句看到该变量（或出现类似 `initialization of myVar is skipped by 'case' label` 的错误）
+2. 你不再需要没有 {'{'} 和 {'}'} 花括号的缩进！在 C 编程的所有其他领域，缩进几乎总是被 {'{'} 和 {'}'} 花括号包围。没有这些花括号，switch 语句就成了一个奇怪的例外，我个人觉得它令人困惑（难以阅读）！

@@ -1,0 +1,30 @@
+---
+authors: [gbmhunter]
+date: 2017-08-14
+lastUpdated: 2017-08-14
+tags: [programming, C]
+title: 联合体
+type: page
+sourcePath: programming/languages/c/unions/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:696560c81834900dc34ceca9ce7b024feb8ec9f1ef7847a62181fdf07372b4ea
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/unions/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+<WarningIsNotes />
+
+**联合体（union）用于创建可以用不同数据类型访问的数据结构。** 下面是一个联合体的示例。它定义了一个 result_t 类型，既可以按 32 位值读写，也可以按 8 位错误码读写。
+
+```c    
+typedef union {
+    uint32_t value;
+    uint8_t error;
+} result_t;
+```
+
+当函数参数具有多种用途时，联合体很有用。
+
+联合体的目的是通过在不同时间使用同一内存区域存储不同对象来节省内存。联合体**不是**用于类型转换的。

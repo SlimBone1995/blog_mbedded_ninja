@@ -1,0 +1,69 @@
+---
+authors: [gbmhunter]
+date: 2015-09-28
+lastUpdated: 2015-09-28
+tags: [programming, C++, const correctness]
+title: const 正确性
+type: page
+sourcePath: programming/languages/c-plus-plus/const-correctness/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:68b45a8e37ebc4f7d3762aafc84d16939f8bd1a66dc041e438f2893ba9c66b51
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/const-correctness/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+`const` 是 C++ 中的一个修饰符，作用很直观：表示某个东西是常量。
+
+在 C++ 中正确使用 `const` 关键字很重要（这被称为 **const 正确性（const correctness）**）。由于添加 const 修饰符会产生**涟漪效应**，要修正现有的代码库并不容易。
+
+## 解读 const 关键字
+
+`const` 关键字可能令人困惑，尤其是与指针一起使用时。`const int * myInt` 与 `int const * myInt`、`int * const myInt` 相比，分别是什么意思？
+
+官方规则是：
+
+> const 关键字作用于其左侧的项；如果左侧没有项，则作用于右侧的项。
+
+只有位于表达式开头（例如行首）时，左侧才没有项。来看下面的例子：
+
+```c++    
+int const * myInt;
+```
+
+由于 `const` 左侧有 `int`，这表示 `myInt` 是一个指向常量整数的指针。你不能改变该指针所指向变量的值。
+
+那么：
+
+```c++   
+int * const myInt;
+```
+
+同样，由于 `const` 左侧有一个指针（`*`），这表示 `myInt` 是一个指向整数的常量指针。你不能改变指针的值（即指针指向的位置）。
+
+我们的第三个也是最后一个例子：
+
+```c++    
+const int * myInt;
+```
+
+由于 `const` 左侧没有项，它作用于右侧的 `int`。这与第一个例子表达的意思完全相同：`myInt` 是一个指向常量整数的指针。
+
+因此 `int const * myInt;` 与 `const int * myInt;` 完全相同。我建议只使用第一种写法，这样代码在任何情况下读起来都一样：`const` 总是作用于其左侧的项。
+
+## 多个 const
+
+学会上面的规则后，阅读单个表达式中的多个 `const` 应该很容易。规则完全相同。例如：
+
+```c++   
+int const * const myInt;
+```
+
+这表示 `myInt` 是一个指向常量 `int` 的常量指针。这意味着你既不能改变指针指向的位置，也不能改变指针所指向 int 的值。这等同于：
+
+```c++    
+const int * const myInt;
+```
+
+同样，我不鼓励使用这种语法。

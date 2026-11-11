@@ -1,0 +1,80 @@
+---
+authors: [gbmhunter]
+date: 2014-07-20
+lastUpdated: 2014-07-20
+tags: [FreeRTOS, stack, main(), scheduler, portTICK_RATE_MS]
+title: 使用 FreeRTOS 时的常见错误
+type: page
+sourcePath: programming/operating-systems/freertos/common-mistakes/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:4ba71e074b4973e9d7c031a485cd66038c683757306590b7572aa0cfdd78fa7a
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/freertos/common-mistakes/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 调用 vTaskStartScheduler() 时 main() 的栈被覆盖
+
+注意，一旦调用 `vTaskStartScheduler()`，`main()` 使用的栈就可能被覆盖。在使用 Cortex-M3 和中断时确实如此，因为中断与 `main()` 使用相同的栈空间。
+
+下面的示例展示了这一点：
+
+```c
+int * ptrToMyInt;
+
+void MyTask(void * pvParameters)
+{
+	// This will start running after vTaskStartScheduler() is called in main()
+
+	// Task loop
+	while(true)
+	{
+		// *ptrToMyInt could be invalid!!!
+		// Could cause segmentation fault
+		printf("The int is '%i'.", *ptrToMyInt);
+	}
+}
+
+main()
+{
+	// Create an int variable, this is what will become invalid!!!
+	int	myInt = 10;
+	// Make ptrToMyInt point to this integer we just created
+	ptrToMyInt = &myInt;
+
+	TaskHandle_t xHandle = NULL;
+	xTaskCreate(
+		&MyTask,
+		"Task Name",
+		200,
+		NULL,
+		tskIDLE_PRIORITY, 
+		&xHandle);
+
+	// Now start the FreeRTOS task scheduler
+	vTaskStartScheduler()
+
+	// Code should never reach here
+}
+```
+
+从任务中访问在 `main()` 中创建的变量可能导致段错误。这可能出乎你的意料，因为你可能学过：变量只要仍在作用域内就保持有效；既然 `main()` 永不退出，变量就应该一直有效！但 FreeRTOS 为了节省空间复用了 `main()` 的栈。FreeRTOS 网站（2014 年 7 月的说法）是这么说的：
+
+> 回收 `main()` 使用的栈。RTOS 调度器启动后，程序入口使用的栈就不再需要（除非你的应用调用 `vTaskEndScheduler()`——发行版中只有 PC 和 Flashlite 移植直接支持该函数，或者像 ARM Cortex-M 和 RX 移植那样把该栈用作中断栈）。每个任务都分配了自己的栈，因此 RTOS 调度器启动后，分配给 `main()` 的栈就可以复用。
+
+## 错误理解 portTICK_RATE_MS
+
+造成混淆的原因是 `portTICK_RATE_MS` 的命名不正确。它并不像名字暗示的那样表示每毫秒的 tick 数，而是表示每个 tick 的毫秒数。更合适的名字是 `portTICK_PERIOD_MS`。
+
+使用 `portTICK_RATE_MS` 将当前任务延迟 400 毫秒的错误写法是：
+
+```c
+vTaskDelay(400*portTICK_RATE_MS);
+```
+
+正确写法是：
+
+```c    
+vTaskDelay(400/portTICK_RATE_MS);
+```

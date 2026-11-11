@@ -1,0 +1,335 @@
+---
+authors: [gbmhunter]
+date: 2025-05-05
+description: 命名空间是 C++ 的一种语言特性，可让你把相关实体组织在一起。
+lastUpdated: 2026-07-08
+tags: [programming, languages, C++, namespaces, one definition rule, ODR, undefined behaviour, pretty printing, anonymous namespaces, namespace aliases, namespace naming conventions]
+title: 命名空间
+type: page
+sourcePath: programming/languages/c-plus-plus/namespaces/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:37280761ab323209ee0c27805e23aa6a95711330584a8252fd74489ca7c73d73
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/namespaces/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+命名空间（namespace）是 C++ 的一种语言特性，可让你把相关实体组织在一起。
+
+## 基本用法
+
+### 问题：名称冲突
+
+设想你在开发一个游戏。你编写了一个 `Player` 类来处理玩家移动、攻击等事情。
+
+```cpp
+// MyGame.cpp
+class Player {
+public:
+    // ...
+};
+
+void setup() {
+    Player gamePlayer;
+    gamePlayer.attack();
+}
+```
+
+后来，你决定加入一个别人编写的音频库。你不知道的是，*他们*也有一个用于处理音频播放的 `Player` 类。
+
+```cpp
+// AudioLib.h
+class Player {
+public:
+    // ...
+};
+```
+
+这可不妙！如果你从同一个 `.cpp` 文件中包含这两个头文件，编译器会报错，指出 `Player` 有多个定义。如果你不在同一个 `.cpp` 文件中包含这两个头文件，而是在不同的 `.cpp` 文件中分别使用它们，程序可能可以正常编译和链接，但运行时会出现未定义行为（你违反了[单一定义规则（One Definition Rule）](/programming/languages/c-plus-plus/one-definition-rule-odr/)）！
+
+### 解决方案：命名空间
+
+命名空间就像代码标识符（类名、函数名、变量名等）的容器。它们创建一个独立的作用域，防止其中的名称与其外部或其他命名空间内的名称冲突。
+
+### 定义命名空间
+
+使用 `namespace` 关键字定义命名空间，后面跟一个名称（实际上也可以没有名称，这称为匿名命名空间），然后用花括号 `{}` 包住你想放入该命名空间的代码。
+
+让我们修正前面的例子：
+
+```cpp
+// AudioLib.h
+namespace AudioLib { // Define a namespace for the audio library
+
+class Player {
+public:
+    // ...
+};
+
+} // namespace AudioLib
+```
+
+```cpp
+// MyGame.h
+namespace MyGame { // Define a namespace for our game logic
+
+class Player {
+public:
+    // ...
+};
+
+} // namespace MyGame
+```
+
+现在这些类都位于命名空间中，不再有冲突。要访问这些不同的 `Player` 类，需要在类名前加上命名空间和 `::`。例如：
+
+```cpp
+#include "AudioLib.h"
+#include "MyGame.h"
+
+int main() {
+    AudioLib::Player audioPlayer;
+    MyGame::Player gamePlayer;
+}
+```
+
+另一种方法是使用 `using` 关键字把类引入当前作用域，这样就不必每次都输入 `namespace::`。例如：
+
+```cpp
+using AudioLib::Player;
+// using MyGame::Player; // Can't do this both, would be ambiguous!
+
+int main() {
+    Player audioPlayer;
+}
+```
+
+### 访问命名空间的成员
+
+上面已经介绍了一些访问命名空间成员的方法。下面再更详细地回顾一遍。主要有三种方式：
+
+1.  **作用域解析运算符（`::`）——最稳妥的选择**
+
+    这是最明确、通常也最推荐的方式，尤其是在头文件中。在标识符前加上命名空间名和 `::`。
+
+    ```cpp
+    #include "AudioLib.h" // Contains AudioLib namespace
+    #include "MyGame.h"   // Contains MyGame namespace
+
+    int main() {
+        // Explicitly state which Player you want
+        MyGame::Player gamePlayer;
+        AudioLib::Player musicPlayer;
+
+        gamePlayer.attack();
+        musicPlayer.play("background_theme.wav");
+    }
+    ```
+
+    -   **优点：** 非常清晰，避免歧义，在任何地方（包括头文件）使用都安全。
+    -   **缺点：** 如果你频繁使用同一命名空间中的许多项，代码可能会变得冗长。
+
+2.  **`using` 声明——引入特定名称**
+
+    如果你发现自己反复输入 `NamespaceName::identifier`，可以用 `using` 声明把*仅该特定标识符*引入当前作用域。
+
+    ```cpp
+    #include "AudioLib.h"
+    #include "MyGame.h"
+
+    int main() {
+        // Bring specific names into just this function's scope
+        using MyGame::Player;
+        Player gamePlayer; // Refers to MyGame::Player now
+    }
+    ```
+
+    -   **优点：** 减少特定常用名称的冗长程度。比 `using` 指令更安全，因为它一次只引入一个名称。
+    -   **缺点：** 通常应在函数作用域（`.cpp` 文件）或局部块内使用，*不要*在头文件的全局作用域使用（因为它仍可能泄漏到包含该头文件的文件中）。
+
+3.  **`using` 指令——引入所有内容（谨慎使用！）**
+
+    该指令使命名空间中的*所有*名称在指令所在作用域内无需限定即可访问。
+
+    ```cpp
+    #include "MyGame.h"
+
+    // Generally discouraged in global scope, especially in headers!
+    // using namespace std;
+    // using namespace GameLogic;
+
+    void setup() {
+        // Apply using directives *only* within this function's scope
+        using namespace MyGame;
+
+        Player gamePlayer; // MyGame::Player (assuming no collision)
+    }
+    ```
+
+    -   **优点：** 在有限作用域（如函数）内的实现（`.cpp`）文件中可以显著减少输入。
+    -   **缺点：** **在头文件中极其危险。** 它会把命名空间中的*所有*名称倾倒进包含该头文件的作用域，对任何包含该头文件的人来说，这完全破坏了命名空间的意义。这会导致日后难以诊断的命名冲突。请少用，最好只在 `.cpp` 文件的函数定义内使用。
+
+### `std` 命名空间
+
+你已经见过 `std::cout`、`std::endl`、`std::string`、`std::vector` 等。它们都属于 C++ 标准库，而标准库位于 `std` 命名空间中。
+
+这就是为什么许多入门教程会在文件顶部写 `using namespace std;`。虽然这对小例子很方便，但**在你的项目中、尤其是头文件中，请避免在全局作用域使用 `using namespace std;`。** 它会用数百个名称污染全局命名空间，使将来的冲突极有可能发生。
+
+优先在函数作用域内使用 `std::cout` 或 `using std::cout;`。
+
+### 嵌套命名空间
+
+你可以把命名空间放进其他命名空间中，以实现更细粒度的组织：
+
+```cpp
+namespace MyCompany {
+namespace Graphics {
+    class Renderer { /* ... */ };
+}
+namespace Audio {
+    class Player { /* ... */ }; // Different from other Player classes
+}
+}
+// Access via: MyCompany::Graphics::Renderer renderer;
+```
+
+## 未命名（匿名）命名空间
+
+如果声明命名空间时不写名称：
+
+```cpp
+namespace {
+
+// Internal linkage - like 'static' in C for global variables/functions
+void helperFunction() { /* ... */ }
+
+}
+
+int main() {
+    // You can access the things inside the unnamed namespace from outside the namespace but within
+    // the same file, but not from different translation units --- just as if you'd declared them `static`.
+    helperFunction();
+}
+```
+
+未命名命名空间内的所有内容都具有*内部链接*。这意味着它只能在当前翻译单元（通常是 `.cpp` 文件）内访问。这是现代 C++ 中实现过去 `static` 对全局（非成员）变量和函数所做之事的方式，可防止链接期间的名称冲突。
+
+匿名命名空间适合在 `.cpp` 文件（而非头文件）中定义类时防止[单一定义规则](/programming/languages/c-plus-plus/one-definition-rule-odr/)违规。通过把在 `.cpp` 中定义的类和其他实体包进匿名命名空间，可以防止它们与其他翻译单元中同名的实体冲突（编译器无法检测到这类冲突，链接器通常也不会警告你，但它可能在运行时导致未定义行为）。
+
+<Aside type="caution">
+不要在头文件中定义未命名命名空间。由于默认的内部链接，每个包含该头文件的翻译单元都会定义自己独有的、按单一定义规则使用的未命名命名空间成员实例。这可能因违反单一定义规则而触发未定义行为。
+</Aside>
+
+## 命名空间别名
+
+你可以为长命名空间名创建更短的名称：
+
+```cpp title="MyFile.cpp"
+namespace MEP = MyCompany::MyEmbeddedProject;
+MEP::Manager manager; // Easier to type!
+```
+
+## 命名空间命名约定
+
+命名空间没有标准（或“最流行”）的命名约定。我个人喜欢对命名空间使用 `snake_case`，像这样：
+
+```c++
+namespace my_namespace {
+
+class MyClass {
+    void myFunction() {}
+};
+
+}
+```
+
+原因是：
+
+- 它使用的风格与类名（或我使用 `PascalCase` 的其他任何类型）不同。这样在类型和命名空间一起使用时，例如 `my_namespace::MyClass`，就更容易区分二者。
+- 它也与函数和变量不同，我对它们使用 `camelCase`。这同样是为了让人能快速区分命名空间与函数/变量。
+
+另外，通常最好不要缩进命名空间的内容。这是为了减少整个文件的缩进量。虽然缩进对类和函数是有用的视觉辅助，但缩进命名空间（通常覆盖整个文件）所占用的额外水平空间，往往弊大于利。
+
+## 使用命名空间进行美化打印
+
+命名空间会包含在 `__PRETTY_FUNCTION__` 捕获的字符串中。例如：
+
+```c++
+#include <iostream>
+
+namespace my_namespace {
+
+class MyClass {
+public:
+    void myFunction() {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
+    }
+};
+
+}
+
+int main() {
+    my_namespace::MyClass obj;
+    obj.myFunction();
+}
+```
+
+将打印：
+
+```
+void my_namespace::MyClass::myFunction()
+```
+
+它不会被 `__FUNCTION__` 或 `__func__` 捕获。在上面的例子中，只会打印：
+
+```
+myFunction
+```
+
+使用匿名命名空间时，`__PRETTY_FUNCTION__` 会使用 `{anonymous}` 作为名称。例如：
+
+```c++
+#include <iostream>
+
+namespace {
+class MyClass {
+public:
+    void myFunction() {
+        std::cout << __PRETTY_FUNCTION__ << std::endl;
+    }
+};
+}
+
+int main() {
+    MyClass obj;
+    obj.myFunction();
+}
+```
+
+将打印：
+
+```
+void {anonymous}::MyClass::myFunction()
+```
+
+<Aside type="caution">
+不要把 `main()` 包在命名空间中！它必须位于全局命名空间，这样链接器才能将其作为程序的入口点找到。
+</Aside>
+
+## 最佳实践总结
+
+1.  **使用命名空间：** 把库代码、游戏子系统或不同组件封装在命名空间中，以防止名称冲突。
+2.  **优先使用 `::`：** 为清晰起见，使用作用域解析运算符（`MyNamespace::MyClass`），尤其是在只使用命名空间中少数几项时。
+3.  **限制 `using`：**
+    -   `using` 声明（`using MyNamespace::MyClass;`）在函数作用域（`.cpp` 文件）内用于常用名称是可以的。避免在头文件的全局作用域使用。
+    -   `using` 指令（`using namespace MyNamespace;`）应*只*在 `.cpp` 文件内的有限作用域（函数）中使用，并且只有在你了解风险时才使用。**绝不要在头文件的全局作用域放置 `using` 指令。**
+4.  **不要污染全局：** 对 `using namespace std;` 要特别小心。
+5.  **未命名命名空间：** 用于单个 `.cpp` 文件专用的实现细节（内部链接）。
+6.  **要有描述性：** 为命名空间选择清晰、具有描述性的名称。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+

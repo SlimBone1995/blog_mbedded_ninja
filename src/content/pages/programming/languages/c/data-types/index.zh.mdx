@@ -1,0 +1,132 @@
+---
+authors: [gbmhunter]
+date: 2013-06-14
+lastUpdated: 2026-07-13
+tags: [programming, C, data types, char, int, float, double, void, floating point, fixed-width]
+title: 数据类型
+type: page
+sourcePath: programming/languages/c/data-types/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:686245da446bae10a5a4cae3f7cddd89be16ec7d09b097e5fef92778db21eadc
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c/data-types/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 基本数据类型
+
+C 编程语言支持以下基本数据类型：
+
+| 类型          | 描述
+|---------------|----------------------
+| `char`        | 体系结构上最小的类型。通常为 8 位宽。是否有符号取决于实现。
+| `int`         | 保证至少 16 位，但被定义为“特定平台上最自然的整数表示”，因此在 32 位机器上 int 很可能是 32 位宽。唯一可以应用[取模运算](/programming/languages/c/arithmetic-operators/)的类型。
+| `float`       | 单精度浮点数。通常为 32 位宽。
+| `double`      | 双精度浮点数。通常为 64 位宽，但在 8 位单片机等较小系统上可能与 float 相同（即 32 位宽）。
+| `void`        | 特殊的数据类型。
+
+这些类型中的一部分可以加上修饰符 `short` 和 `long`，用于改变数据类型的大小；还可以加上修饰符 `signed` 和 `unsigned`，用于改变数字能否存储负数（此时类型的大小不变，但能表示的数值范围会改变）。其他所有数据类型/结构体都由这些基本数据类型与修饰符组合而成。
+
+<Aside type="caution">
+强烈建议不要使用 `int` 这类大小会变化的数据类型，而应使用 `uint8_t`、`int32_t` 等固定宽度数据类型。这样可以提高代码的可移植性和可读性（让读者一眼就能看出每个整数变量的容量）。这些固定宽度类型几乎总是由体系结构相关的头文件提供，这些头文件实质上是用 `typedef` 把它们映射到该体系结构上正确的 `int`/`long int`/等类型。
+</Aside>
+
+固定宽度数据类型通常定义在 `stdint.h` 中。包括：
+
+```c
+int8_t
+uint8_t
+int16_t
+uint16_t
+int32_t
+uint32_t
+int64_t
+uint64_t
+```
+
+<Aside type="note">
+`stdint.h` 中没有标准的 128 位精确宽度类型（`int128_t`/`uint128_t`）。某些编译器（例如 64 位目标上的 GCC 和 Clang）提供 `__int128`/`unsigned __int128` 扩展，但这并非标准，许多平台（尤其是单片机）并不支持。
+</Aside>
+
+## 使用 sizeof()
+
+`sizeof()` 可用于返回每种类型占用的字节数。
+
+> “有位年轻人名叫 Wight，  
+> 他发明了十三位的字节。  
+> 你能从内存里，  
+> 挤出多得多的东西，我敢肯定。  
+> 只可惜你的 sizeof 并不正确。” ---（作者不详）[^bib-reddit-13-bit-byte]
+
+## 固定宽度整数类型
+
+使用 `int` 及其所有衍生类型（`short int`、`long int`、`long long int` 等）的问题在于，整数的宽度与平台相关。它通常与平台的位宽相同，但至少为 16 位。它也被称为自然宽度。例如，在 8 位系统上，`int` 会是 16 位宽（记住，[C 标准](/programming/languages/c/standards-and-versions/)规定它不能小于 16 位）。在 16 位平台上通常是 16 位，32 位平台上是 32 位，64 位平台上是 64 位，以此类推，你懂的！
+
+要编写可移植的代码，通常最好使用固定宽度整数类型。
+
+固定宽度整数类型在 [`printf()`](/programming/languages/c/string-manipulation-in-c/) 语句中还需要特殊符号。这些符号定义在 `<inttypes.h>` 中，以字母 `PRI` 开头。
+
+## 浮点数和双精度数
+
+### 浮点支持
+
+大多数高端单片机和 CPU 内部都有硬件浮点单元（FPU），使 CPU 能够快速执行浮点运算。如果你使用的是较低端、较便宜的单片机，它可能不含 FPU。在这种情况下，若要处理带小数精度的数字，你实际上有两种选择：
+
+- 使用基于软件的浮点库（用 CPU 完成浮点运算）。这通常比有 FPU 时慢得多。[Berkeley Softfloat](http://www.jhauser.us/arithmetic/SoftFloat.html) 是最强大、应用最广泛的软件浮点库之一。
+- 改用定点数！更多信息见[定点数学](/programming/general/fixed-point-mathematics/)，或者看看我为嵌入式系统编写的 C++ 定点库：https://github.com/gbmhunter/MFixedPoint/。
+
+### 正零和负零
+
+浮点数同时支持正 0 和负 0（它们的原始数据表示不同）。为了简化处理并让大多数数学公式成立，尽管存储方式不同，它们被设定为彼此相等，即 `-0.0 == +0.0` 的结果为 `true`。
+
+`-0.0` 通常不会给应用带来问题，事实上某些函数对 `-0.0` 和 `+0.0` 的行为不同（例如 `atan2()`、`1/x`），从而使数学运算表现得“符合预期”[^bib-stack-of-p0-n0-what-gives-diff-results]。不过，在面向用户的显示中打印出 `-0.0` 多少有些不美观。有几种方法可以在打印前把 `-0.0` 转换成 `0.0`。最直观的方法是：
+
+```c
+float remove_neg_zero_obvious(float a) {
+    if(a == 0.0) { // This works, remembering that -0.0==0.0
+        return 0.0;
+    } else {
+        return a;
+    }
+}
+```
+
+不过，还有一个更简单的技巧：
+
+```c
+float remove_neg_zero_simple(float a) {
+    return a + 0.0;
+}
+```
+
+这两个示例的完整可测试程序如下（访问 https://replit.com/@gbmhunter/positive-and-negative-floats 可在线运行）：
+
+```c
+#include <stdio.h>
+
+float remove_neg_zero_obvious(float a) {
+    if(a == 0.0) { // This works, remembering that -0.0==0.0
+        return 0.0;
+    } else {
+        return a;
+    }
+}
+
+float remove_neg_zero_simple(float a) {
+    return a + 0.0;
+}
+
+int main(void) {  
+  printf("%f\n", remove_neg_zero_obvious(-0.0));
+  printf("%f\n", remove_neg_zero_simple(-0.0));
+  return 0;
+}
+```
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}
+
+[^bib-reddit-13-bit-byte]: u/saulmessedupman（2018 年 1 月 1 日）-- 原作者不详。_13-bit byte_ [论坛帖子]。Reddit。检索于 2021-12-06，来自 https://www.reddit.com/r/ProgrammerHumor/comments/7nashw/13bit_byte/.
+[^bib-stack-of-p0-n0-what-gives-diff-results]: Stack Overflow（2014 年 8 月 15 日）。_What operations and functions on +0.0 and -0.0 give different arithmetic results?_ [论坛帖子]。检索于 2021-12-06，来自 https://stackoverflow.com/questions/25332133/what-operations-and-functions-on-0-0-and-0-0-give-different-arithmetic-results.

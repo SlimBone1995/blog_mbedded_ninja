@@ -1,0 +1,42 @@
+---
+authors: [gbmhunter]
+date: 2013-08-01
+lastUpdated: 2013-08-01
+tags: [FreeRTOS, C++, compilers, C, gcc, g++]
+title: 使用 C++ 编译 FreeRTOS
+type: page
+sourcePath: programming/operating-systems/freertos/compiling-freertos-with-cpp/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:c7b90a74210c3c1c6def32f8a8937702c909997dbb4a11e305e5a7f65fdd6564
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/freertos/compiling-freertos-with-cpp/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+本页为希望在面向嵌入式系统（例如微控制器）的 C++ 应用中使用 FreeRTOS 的读者提供实用建议。
+
+## 总体兼容性
+
+一般来说，FreeRTOS 可以与 C++ 嵌入式应用协同工作。所有 FreeRTOS 头文件都包裹在 `extern "C" { }` 块中，以确保在 C++ 应用中正确链接。
+
+因此，让 FreeRTOS 与 C++ 代码配合通常不需要太多工作。不过，你必须确保工具链支持 C++ 编译（大多数 ARM 微控制器编译器都支持，例如可以用 `g++` 代替 `gcc`）。
+
+## 任务函数
+
+传统上，任务函数必须是具有 C 链接的函数，并接受 1 个 `void *` 参数（用于 `pvParameters` 变量）。遗憾的是，这意味着你不能使用 C++ 成员函数（又称方法，即属于某个类且不是 `static` 的函数）。
+
+有几种方法可以解决这个问题：
+
+1. 把任务函数定义为 `static`，或干脆把函数放在类外（这样它就和普通 C 函数一样）。
+2. 把对象作为 `pvParameters` 变量的一部分传入，然后创建一个包装函数，把该变量转换回函数指针。
+
+## 封装 FreeRTOS 原语
+
+FreeRTOS 原语（例如互斥锁、信号量、队列、延时等）**可以直接从 C++ 代码调用**。不过，你可能认为需要更面向对象的原语。
+
+这可以通过**把 FreeRTOS 原语封装在面向对象的 C++ 层中**来实现。例如，你可以创建一个 C++ 互斥锁类，由它调用 FreeRTOS API。
+
+## 替代方案
+
+除了为 C++ 环境修改/封装 FreeRTOS 之外，另一种选择是使用专为 C++ 设计的实时操作系统（real-time operating system）。[distortos](https://github.com/DISTORTEC/distortos) 就是一个颇有前景的例子。截至 2016 年 12 月，它的支持程度不如 FreeRTOS，但仍在积极开发中。

@@ -1,0 +1,70 @@
+---
+authors: [gbmhunter]
+date: 2013-12-25
+lastUpdated: 2013-12-25
+tags: [C++, programming, virtual methods, override]
+title: 虚函数
+type: page
+sourcePath: programming/languages/c-plus-plus/virtual-methods/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:39b56485579fde82c360b5e1b36468f3bf2c7d88a1ad8589b943ad6355143668
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/virtual-methods/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+## 什么是虚函数？
+
+虚函数（virtual method）允许覆盖类的继承方法，即使使用的是指向基类的指针。你可以不使用 virtual 描述符，只用相同名称来覆盖方法，但当使用指向基类的指针时，被覆盖的方法不会被调用。真正的虚函数是要求派生类实现的虚函数。
+
+## 纯虚函数
+
+_纯虚函数_ 是在某个类中没有定义任何函数体（定义）的虚函数。在类的头文件中，在虚函数声明末尾加上 = 0 即可定义，如下所示：
+
+```c++    
+class AbstractClass {
+protected:
+    // This is a PURE VIRTUAL method
+    virtual void MyMethod() = 0;
+};
+```
+
+任何含有一个或多个纯虚函数的类称为**抽象类**。你不能创建抽象类的对象。要使用抽象类，必须创建另一个类，继承这些纯虚函数并为它们定义函数体，如下面的代码所示：
+
+```c++    
+class ConcreteClass : AbstractClass {
+public:
+    void MyMethod() override {
+        std::cout << "Hello" << std::endl;
+    }
+};
+```
+
+## override 关键字
+
+C++11 引入了 override 关键字，它在设计使用虚函数的应用程序时非常有用。override 关键字让编译器检查所声明的方法确实覆盖了基类的方法。如果不是，就会得到编译错误。
+
+```c++    
+class AbstractClass {
+protected:
+    virtual void MyMethod() = 0;
+};
+
+class ConcreteClass : AbstractClass {
+public:
+    void MyMethod() override { // This WILL compile fine
+        std::cout << "Hello" << std::endl;
+    }
+
+    void BogusMethod() override { // This WON'T compile
+        std::cout << "Hello" << std::endl;
+    }
+};
+```
+
+override 关键字可以防止这样的错误：你期望某个方法被覆盖，但由于拼写错误或类型不匹配而没有覆盖，这可能导致微妙但错误的运行时行为。
+
+注意：如果使用了 override 关键字，就不需要再把方法声明为 virtual（因为这是隐含的）。
+
+关于 override 关键字的更多信息，见 [http://en.cppreference.com/w/cpp/language/override](http://en.cppreference.com/w/cpp/language/override)。

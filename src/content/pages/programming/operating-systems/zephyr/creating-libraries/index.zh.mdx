@@ -1,0 +1,75 @@
+---
+authors: [gbmhunter]
+date: 2025-06-23
+description: 本指南介绍如何创建使用 Zephyr 的固件库，并可将其链接到其他 Zephyr 应用。
+lastUpdated: 2026-07-01
+tags: [programming, operating systems, RTOS, Zephyr, C++, libraries, CMake, west, linker, compiling, interface, submodules]
+title: 如何使用 CMake 创建可链接的 Zephyr 库
+type: page
+sourcePath: programming/operating-systems/zephyr/creating-libraries/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:360f5c734d9d2538c3a1668efb4ad35d63f7042958ab3d74e6e12b4d1a48c9fc
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/creating-libraries/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+库是函数和数据的集合，可以编译进另一个程序，而不是一个独立的程序。库适合在多个项目之间共享代码。然而，网上大多数 [Zephyr](/programming/operating-systems/zephyr/) 代码示例只展示如何创建 Zephyr 应用，而没有说明如何创建一个使用 Zephyr、又能链接到其他 Zephyr 应用的库。
+
+## 使用 INTERFACE 库类型
+
+我在使用 [CMake](/programming/build-systems-and-package-managers/cmake/) 的 `INTERFACE` 库类型创建基于 Zephyr 的库时取得了成功。`INTERFACE` 不会构建库产物（例如静态库文件），而是提供一组源文件、头文件、编译规则等，供其他项目“链接”（这里实际上只是纳入——因为并没有任何东西需要链接）。
+
+下面是库的 `CMakeLists.txt` 文件示例。
+
+```cmake title="my_library/CMakeLists.txt"
+cmake_minimum_required(VERSION 3.20.0)
+
+# This is used by the C/C++ extension in VSCode to provide intellisense for the project.
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(MyLibrary CXX)
+
+# Create the library target
+add_library(MyLibrary INTERFACE)
+
+# Explicitly set the library language to C++
+set_target_properties(MyLibrary PROPERTIES LINKER_LANGUAGE CXX)
+
+# Add sources to the library
+target_sources(
+    MyLibrary
+    INTERFACE
+    file_1.cpp
+    file_2.cpp
+    file_3.cpp
+)
+
+# Link against Zephyr interface library to get include paths and other settings
+target_link_libraries(MyLibrary INTERFACE zephyr_interface)
+
+# Make the library headers available to other targets
+target_include_directories(MyLibrary INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+```
+
+然后就可以让另一个 Zephyr 项目使用它。例如，假设我们有一个名为 `my_app` 的 Zephyr 应用，想链接到 `MyLibrary` 库。我们将使用 `FetchContent` 从 GitHub 下载该库。
+
+```cmake title="my_app/CMakeLists.txt"
+cmake_minimum_required(VERSION 3.20.0)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+include(FetchContent)
+FetchContent_Declare(MyLibrary
+    GIT_REPOSITORY https://github.com/gbmhunter/MyLibrary.git
+    GIT_TAG 1.0.0 # This can be a hash, tag or branch.
+)
+FetchContent_MakeAvailable(MyLibrary)
+# Add the subdirectory just downloaded by fetch content
+add_subdirectory(${MyLibrary_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}/MyLibrary)
+
+# Now link the library to the main Zephyr app
+target_link_libraries(app INTERFACE MyLibrary)
+```
+
+我无法让 `INTERFACE` 与 `FetchContent` 原生配合工作。不知为何，用 `add_subdirectory()` 添加我的库时一切正常，但用 `FetchContent` 添加完全相同的库时，却没有创建任何有效目标。我的变通方法是在 `FetchContent` 调用之后插入 `add_subdirectory()` 这一行。另一种做法是把库添加为 Git 子模块，然后直接使用 `add_subdirectory()`（这种情况下不需要 `FetchContent`）。

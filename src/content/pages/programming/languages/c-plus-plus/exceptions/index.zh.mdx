@@ -1,0 +1,199 @@
+---
+authors: [gbmhunter]
+date: 2014-05-14
+lastUpdated: 2014-05-14
+tags: [C++, programming, exceptions]
+title: 异常
+type: page
+sourcePath: programming/languages/c-plus-plus/exceptions/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:98378889a2a327ea8178bc010e641e512a3c37b2f0508c1a28ae863063731d63
+sourceUrl: https://blog.mbedded.ninja/programming/languages/c-plus-plus/exceptions/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+异常（exception）是 C++ 支持的一种错误处理形式。它允许代码编写者抛出和捕获异常，异常可以沿调用栈传播。
+
+注意，通常用 `e` 表示异常类型的变量。
+
+C++ 是支持异常的“最底层”语言之一。其他底层语言（如 C）不支持异常。
+
+## 语法
+
+```c    
+try {
+	// Do error-prone stuff here
+} catch(exception_type exception) {
+	// Catch an exception of type exception_type here
+}
+```
+
+## 异常如何工作
+
+### 标准异常
+
+`std::exception` 不支持附加消息（它没有 `e.what()`）。
+
+标准异常定义在 `<stdexcept>` 中。它们分为几类：
+
+### 逻辑错误
+
+<table>
+	<thead>
+		<tr>
+			<th>异常</th>
+			<th>描述</th>
+		</tr>
+	</thead>
+  <tbody>
+    <tr>
+      <td><code>domain_error</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>invalid_argument</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>length_error</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>logic_error</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>out_of_range</code></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+### 运行时错误
+
+<table >
+	<thead>
+		<tr>
+			<th>异常</th>
+			<th>描述</th>
+		</tr>
+	</thead>
+  <tbody>
+    <tr>
+      <td><code>overflow_error</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>range_error</code></td>
+      <td></td>
+    </tr>
+    <tr>
+      <td><code>runtime_error</code></td>
+      <td>使用 <code>std::runtime_error</code> 处理程序运行期间发生的一般错误。</td>
+    </tr>
+    <tr>
+      <td><code>underflow_error</code></td>
+      <td></td>
+    </tr>
+  </tbody>
+</table>
+
+### 我的异常消息（e.what() 说的不对！）
+
+最常见的原因是你忘记按引用（`&`）捕获了！请确保 catch 语句像这样：
+
+```c++    
+catch(std::exception& e) {}
+```
+
+而不是这样：
+
+```c++    
+catch(std::exception e) {}
+```
+
+记住，C++ 中异常的准则：
+
+> 按值抛出，按引用捕获
+
+## C++11 新增内容
+
+C++11 为标准库新增了异常类型。
+
+其中一个是 `std::system_error`。它继承自 `std::runtime_error`。它通常由与操作系统交互的函数抛出。它有两个成员：标准的 `what()` 和新的 `code()`。调用 `code()` 会返回与该错误关联的错误码。
+
+下面是一个例子：
+
+```c++    
+#include <thread>
+#include <iostream>
+#include <system_error>
+
+int main() {
+	try {
+		std::thread().detach(); // attempt to detach a non-thread
+	}	catch(const std::system_error& e)	{
+		std::cout << "Caught system_error with code " << e.code() 
+		<< " meaning " << e.what() << '\n';
+	}
+}
+```
+
+注意，`code()` 返回的 `error_code` 对象可以插入到 `ostream` 中。
+
+这个新的 system_error 对象带有额外的 `code()` 方法，在使用标准 catch 时会带来问题，因为其他异常没有这个方法。你可以编写两个独立的 catch 语句（我偏好的方法）。
+
+```c++    
+try {}
+catch (const std::system_error& e) {
+    std::cout << e.what() << '\n';
+    std::cout << e.code() << '\n';
+} catch (const std::exception& e) {
+    std::cout << e.what() << '\n'; 
+}
+```
+
+也可以像下面这样使用 `dynamic_cast`。
+
+```c++   
+try {}
+catch (const std::exception& e) {
+	std::cout << e.what() << '\n';
+	auto se = dynamic_cast<const std::system_error*>(&e);
+	if(se != nullptr)
+		std::cout << se->code() << '\n';
+}
+```
+
+## noexcept 关键字
+
+noexcept 关键字在 C++11 中被加入 C++ 语言。它可用于指定一个保证不抛出异常的函数。
+
+```c++    
+void example() noexcept;
+```
+
+上面的声明表示 `example()` 是一个不抛出异常的函数。
+
+编译器把所有 C++ 函数视为_不抛出_或_可能抛出_。
+
+`noexcept` 还可以接受一个布尔值：传入 true 表示该函数不抛出异常，传入 false 表示它可能抛出异常。
+
+```c++    
+void example1() noexcept(true); // example1() is non-throwing
+void example2() noexcept(false); // example2() is potentially-throwing
+```
+
+**为什么要用 noexcept？**
+
+那么为什么要用 noexcept？使用 noexcept 的主要原因之一是让编译器能够执行某些原本无法执行的优化。一个常见例子是 std::move_if_noexcept() 函数，它可用于实现 `std::vector<T>::push_back()` 之类的东西。如果编译器能够确定某个函数不抛出异常，它就可以**使用移动操作代替复制操作**，这通常会带来性能提升。
+
+**如果在声明为 noexcept 的函数内抛出异常会怎样？**
+
+编译器实际上并不保证不抛出异常的函数中不会抛出异常。不过，在声明为 noexcept 的函数内抛出的异常，其行为会发生改变。异常不会沿调用栈向上传播到最近的可处理 catch 块，而是会调用 std::terminate()。
+
+<Aside type="caution">
+不要把 `noexcept` 与 `std::nothrow` 混淆。如上所述，`noexcept` 是 C++ 语言关键字，而 `std::nothrow` 是可以传给 new 运算符的常量。
+</Aside>

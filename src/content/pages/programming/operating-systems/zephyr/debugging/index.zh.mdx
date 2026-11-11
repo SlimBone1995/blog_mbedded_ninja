@@ -1,0 +1,122 @@
+---
+authors: [gbmhunter]
+date: 2025-06-12
+description: 关于在使用 Zephyr RTOS 时如何设置调试的教程。
+lastUpdated: 2026-07-02
+tags: [programming, operating systems, Zephyr, debugging, WSL, VSCode, JLink, usbipd, nRF, nRF52, OpenOCD, pyOCD]
+title: 如何在 VSCode 中为 Zephyr 设置调试
+type: page
+sourcePath: programming/operating-systems/zephyr/debugging/index.mdx
+sourceCommit: 4437c73a
+sourceHash: sha256:d4b8c427902997a19ea670d551007a06a4008a6635f9ef81ad2af5c744f99ad1
+sourceUrl: https://blog.mbedded.ninja/programming/operating-systems/zephyr/debugging/
+translatedAt: 2026-11-11
+translator: SlimBone1995
+translationStatus: reviewed
+---
+
+尽管仅使用 Zephyr 强大的[日志系统](/programming/operating-systems/zephyr/logging/)进行调试就能解决很多问题，但在某些情况下，逐行调试器要有用得多。本页介绍如何在 VSCode 中为 Zephyr 设置调试。本页将展示如何设置“RTOS 感知”调试，让你可以查看每个 Zephyr 线程的状态和栈。
+
+本教程选择 nRF52 SoC 作为目标，并假设我们在 WSL2（Windows Subsystem for Linux 2，本质上是在 Windows 上运行的 Linux 虚拟机）中开发。不过，这些步骤应该可以不太困难地迁移到其他 MCU 和操作系统。
+
+## 前置条件
+
+我们假设以下内容已就绪：
+
+- 已安装 Zephyr SDK：我安装的是 v0.17.0，位于 `~/zephyr-sdk-0.17.0`。
+- 已有一个基于 Zephyr 的项目：安装位置无关紧要。它应已能在 WSL 中使用 `west build` 正确编译（首次运行时用 `-b` 指定开发板）。
+- VSCode。如果使用 WSL，它应安装在 Windows 主机上，但打开的是 WSL 中的项目文件夹。
+- 如果使用 WSL，已通过 `usbipd` 将 JLink USB 设备透传到 WSL。
+
+## 安装 cortex-debug
+
+下面三种方式都要求安装 VSCode 的 `cortex-debug` 扩展。请从 VSCode 扩展市场安装。
+
+## 使用 JLink
+
+使用 JLink 是我的默认选择，因为我用作编程器的 nRF52 开发板已经自带模拟 JLink，而且我一段时间以来一直用命令 `west flash --runner jlink` 进行基础编程。如果你一直使用 Windows，那么通过 Nordic 的 nRF Connect for Desktop 工具，你用的很可能也是它。
+
+默认选择 JLink 的另一个原因是我有些天真地认为它最快，毕竟我用的是 JLink 调试探针。
+
+### 安装 JLink
+
+我安装的是 v7.94i。
+
+幸运的是，安装 JLink 时还会附带一些可用于 JLink 的“RTOS 感知”库。在我的机器上，它们安装在以下目录：
+
+```txt
+/opt/SEGGER/JLink_V794i/GDBServer/
+```
+
+我们需要的是 `RTOSPlugin_Zephyr.so`，因此完整路径是 `/opt/SEGGER/JLink_V794i/GDBServer/RTOSPlugin_Zephyr.so`。
+
+### launch.json
+
+为了使用 VSCode 的“运行和调试”功能，我们需要创建一个 `launch.json` 文件，告诉它如何调试 Zephyr 应用。每个配置项都会作为选项出现在 VSCode 的“运行和调试”菜单中。我们将定义：
+
+- **Launch**：构建、烧录并启动调试器。
+- **Attach**：附加到已运行的 Zephyr 应用。如果你已经捕捉到难以复现的 bug（例如触发 assert 使系统停机），或者不想复位设备，这会很有用。附加后可以暂停并检查系统状态，包括所有线程的状态。
+
+下面是我们的 `launch.json` 文件：
+
+```json title=".vscode/launch.json"
+{
+    "version": "0.2.0",
+    "configurations": [
+        // Adopted from https://github.com/Marus/cortex-debug/issues/969
+        {
+            "name": "Launch",
+            "device": "nRF52840_xxAA",
+            "cwd": "${workspaceFolder}",
+            "executable": "app/build/app/zephyr/zephyr.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "jlink",
+            "gdbPath": "/home/gbmhunter/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb",
+            "rtos": "/opt/SEGGER/JLink_V794i/GDBServer/RTOSPlugin_Zephyr.so",
+            "preLaunchTask": "Build and Flash Firmware"
+        },
+        {
+            "name": "Attach",
+            "device": "nRF52840_xxAA",
+            "cwd": "${workspaceFolder}",
+            "executable": "app/build/app/zephyr/zephyr.elf",
+            "request": "attach",
+            "type": "cortex-debug",
+            "runToEntryPoint": "main",
+            "servertype": "jlink",
+            "gdbPath": "/home/gbmhunter/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/arm-zephyr-eabi-gdb",
+            "rtos": "/opt/SEGGER/JLink_V794i/GDBServer/RTOSPlugin_Zephyr.so"
+        }
+    ]
+}
+```
+
+需要定义的关键项如下：
+
+- `name`：配置名称。它会显示在 VSCode 的“运行和调试”菜单中。
+- `device`：正在调试的设备。
+- `cwd`：工作目录。
+- `executable`：要调试的 ELF 文件路径。默认情况下 Zephyr 将其放在 `build/app/zephyr/zephyr.elf`。我注意到在旧版本 Zephyr 中这是 `build/zephyr/zephyr.elf`。该项目把所有应用源代码放在 `app/` 下。你可能需要根据具体项目更新此路径。
+- `request`：是启动调试器还是附加到调试器。
+- `type`：使用的调试器类型。
+- `servertype`：可以是 `jlink`、`openocd` 或 `pyocd`。
+- `gdbPath`：GDB 可执行文件的路径。它位于 Zephyr SDK 中，而 SDK 是与项目分开安装的。
+- `rtos`：JLink 的 RTOS 插件路径。这对“RTOS 感知”调试很重要。没有它，我们只能获得当前线程的信息。
+
+<Aside type="note">
+我本想把这个文件提交到仓库，因为其他开发者也能使用。但你会注意到，其中硬编码了我的 Zephyr SDK 和 JLink 安装路径。我没能找到优雅的解决办法。你可以在 `launch.json` 中使用 `${env:MY_ENV_VAR}` 格式的环境变量，但问题在于这些变量必须在 VSCode 启动前设置，无法从本仓库内的 `.env` 文件读取。我不想强迫其他人定义系统级环境变量，因为我们通常会同时处理使用不同 SDK 的多个项目。如果你有解决办法，请告诉我！
+</Aside>
+
+## 使用 OpenOCD
+
+除了 JLink，我们也可以把 `servertype` 设为 `openocd`，并使用 `openocd` 命令启动调试器。
+
+## 使用 pyOCD
+
+除了 JLink 或 OpenOCD，我们还可以使用 pyOCD 调试 Zephyr 应用。我成功让它支持了“RTOS 感知”。
+
+{/* ============================================================================================ */}
+{/* REFERENCES */}
+{/* ============================================================================================ */}

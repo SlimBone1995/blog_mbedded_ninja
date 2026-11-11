@@ -1,16 +1,16 @@
 # 中文翻译待办
 
-生成时间：2026-11-11T07:47:23.384Z
+生成时间：2026-11-11T08:18:00.316Z
 
 ## 翻译进度
 
-`██░░░░░░░░░░░░░░░░░░░░░░░░░░░░` **70 / 1175（6.0%）**
+`██░░░░░░░░░░░░░░░░░░░░░░░░░░░░` **95 / 1175（8.1%）**
 
 | 状态 | 数量 |
 |---|---:|
-| current | 70 |
+| current | 95 |
 | stale | 0 |
-| missing | 1105 |
+| missing | 1080 |
 | orphan | 0 |
 
 ## Token 消耗
@@ -28,7 +28,10 @@
 | 2026-11-11 | PCB batch 3 | B | 10 | 68,501 | 6,850 | 2m 52s |  |
 | 2026-11-11 | PCB batch 3 | A | 10 | 102,631 | 10,263 | 5m 27s |  |
 | 2026-11-11 | PCB batch 3 | C | 10 | 100,182 | 10,018 | 4m 58s |  |
-| **合计** | | | **70** | **1,100,315** | **15,719** | **60m 3s** | 仅统计有 token 记录的批次 |
+| 2026-11-11 | Programming batch 1 | C language | 9 | 95,362 | 10,596 | 5m 20s |  |
+| 2026-11-11 | Programming batch 1 | C++ language | 8 | 107,449 | 13,431 | 6m 4s |  |
+| 2026-11-11 | Programming batch 1 | FreeRTOS/Zephyr | 8 | 119,758 | 14,970 | 6m 7s |  |
+| **合计** | | | **95** | **1,422,884** | **14,978** | **77m 34s** | 仅统计有 token 记录的批次 |
 
 > Token 数为子代理会话的累计用量（含读取原文、校验和工具调用），不是纯翻译成本；主会话直接翻译的页面未单独计量。每次翻译后可用 `npm run zh:log` 追加记录。
 
@@ -581,7 +584,7 @@
 - [ ] pcb-design/the-pcb-rework-guide/index.mdx
 - [ ] pcb-design/thermal-design-for-pcbs/index.mdx
 
-## 未翻译：programming（531）
+## 未翻译：programming（506）
 
 - [ ] programming/a-comparison-of-embedded-platforms-and-hals/index.mdx
 - [ ] programming/algorithms-and-data-structures/algorithm-time-complexity/index.mdx
@@ -728,33 +731,25 @@
 - [ ] programming/languages/c-plus-plus/auto-specifier/index.mdx
 - [ ] programming/languages/c-plus-plus/boost-libraries/index.mdx
 - [ ] programming/languages/c-plus-plus/callbacks/index.mdx
-- [ ] programming/languages/c-plus-plus/classes/index.mdx
 - [ ] programming/languages/c-plus-plus/clocks-and-timing/index.mdx
 - [ ] programming/languages/c-plus-plus/code-checkers/index.mdx
-- [ ] programming/languages/c-plus-plus/const-correctness/index.mdx
-- [ ] programming/languages/c-plus-plus/containers/index.mdx
 - [ ] programming/languages/c-plus-plus/cpp-on-embedded-systems/index.mdx
 - [ ] programming/languages/c-plus-plus/designing-a-hal-in-cpp/index.mdx
-- [ ] programming/languages/c-plus-plus/exceptions/index.mdx
 - [ ] programming/languages/c-plus-plus/google-benchmark/index.mdx
 - [ ] programming/languages/c-plus-plus/index.mdx
 - [ ] programming/languages/c-plus-plus/inheritance/index.mdx
 - [ ] programming/languages/c-plus-plus/input-and-output/index.mdx
 - [ ] programming/languages/c-plus-plus/linux-bash-commands-for-cpp/index.mdx
 - [ ] programming/languages/c-plus-plus/magic-statics/index.mdx
-- [ ] programming/languages/c-plus-plus/namespaces/index.mdx
-- [ ] programming/languages/c-plus-plus/one-definition-rule-odr/index.mdx
 - [ ] programming/languages/c-plus-plus/openmp-tutorial/index.mdx
 - [ ] programming/languages/c-plus-plus/operator-overloading/index.mdx
 - [ ] programming/languages/c-plus-plus/qt/index.mdx
-- [ ] programming/languages/c-plus-plus/references/index.mdx
 - [ ] programming/languages/c-plus-plus/special-casts/index.mdx
 - [ ] programming/languages/c-plus-plus/streams/index.mdx
 - [ ] programming/languages/c-plus-plus/strings/index.mdx
 - [ ] programming/languages/c-plus-plus/threading/index.mdx
 - [ ] programming/languages/c-plus-plus/type-conversion/index.mdx
 - [ ] programming/languages/c-plus-plus/unit-testing-and-mocking/index.mdx
-- [ ] programming/languages/c-plus-plus/virtual-methods/index.mdx
 - [ ] programming/languages/c-plus-plus/warning-and-error-message-help/index.mdx
 - [ ] programming/languages/c-sharp/binding/index.mdx
 - [ ] programming/languages/c-sharp/closing-your-application/index.mdx
@@ -769,7 +764,6 @@
 - [ ] programming/languages/c-sharp/using-installsheild/index.mdx
 - [ ] programming/languages/c-sharp/windows-office-application-interface/index.mdx
 - [ ] programming/languages/c/arithmetic-operators/index.mdx
-- [ ] programming/languages/c/arrays/index.mdx
 - [ ] programming/languages/c/assertions-assert/index.mdx
 - [ ] programming/languages/c/bss-section/index.mdx
 - [ ] programming/languages/c/c-naming-conventions/index.mdx
@@ -778,11 +772,7 @@
 - [ ] programming/languages/c/commenting-and-documentation/index.mdx
 - [ ] programming/languages/c/common-c-compile-build-errors/index.mdx
 - [ ] programming/languages/c/control-statements/index.mdx
-- [ ] programming/languages/c/data-types/index.mdx
-- [ ] programming/languages/c/dynamic-memory-allocation/index.mdx
-- [ ] programming/languages/c/enumerations/index.mdx
 - [ ] programming/languages/c/file-input-and-output/index.mdx
-- [ ] programming/languages/c/header-guards/index.mdx
 - [ ] programming/languages/c/index.mdx
 - [ ] programming/languages/c/inserting-assembly-code-into-c/index.mdx
 - [ ] programming/languages/c/linkage/index.mdx
@@ -791,17 +781,13 @@
 - [ ] programming/languages/c/logical-operators/index.mdx
 - [ ] programming/languages/c/non-local-jumps-setjmp-longjmp/index.mdx
 - [ ] programming/languages/c/object-orientated-c/index.mdx
-- [ ] programming/languages/c/preprocessor/index.mdx
 - [ ] programming/languages/c/processing-command-line-input/index.mdx
 - [ ] programming/languages/c/reading-user-input/index.mdx
 - [ ] programming/languages/c/reducing-code-execution-time/index.mdx
 - [ ] programming/languages/c/standards-and-versions/index.mdx
 - [ ] programming/languages/c/string-manipulation-in-c/index.mdx
-- [ ] programming/languages/c/structures/index.mdx
-- [ ] programming/languages/c/switch-statements/index.mdx
 - [ ] programming/languages/c/system-calls/index.mdx
 - [ ] programming/languages/c/the-confusing-differences-between-struct-and-typedef-struct/index.mdx
-- [ ] programming/languages/c/unions/index.mdx
 - [ ] programming/languages/c/variadic-functions/index.mdx
 - [ ] programming/languages/dart-and-flutter/index.mdx
 - [ ] programming/languages/delphi/index.mdx
@@ -944,11 +930,8 @@
 - [ ] programming/operating-systems/azure-rtos-threadx/index.mdx
 - [ ] programming/operating-systems/embassy/index.mdx
 - [ ] programming/operating-systems/embassy/nrf52-dk-tutorial/index.mdx
-- [ ] programming/operating-systems/freertos/common-mistakes/index.mdx
-- [ ] programming/operating-systems/freertos/compiling-freertos-with-cpp/index.mdx
 - [ ] programming/operating-systems/freertos/freertos-and-watchdogs/index.md
 - [ ] programming/operating-systems/freertos/freertos-quick-reference-guide/index.md
-- [ ] programming/operating-systems/freertos/the-idle-task/index.mdx
 - [ ] programming/operating-systems/index.mdx
 - [ ] programming/operating-systems/linux/a-review-of-linux-shells/index.md
 - [ ] programming/operating-systems/linux/bash-script-for-montoring-disk-usage/index.md
@@ -1013,15 +996,10 @@
 - [ ] programming/operating-systems/windows/windows-subsystem-for-linux-wsl/index.mdx
 - [ ] programming/operating-systems/zephyr/adding-a-custom-board/index.mdx
 - [ ] programming/operating-systems/zephyr/bluetooth/index.mdx
-- [ ] programming/operating-systems/zephyr/cpp/index.mdx
-- [ ] programming/operating-systems/zephyr/creating-libraries/index.mdx
-- [ ] programming/operating-systems/zephyr/debugging/index.mdx
 - [ ] programming/operating-systems/zephyr/installation/index.mdx
-- [ ] programming/operating-systems/zephyr/logging/index.mdx
 - [ ] programming/operating-systems/zephyr/mcuboot/index.mdx
 - [ ] programming/operating-systems/zephyr/nfc/index.mdx
 - [ ] programming/operating-systems/zephyr/peripherals/index.mdx
-- [ ] programming/operating-systems/zephyr/shell/index.mdx
 - [ ] programming/operating-systems/zephyr/state-machine-framework/index.mdx
 - [ ] programming/programming-microcontrollers-an-overview/index.mdx
 - [ ] programming/segger-j-link/index.mdx
